@@ -1,0 +1,8 @@
+'use client';
+import { createContext, useCallback, useContext, useMemo, useState } from 'react';
+import { AnimatePresence, motion } from 'framer-motion';
+import { CheckCircle2, X, XCircle, Info } from 'lucide-react';
+type Kind='success'|'error'|'info'; type Toast={id:number;kind:Kind;message:string};
+const C=createContext<{toast:(message:string,kind?:Kind)=>void}>({toast:()=>{}});
+export function ToastProvider({children}:{children:React.ReactNode}){const [items,setItems]=useState<Toast[]>([]);const toast=useCallback((message:string,kind:Kind='success')=>{const id=Date.now()+Math.random();setItems(x=>[...x,{id,kind,message}]);window.setTimeout(()=>setItems(x=>x.filter(t=>t.id!==id)),3500)},[]);const value=useMemo(()=>({toast}),[toast]);return <C.Provider value={value}>{children}<div className="fixed right-4 top-4 z-[100] flex w-[min(92vw,380px)] flex-col gap-2" aria-live="polite"> <AnimatePresence>{items.map(t=><motion.div key={t.id} initial={{opacity:0,x:20}} animate={{opacity:1,x:0}} exit={{opacity:0,x:20}} className="flex items-start gap-3 rounded-2xl border bg-white p-4 shadow-xl"><span className={t.kind==='success'?'text-emerald-600':t.kind==='error'?'text-red-600':'text-slate-600'}>{t.kind==='success'?<CheckCircle2 size={19}/>:t.kind==='error'?<XCircle size={19}/>:<Info size={19}/>}</span><p className="flex-1 text-sm font-medium text-slate-800">{t.message}</p><button aria-label="Dismiss notification" className="min-h-0 rounded-lg p-1 text-slate-400" onClick={()=>setItems(x=>x.filter(i=>i.id!==t.id))}><X size={16}/></button></motion.div>)}</AnimatePresence></div></C.Provider>}
+export const useToast=()=>useContext(C);

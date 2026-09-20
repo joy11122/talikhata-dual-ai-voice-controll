@@ -1,0 +1,4 @@
+import Link from 'next/link';
+import { CredentialsForm } from '@/components/AuthForms';
+import GoogleButton from '@/components/GoogleButton';
+export default function SignUpPage(){return <main className="grid min-h-screen place-items-center p-5"><div className="w-full max-w-md rounded-2xl border border-black/[.07] bg-white/95 p-6 shadow-[0_20px_60px_rgba(0,0,0,.08)]"><h1 className="text-[30px] font-semibold tracking-[-.035em]">Create account</h1><p className="mt-2 text-slate-500">Start managing your shop with voice and UI.</p><div className="mt-6"><GoogleButton /></div><div className="my-5 flex items-center gap-3 text-xs text-slate-400"><span className="h-px flex-1 bg-slate-200"/>OR<span className="h-px flex-1 bg-slate-200"/></div><CredentialsForm mode="signup"/><p className="mt-5 text-center text-sm text-slate-500">Already have an account? <Link className="font-semibold text-emerald-700" href="/signin">Sign in</Link></p></div></main>}

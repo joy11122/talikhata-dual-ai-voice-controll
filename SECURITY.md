@@ -1,0 +1,11 @@
+# Security checklist
+- All tenant collections have userId and indexes.
+- Every read/write route obtains Auth.js session and filters by userId.
+- Voice executor compares session.user.id to the supplied tenant id.
+- Passwords use bcryptjs cost 12.
+- Voice parser output is validated by Zod before execution.
+- Entity ambiguity never commits blindly.
+- >৳10,000 voice actions require confirmation in the UI; server-side policy should also be enforced with a signed confirmation token in a hardened production release.
+- MongoDB writes affecting multiple documents use a transaction.
+- Do not log passwords, OAuth tokens, or raw authorization headers.
+- Add rate limiting, CSP, origin checks, account recovery, email verification, Sentry and E2E authorization tests before public launch.

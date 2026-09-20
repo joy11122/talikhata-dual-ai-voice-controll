@@ -1,0 +1,4 @@
+import mongoose,{Schema,Types} from 'mongoose';
+export interface IProduct extends mongoose.Document{_id:Types.ObjectId;userId:Types.ObjectId;name:string;unit:string;stockQuantity:number;buyPrice:number;sellPrice:number;lowStockThreshold:number;createdAt:Date}
+const S=new Schema<IProduct>({userId:{type:Schema.Types.ObjectId,ref:'User',required:true,index:true},name:{type:String,required:true,trim:true,maxlength:150},unit:{type:String,required:true,trim:true,maxlength:30},stockQuantity:{type:Number,default:0,min:0},buyPrice:{type:Number,default:0,min:0},sellPrice:{type:Number,default:0,min:0},lowStockThreshold:{type:Number,default:5,min:0}},{timestamps:true,versionKey:false});S.index({name:'text'});S.index({userId:1,name:1},{unique:true});
+const Product=(mongoose.models.Product as mongoose.Model<IProduct>)||mongoose.model<IProduct>('Product',S);export default Product;

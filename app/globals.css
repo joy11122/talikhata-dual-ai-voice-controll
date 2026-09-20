@@ -1,0 +1,114 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root{
+  color-scheme: light;
+  --tk-bg:#f5f5f7;
+  --tk-surface:rgba(255,255,255,.92);
+  --tk-border:rgba(60,60,67,.16);
+  --tk-text:#1d1d1f;
+  --tk-muted:#6e6e73;
+  --tk-accent:#0a7a55;
+}
+
+html{scroll-behavior:smooth}
+body{
+  margin:0;
+  background:var(--tk-bg);
+  color:var(--tk-text);
+  font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","SF Pro Text","Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  font-feature-settings:"kern" 1;
+  -webkit-font-smoothing:antialiased;
+  text-rendering:optimizeLegibility;
+}
+::selection{background:rgba(10,122,85,.16)}
+button,input,select,textarea{font:inherit}
+button{min-height:44px}
+input,select,textarea{min-height:44px}
+
+.field{
+  width:100%;
+  min-height:44px;
+  border:1px solid var(--tk-border);
+  border-radius:12px;
+  padding:.72rem .875rem;
+  background:rgba(255,255,255,.96);
+  color:var(--tk-text);
+  outline:none;
+  transition:border-color .18s ease,box-shadow .18s ease,background-color .18s ease;
+}
+.field::placeholder{color:#8e8e93}
+.field:hover{border-color:rgba(60,60,67,.26)}
+.field:focus{
+  border-color:rgba(10,122,85,.7);
+  box-shadow:0 0 0 4px rgba(10,122,85,.11);
+  background:#fff;
+}
+
+.btn-primary,.btn-secondary{
+  min-height:44px;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  gap:.5rem;
+  border-radius:12px;
+  padding:.72rem 1rem;
+  font-size:.9375rem;
+  font-weight:600;
+  letter-spacing:-.01em;
+  white-space:nowrap;
+  transition:transform .16s ease,background-color .16s ease,border-color .16s ease,box-shadow .16s ease;
+}
+.btn-primary{
+  background:#0a7a55;
+  color:#fff;
+  box-shadow:0 1px 2px rgba(0,0,0,.08);
+}
+.btn-primary:hover{background:#086b4b}
+.btn-primary:active,.btn-secondary:active{transform:scale(.985)}
+.btn-primary:focus-visible,.btn-secondary:focus-visible,button:focus-visible,a:focus-visible{
+  outline:3px solid rgba(10,122,85,.2);
+  outline-offset:2px;
+}
+.btn-secondary{
+  border:1px solid var(--tk-border);
+  background:rgba(255,255,255,.88);
+  color:#2c2c2e;
+  box-shadow:0 1px 2px rgba(0,0,0,.04);
+}
+.btn-secondary:hover{background:#fff;border-color:rgba(60,60,67,.25)}
+
+label.form-label{
+  display:block;
+  margin-bottom:.4rem;
+  font-size:.875rem;
+  line-height:1.25rem;
+  font-weight:600;
+  letter-spacing:-.005em;
+  color:#3a3a3c;
+}
+
+.form-grid{display:grid;gap:.875rem}
+.form-grid-2{grid-template-columns:1fr}
+@media(min-width:640px){.form-grid-2{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:639px){
+  .mobile-full{width:100%}
+  .responsive-card{padding:1rem}
+  .responsive-table{display:block;overflow-x:auto}
+}
+html,body{max-width:100%;overflow-x:hidden}
+select.field{appearance:auto}
+@media(prefers-reduced-motion:reduce){
+  html{scroll-behavior:auto}
+  *,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important}
+}
+
+/* Async interaction feedback */
+button:disabled{cursor:not-allowed;opacity:.65}
+[aria-busy="true"]{cursor:wait}
+
+.spinner{display:inline-block;width:16px;height:16px;border:2px solid currentColor;border-right-color:transparent;border-radius:9999px;animation:spin .7s linear infinite}@keyframes spin{to{transform:rotate(360deg)}}
+
+.text-danger{color:#b42318}
+.sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
