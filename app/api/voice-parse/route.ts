@@ -1,18 +1,1213 @@
-import {NextResponse} from 'next/server';import {createAIClient,getAIProviders,getModel,shouldFallback} from '@/lib/ai/provider';import {auth} from '@/auth';import {VoiceIntentSchema,VoiceParseRequest} from '@/lib/validations/voice';
-const schema={type:'object',additionalProperties:false,properties:{intent:{type:'string',enum:['CREATE_TRANSACTION','READ_BALANCE','UPDATE_STOCK','DELETE_ENTRY','LIST_ITEMS','CREATE_PRODUCT','CREATE_PARTY']},entity_type:{type:'string',enum:['CUSTOMER','SUPPLIER','INVENTORY']},entity_name:{type:['string','null']},amount:{type:['number','null']},quantity:{type:['number','null']},unit:{type:['string','null']},transaction_type:{type:['string','null'],enum:['DUE_GIVEN','DUE_RECEIVED','STOCK_IN','STOCK_OUT','EXPENSE','SALE',null]},notes:{type:['string','null']},phone:{type:['string','null']},buy_price:{type:['number','null']},sell_price:{type:['number','null']},low_stock_threshold:{type:['number','null']},party_type:{type:['string','null'],enum:['CUSTOMER','SUPPLIER',null]},items:{type:'array',items:{type:'object',additionalProperties:false,properties:{product_name:{type:'string'},quantity:{type:'number'},unit:{type:['string','null']},unit_price:{type:['number','null']}},required:['product_name','quantity','unit','unit_price']},maxItems:50},paid_amount:{type:['number','null']}},required:['intent','entity_type','entity_name','amount','quantity','unit','transaction_type','notes','phone','buy_price','sell_price','low_stock_threshold','party_type','items','paid_amount']} as const;
-export async function POST(req:Request){const session=await auth();if(!session?.user?.id)return NextResponse.json({error:'Unauthorized'},{status:401});let rawBody:unknown;try{rawBody=await req.json();}catch{return NextResponse.json({error:'Invalid JSON'},{status:400});}const body=VoiceParseRequest.safeParse(rawBody);if(!body.success)return NextResponse.json({error:'Invalid transcript',issues:body.error.issues},{status:400});if(!getAIProviders().length)return NextResponse.json({error:'Configure OPENAI_API_KEY or OPENROUTER_API_KEY'},{status:503});
-try{
- let lastError:any;
- for(const provider of getAIProviders()){
-  try{
-   const client=createAIClient(provider);
-   const completion=await client.chat.completions.create({model:getModel(provider),temperature:0,response_format:{type:'json_schema',json_schema:{name:'talikhata_voice_intent',strict:true,schema:schema as any}},messages:[{role:'system',content:`You are the command parser for a Bangladeshi small-shop ledger. Understand native Bengali, Banglish, and English. Never invent names, prices or quantities. Map: baki/due given to DUE_GIVEN; customer paid/joma/received to DUE_RECEIVED; stock add/kinlam to STOCK_IN; stock sold/ber korechi to STOCK_OUT; expense/khorocha to EXPENSE; sale/bikri to SALE. CREATE_PRODUCT means user explicitly asks to create/add a new product, and entity_type INVENTORY. CREATE_PARTY means explicitly add a customer/supplier. For CREATE_PRODUCT, quantity is initial stock, unit is required, buy_price and sell_price are unit prices when stated. For SALE, use items for every spoken product; entity_name may contain the only product for backward compatibility. Calculate amount when all item unit prices are known; paid_amount is the cash/payment received now. If the user says 'baki' after a sale, the unpaid amount is amount-paid_amount and should become customer due only when a customer is identified. For DELETE_ENTRY, amount is the target amount when stated. LIST_ITEMS lists inventory. READ_BALANCE reads a named party balance. Preserve Bengali names as spoken and normalize Banglish only enough to understand intent.`},{role:'user',content:body.data.transcript}]});
-   const raw=completion.choices[0]?.message?.content||'{}';
-   const clean=raw.replace(/^```(?:json)?\s*/i,'').replace(/\s*```$/,'').trim();
-   const parsed=VoiceIntentSchema.safeParse(JSON.parse(clean));
-   if(!parsed.success)return NextResponse.json({error:'Invalid parser output',issues:parsed.error.issues},{status:422});
-   return NextResponse.json({...parsed.data,provider});
-  }catch(e){lastError=e;if(!shouldFallback(e))break;}
- }
- return NextResponse.json({error:(lastError as any)?.message||'Voice parsing failed'},{status:502});
-}catch(e:any){return NextResponse.json({error:e.message||'Voice parsing failed'},{status:502});}}
+import { NextResponse } from 'next/server';
+
+import {
+  createAIClient,
+  getAIProviders,
+  getModel,
+  shouldFallback,
+} from '@/lib/ai/provider';
+
+import { auth } from '@/auth';
+
+import {
+  VoiceIntentSchema,
+  VoiceParseRequest,
+} from '@/lib/validations/voice';
+
+/* -------------------------------------------------------------------------- */
+/* AI JSON schema                                                             */
+/* -------------------------------------------------------------------------- */
+
+const schema = {
+  type: 'object',
+  additionalProperties: false,
+
+  properties: {
+    intent: {
+      type: 'string',
+      enum: [
+        'CREATE_TRANSACTION',
+        'READ_BALANCE',
+        'UPDATE_STOCK',
+        'DELETE_ENTRY',
+        'LIST_ITEMS',
+        'CREATE_PRODUCT',
+        'CREATE_PARTY',
+        'READ_PARTY',
+        'LIST_PARTIES',
+        'READ_PRODUCT',
+        'UPDATE_PRODUCT',
+        'UPDATE_PARTY',
+        'DELETE_PRODUCT',
+        'DELETE_PARTY',
+        'SEARCH_TRANSACTIONS',
+      ],
+    },
+
+    entity_type: {
+      type: 'string',
+      enum: [
+        'CUSTOMER',
+        'SUPPLIER',
+        'INVENTORY',
+      ],
+    },
+
+    entity_name: {
+      type: ['string', 'null'],
+    },
+
+    amount: {
+      type: ['number', 'null'],
+    },
+
+    quantity: {
+      type: ['number', 'null'],
+    },
+
+    unit: {
+      type: ['string', 'null'],
+    },
+
+    transaction_type: {
+      type: ['string', 'null'],
+      enum: [
+        'DUE_GIVEN',
+        'DUE_RECEIVED',
+        'STOCK_IN',
+        'STOCK_OUT',
+        'EXPENSE',
+        'SALE',
+        null,
+      ],
+    },
+
+    notes: {
+      type: ['string', 'null'],
+    },
+
+    phone: {
+      type: ['string', 'null'],
+    },
+
+    buy_price: {
+      type: ['number', 'null'],
+    },
+
+    sell_price: {
+      type: ['number', 'null'],
+    },
+
+    low_stock_threshold: {
+      type: ['number', 'null'],
+    },
+
+    party_type: {
+      type: ['string', 'null'],
+      enum: [
+        'CUSTOMER',
+        'SUPPLIER',
+        null,
+      ],
+    },
+
+    items: {
+      type: 'array',
+
+      items: {
+        type: 'object',
+        additionalProperties: false,
+
+        properties: {
+          product_name: {
+            type: 'string',
+          },
+
+          quantity: {
+            type: 'number',
+          },
+
+          unit: {
+            type: ['string', 'null'],
+          },
+
+          unit_price: {
+            type: ['number', 'null'],
+          },
+        },
+
+        required: [
+          'product_name',
+          'quantity',
+          'unit',
+          'unit_price',
+        ],
+      },
+
+      maxItems: 50,
+    },
+
+    paid_amount: {
+      type: ['number', 'null'],
+    },
+
+    search_query: {
+      type: ['string', 'null'],
+    },
+
+    target_id: {
+      type: ['string', 'null'],
+    },
+  },
+
+  required: [
+    'intent',
+    'entity_type',
+    'entity_name',
+    'amount',
+    'quantity',
+    'unit',
+    'transaction_type',
+    'notes',
+    'phone',
+    'buy_price',
+    'sell_price',
+    'low_stock_threshold',
+    'party_type',
+    'items',
+    'paid_amount',
+    'search_query',
+    'target_id',
+  ],
+} as const;
+
+/* -------------------------------------------------------------------------- */
+/* Bengali digit normalization                                                */
+/* -------------------------------------------------------------------------- */
+
+function normalizeDigits(
+  value: string,
+): string {
+  const bn = '০১২৩৪৫৬৭৮৯';
+  const en = '0123456789';
+
+  return value.replace(
+    /[০-৯]/g,
+    (digit) => {
+      const index = bn.indexOf(digit);
+
+      return index >= 0
+        ? en[index]
+        : digit;
+    },
+  );
+}
+
+/* -------------------------------------------------------------------------- */
+/* Text normalization                                                         */
+/* -------------------------------------------------------------------------- */
+
+function normalizeText(
+  value: string,
+): string {
+  return normalizeDigits(value)
+    .trim()
+    .toLowerCase()
+    .replace(/[।,!?;:]/g, ' ')
+    .replace(/\s+/g, ' ');
+}
+
+/* -------------------------------------------------------------------------- */
+/* Amount extraction                                                          */
+/* -------------------------------------------------------------------------- */
+
+function extractAmount(
+  transcript: string,
+): number | null {
+  const text =
+    normalizeDigits(transcript);
+
+  const money =
+    text.match(
+      /(\d+(?:,\d{3})*(?:\.\d+)?)\s*(?:টাকা|টাকায়|টাকার|tk|taka|bdt)\b/i,
+    );
+
+  const generic =
+    text.match(
+      /(?:^|\s)(\d+(?:,\d{3})*(?:\.\d+)?)(?:\s|$)/i,
+    );
+
+  const match =
+    money || generic;
+
+  if (!match?.[1]) {
+    return null;
+  }
+
+  const amount = Number(
+    match[1].replace(/,/g, ''),
+  );
+
+  if (
+    !Number.isFinite(amount) ||
+    amount <= 0
+  ) {
+    return null;
+  }
+
+  return amount;
+}
+
+/* -------------------------------------------------------------------------- */
+/* Quantity extraction                                                        */
+/* -------------------------------------------------------------------------- */
+
+function extractQuantity(
+  transcript: string,
+): number | null {
+  const text =
+    normalizeDigits(transcript);
+
+  const match =
+    text.match(
+      /(\d+(?:\.\d+)?)\s*(?:টা|টি|কেজি|kg|pcs?|piece|pieces|litre|liter|লিটার|বস্তা|box|কার্টন)\b/i,
+    );
+
+  if (!match?.[1]) {
+    return null;
+  }
+
+  const quantity =
+    Number(match[1]);
+
+  return Number.isFinite(quantity) &&
+    quantity > 0
+    ? quantity
+    : null;
+}
+
+/* -------------------------------------------------------------------------- */
+/* Intent helpers                                                             */
+/* -------------------------------------------------------------------------- */
+
+function isBalanceQuestion(
+  transcript: string,
+): boolean {
+  const text =
+    normalizeText(transcript);
+
+  const question =
+    /(?:কত|কতো|কয়|কয়|koto|kot|how much|balance|ব্যালেন্স|পাওনা|দেনা)/i;
+
+  const due =
+    /(?:বাকি|bak[iy]|bakir|bakite|due|পাওনা|দেনা|balance)/i;
+
+  return (
+    question.test(text) &&
+    due.test(text)
+  );
+}
+
+function hasDueWord(
+  transcript: string,
+): boolean {
+  const text =
+    normalizeText(transcript);
+
+  return (
+    text.includes('বাকি') ||
+    /\b(?:baki|bakir|bakite|due)\b/i.test(
+      text,
+    )
+  );
+}
+
+function isPaymentCommand(
+  transcript: string,
+): boolean {
+  const text =
+    normalizeText(transcript);
+
+  return (
+    /(?:জমা|পরিশোধ|দিয়েছে|দিয়েছে|দিলেন|পেলাম|ফেরত)/i.test(
+      text,
+    ) ||
+    /\b(?:joma|jama|paid|payment|pay|received|receive|dise|diyeche|dilo)\b/i.test(
+      text,
+    )
+  );
+}
+
+function isProductCommand(
+  transcript: string,
+): boolean {
+  const text =
+    normalizeText(transcript);
+
+  return (
+    /(?:পণ্য|প্রোডাক্ট|মাল|product|item)/i.test(
+      text,
+    )
+  );
+}
+
+function isDeleteCommand(
+  transcript: string,
+): boolean {
+  const text =
+    normalizeText(transcript);
+
+  return (
+    /(?:ডিলিট|মুছে|মুছে ফেল|বাদ দাও|delete|remove|cancel)/i.test(
+      text,
+    )
+  );
+}
+
+function isListCommand(
+  transcript: string,
+): boolean {
+  const text =
+    normalizeText(transcript);
+
+  return (
+    /(?:দেখাও|দেখান|লিস্ট|তালিকা|সবগুলো|সব|list|show|display)/i.test(
+      text,
+    )
+  );
+}
+
+function isSupplierCommand(
+  transcript: string,
+): boolean {
+  const text =
+    normalizeText(transcript);
+
+  return (
+    /(?:supplier|সরবরাহকারী|সাপ্লায়ার|সাপ্লায়ার|পাইকার)/i.test(
+      text,
+    )
+  );
+}
+
+function isCustomerCommand(
+  transcript: string,
+): boolean {
+  const text =
+    normalizeText(transcript);
+
+  return (
+    /(?:customer|কাস্টমার|ক্রেতা|গ্রাহক)/i.test(
+      text,
+    )
+  );
+}
+
+/* -------------------------------------------------------------------------- */
+/* Deterministic correction                                                   */
+/* -------------------------------------------------------------------------- */
+
+function correctIntent(
+  aiData: any,
+  transcript: string,
+) {
+  const amount =
+    extractAmount(transcript);
+
+  const quantity =
+    extractQuantity(transcript);
+
+  /* ---------------------------------------------------------------------- */
+  /* Balance                                                                */
+  /* ---------------------------------------------------------------------- */
+
+  if (
+    isBalanceQuestion(transcript)
+  ) {
+    return {
+      ...aiData,
+
+      intent:
+        'READ_BALANCE',
+
+      entity_type:
+        'CUSTOMER',
+
+      amount: null,
+
+      quantity: 0,
+
+      transaction_type:
+        null,
+
+      paid_amount:
+        null,
+    };
+  }
+
+  /* ---------------------------------------------------------------------- */
+  /* Customer payment                                                       */
+  /* ---------------------------------------------------------------------- */
+
+  if (
+    amount !== null &&
+    isPaymentCommand(transcript) &&
+    !isSupplierCommand(transcript)
+  ) {
+    return {
+      ...aiData,
+
+      intent:
+        'CREATE_TRANSACTION',
+
+      entity_type:
+        'CUSTOMER',
+
+      amount,
+
+      quantity: 0,
+
+      transaction_type:
+        'DUE_RECEIVED',
+
+      paid_amount:
+        amount,
+    };
+  }
+
+  /* ---------------------------------------------------------------------- */
+  /* Customer due                                                           */
+  /* ---------------------------------------------------------------------- */
+
+  if (
+    amount !== null &&
+    hasDueWord(transcript) &&
+    !isBalanceQuestion(transcript)
+  ) {
+    return {
+      ...aiData,
+
+      intent:
+        'CREATE_TRANSACTION',
+
+      entity_type:
+        'CUSTOMER',
+
+      amount,
+
+      quantity: 0,
+
+      transaction_type:
+        'DUE_GIVEN',
+
+      paid_amount:
+        0,
+    };
+  }
+
+  /* ---------------------------------------------------------------------- */
+  /* Stock                                                                  */
+  /* ---------------------------------------------------------------------- */
+
+  const text =
+    normalizeText(transcript);
+
+  if (
+    /(?:স্টক|stock|মাল|পণ্য)/i.test(
+      text,
+    ) &&
+    /(?:যোগ|ঢোকাও|আনলাম|কিনলাম|add|in|increase)/i.test(
+      text,
+    )
+  ) {
+    return {
+      ...aiData,
+
+      intent:
+        'UPDATE_STOCK',
+
+      entity_type:
+        'INVENTORY',
+
+      quantity:
+        quantity ??
+        aiData.quantity ??
+        0,
+
+      transaction_type:
+        'STOCK_IN',
+    };
+  }
+
+  if (
+    /(?:স্টক|stock|মাল|পণ্য)/i.test(
+      text,
+    ) &&
+    /(?:বের|কমাও|বিক্রি|sold|out|remove|decrease)/i.test(
+      text,
+    )
+  ) {
+    return {
+      ...aiData,
+
+      intent:
+        'UPDATE_STOCK',
+
+      entity_type:
+        'INVENTORY',
+
+      quantity:
+        quantity ??
+        aiData.quantity ??
+        0,
+
+      transaction_type:
+        'STOCK_OUT',
+    };
+  }
+
+  /* ---------------------------------------------------------------------- */
+  /* Delete                                                                 */
+  /* ---------------------------------------------------------------------- */
+
+  if (
+    isDeleteCommand(transcript)
+  ) {
+    return {
+      ...aiData,
+
+      intent:
+        'DELETE_ENTRY',
+    };
+  }
+
+  /* ---------------------------------------------------------------------- */
+  /* List products                                                           */
+  /* ---------------------------------------------------------------------- */
+
+  if (
+    isListCommand(transcript) &&
+    isProductCommand(transcript)
+  ) {
+    return {
+      ...aiData,
+
+      intent:
+        'LIST_ITEMS',
+
+      entity_type:
+        'INVENTORY',
+    };
+  }
+
+  /* ---------------------------------------------------------------------- */
+  /* Supplier                                                               */
+  /* ---------------------------------------------------------------------- */
+
+  if (
+    isSupplierCommand(transcript) &&
+    isListCommand(transcript)
+  ) {
+    return {
+      ...aiData,
+
+      intent:
+        'LIST_PARTIES',
+
+      entity_type:
+        'SUPPLIER',
+
+      party_type:
+        'SUPPLIER',
+    };
+  }
+
+  /* ---------------------------------------------------------------------- */
+  /* Customer                                                               */
+  /* ---------------------------------------------------------------------- */
+
+  if (
+    isCustomerCommand(transcript) &&
+    isListCommand(transcript)
+  ) {
+    return {
+      ...aiData,
+
+      intent:
+        'LIST_PARTIES',
+
+      entity_type:
+        'CUSTOMER',
+
+      party_type:
+        'CUSTOMER',
+    };
+  }
+
+  return aiData;
+}
+
+/* -------------------------------------------------------------------------- */
+/* System prompt                                                              */
+/* -------------------------------------------------------------------------- */
+
+const SYSTEM_PROMPT = `
+You are TaliKhata Voice, a highly reliable Bangladeshi shop ledger command parser.
+
+Your job is ONLY to understand the user's command and return structured JSON.
+
+You understand:
+
+- Native Bengali
+- Banglish
+- English
+- Bengali digits
+- English digits
+- mixed Bengali + English
+- natural conversational shop language
+
+==================================================
+ABSOLUTE RULES
+==================================================
+
+1. NEVER invent a name.
+2. NEVER invent an amount.
+3. NEVER invent quantity.
+4. NEVER invent phone number.
+5. NEVER invent product.
+6. NEVER invent database IDs.
+7. Preserve names exactly as spoken whenever possible.
+8. Do not convert "Rahim" into another person.
+9. Do not convert "করিম" into "রহিম".
+10. Database entity resolution happens on the server.
+
+==================================================
+CUSTOMER DUE
+==================================================
+
+"রহিমের বাকি ৫০০ টাকা"
+"করিমের বাকি ৮০০"
+"সুমনকে ১০০০ টাকা বাকিতে দিলাম"
+"rahim er baki 500"
+"karim ke 800 taka baki dilam"
+
+→
+
+intent = CREATE_TRANSACTION
+entity_type = CUSTOMER
+transaction_type = DUE_GIVEN
+amount = spoken amount
+
+==================================================
+CUSTOMER PAYMENT
+==================================================
+
+"রহিম ৫০০ টাকা জমা দিল"
+"করিম ৩০০ টাকা দিয়েছে"
+"সুমন টাকা পরিশোধ করেছে"
+"rahim paid 500"
+"karim joma dilo 300"
+
+→
+
+intent = CREATE_TRANSACTION
+entity_type = CUSTOMER
+transaction_type = DUE_RECEIVED
+amount = spoken amount
+paid_amount = spoken amount
+
+==================================================
+BALANCE
+==================================================
+
+"রহিমের বাকি কত?"
+"করিমের মোট বাকি কত?"
+"সুমনের পাওনা কত?"
+"রহিমের ব্যালেন্স কত?"
+"rahim er baki koto?"
+"karim total due koto?"
+
+→
+
+intent = READ_BALANCE
+entity_type = CUSTOMER
+amount = null
+transaction_type = null
+
+==================================================
+SUPPLIER
+==================================================
+
+"রহমান সাপ্লায়ারকে ৫০০ টাকা দিলাম"
+
+This is supplier payment context.
+
+Do not treat a supplier as a customer.
+
+==================================================
+STOCK IN
+==================================================
+
+"১০টা কোক স্টকে ঢুকাও"
+"২০ কেজি চাল কিনলাম"
+"৫টা সাবান স্টকে যোগ করো"
+"stock add 20 coke"
+"kinlam 10 pcs"
+
+→
+
+intent = UPDATE_STOCK
+entity_type = INVENTORY
+transaction_type = STOCK_IN
+
+==================================================
+STOCK OUT
+==================================================
+
+"১০টা কোক স্টক থেকে বের করলাম"
+"৫টা সাবান বের করো"
+"stock out 10"
+
+→
+
+intent = UPDATE_STOCK
+entity_type = INVENTORY
+transaction_type = STOCK_OUT
+
+==================================================
+SALE
+==================================================
+
+"রহিমকে ২টা কোক বিক্রি করলাম"
+"করিমকে ৩টা সাবান আর ২টা কোক দিলাম"
+"rahim er kase 2 coke sell"
+
+→
+
+intent = CREATE_TRANSACTION
+entity_type = CUSTOMER
+transaction_type = SALE
+
+Put every product into items[].
+
+==================================================
+EXPENSE
+==================================================
+
+"দোকানের ৫০০ টাকা বিদ্যুৎ বিল"
+"আজ ৩০০ টাকা খরচ হয়েছে"
+"expense 500"
+
+→
+
+intent = CREATE_TRANSACTION
+transaction_type = EXPENSE
+
+==================================================
+CREATE PRODUCT
+==================================================
+
+Only when the user explicitly wants to create/add/register a product.
+
+Examples:
+
+"কোক নামে নতুন product যোগ করো"
+"নতুন সাবান তৈরি করো"
+"product add করো"
+
+→
+
+intent = CREATE_PRODUCT
+entity_type = INVENTORY
+
+==================================================
+CREATE CUSTOMER / SUPPLIER
+==================================================
+
+"রহিমকে customer হিসেবে যোগ করো"
+"করিম নামে customer বানাও"
+"রহমান ট্রেডার্সকে supplier হিসেবে যোগ করো"
+
+→
+
+intent = CREATE_PARTY
+
+party_type must be CUSTOMER or SUPPLIER.
+
+==================================================
+READ PARTY
+==================================================
+
+"রহিমের তথ্য দেখাও"
+"করিমের customer information"
+"রহমান supplier details"
+
+→ READ_PARTY
+
+==================================================
+LIST
+==================================================
+
+"সব customer দেখাও"
+"সব supplier দেখাও"
+"সব product দেখাও"
+"inventory list দেখাও"
+
+→ LIST_PARTIES or LIST_ITEMS
+
+==================================================
+DELETE
+==================================================
+
+"শেষ transaction delete করো"
+"৫০০ টাকার entry মুছে দাও"
+"এই transaction delete করো"
+"করিমকে delete করো"
+
+Use DELETE_ENTRY for ledger transaction deletion.
+
+Use DELETE_PARTY for customer/supplier deletion.
+
+Use DELETE_PRODUCT for product deletion.
+
+==================================================
+UPDATE
+==================================================
+
+"রহিমের phone number পরিবর্তন করো"
+"কোকের selling price ৫০ টাকা করো"
+"করিমকে supplier বানাও"
+
+Use UPDATE_PARTY or UPDATE_PRODUCT.
+
+==================================================
+SEARCH
+==================================================
+
+"রহিমের transaction দেখাও"
+"গতকালের transaction দেখাও"
+"৫০০ টাকার entry খুঁজে বের করো"
+
+→ SEARCH_TRANSACTIONS
+
+==================================================
+IMPORTANT
+==================================================
+
+A concrete amount + customer + baki/due
+means DUE_GIVEN.
+
+A question + customer + baki/due
+means READ_BALANCE.
+
+A customer + paid/joma/received
+means DUE_RECEIVED.
+
+Never confuse them.
+
+==================================================
+ENTITY NAME
+==================================================
+
+If user says:
+
+"রহিম"
+return entity_name = "রহিম"
+
+If user says:
+
+"করিম"
+return entity_name = "করিম"
+
+If user says:
+
+"রহমান ট্রেডার্স"
+return exactly that name.
+
+Do not hardcode any person's name.
+
+==================================================
+MULTI PRODUCT SALE
+==================================================
+
+For:
+
+"রহিমকে ২টা কোক আর ৩টা সাবান বিক্রি করেছি"
+
+items:
+
+[
+  {
+    product_name: "কোক",
+    quantity: 2
+  },
+  {
+    product_name: "সাবান",
+    quantity: 3
+  }
+]
+
+==================================================
+CONFIDENCE
+==================================================
+
+If information is missing, return null.
+
+Do not guess.
+
+The server will ask for clarification when required.
+`;
+
+/* -------------------------------------------------------------------------- */
+/* POST                                                                       */
+/* -------------------------------------------------------------------------- */
+
+export async function POST(
+  req: Request,
+) {
+  const session =
+    await auth();
+
+  if (!session?.user?.id) {
+    return NextResponse.json(
+      {
+        error:
+          'Unauthorized',
+      },
+      {
+        status: 401,
+      },
+    );
+  }
+
+  let rawBody: unknown;
+
+  try {
+    rawBody =
+      await req.json();
+  } catch {
+    return NextResponse.json(
+      {
+        error:
+          'Invalid JSON',
+      },
+      {
+        status: 400,
+      },
+    );
+  }
+
+  const body =
+    VoiceParseRequest.safeParse(
+      rawBody,
+    );
+
+  if (!body.success) {
+    return NextResponse.json(
+      {
+        error:
+          'Invalid transcript',
+        issues:
+          body.error.issues,
+      },
+      {
+        status: 400,
+      },
+    );
+  }
+
+  const providers =
+    getAIProviders();
+
+  if (!providers.length) {
+    return NextResponse.json(
+      {
+        error:
+          'Configure OPENAI_API_KEY or OPENROUTER_API_KEY',
+      },
+      {
+        status: 503,
+      },
+    );
+  }
+
+  let lastError: unknown =
+    null;
+
+  for (
+    const provider of providers
+  ) {
+    try {
+      const client =
+        createAIClient(
+          provider,
+        );
+
+      const completion =
+        await client.chat.completions.create(
+          {
+            model:
+              getModel(
+                provider,
+              ),
+
+            temperature: 0,
+
+            response_format: {
+              type:
+                'json_schema',
+
+              json_schema: {
+                name:
+                  'talikhata_voice_intent',
+
+                strict: true,
+
+                schema:
+                  schema as any,
+              },
+            },
+
+            messages: [
+              {
+                role:
+                  'system',
+
+                content:
+                  SYSTEM_PROMPT,
+              },
+
+              {
+                role:
+                  'user',
+
+                content:
+                  body.data.transcript,
+              },
+            ],
+          },
+        );
+
+      const raw =
+        completion
+          .choices[0]
+          ?.message
+          ?.content ||
+        '{}';
+
+      const clean =
+        raw
+          .replace(
+            /^```(?:json)?\s*/i,
+            '',
+          )
+          .replace(
+            /\s*```$/,
+            '',
+          )
+          .trim();
+
+      let aiData: unknown;
+
+      try {
+        aiData =
+          JSON.parse(clean);
+      } catch {
+        return NextResponse.json(
+          {
+            error:
+              'Invalid JSON returned by AI',
+          },
+          {
+            status: 422,
+          },
+        );
+      }
+
+      const parsed =
+        VoiceIntentSchema.safeParse(
+          aiData,
+        );
+
+      if (!parsed.success) {
+        return NextResponse.json(
+          {
+            error:
+              'Invalid parser output',
+
+            issues:
+              parsed.error.issues,
+          },
+          {
+            status: 422,
+          },
+        );
+      }
+
+      const corrected =
+        correctIntent(
+          parsed.data,
+          body.data.transcript,
+        );
+
+      const finalParsed =
+        VoiceIntentSchema.safeParse(
+          corrected,
+        );
+
+      if (!finalParsed.success) {
+        return NextResponse.json(
+          {
+            error:
+              'Invalid corrected parser output',
+
+            issues:
+              finalParsed.error.issues,
+
+            data:
+              corrected,
+          },
+          {
+            status: 422,
+          },
+        );
+      }
+
+      return NextResponse.json({
+        ok: true,
+
+        ...finalParsed.data,
+
+        provider,
+
+        transcript:
+          body.data.transcript,
+      });
+    } catch (error) {
+      lastError =
+        error;
+
+      if (
+        !shouldFallback(
+          error,
+        )
+      ) {
+        break;
+      }
+    }
+  }
+
+  return NextResponse.json(
+    {
+      ok: false,
+
+      error:
+        lastError instanceof Error
+          ? lastError.message
+          : 'Voice parsing failed',
+    },
+    {
+      status: 502,
+    },
+  );
+}
