@@ -1,4 +1,3 @@
-
 import 'server-only';
 
 import Google from 'next-auth/providers/google';
@@ -59,11 +58,6 @@ function isAdminEmail(email: string): boolean {
 /**
  * Find/create the application's own User document
  * and make sure the user has a Shop.
- *
- * IMPORTANT:
- * The email is intentionally used as the primary identity
- * because Auth.js MongoDB Adapter and the application's
- * Mongoose User model may have different MongoDB _id values.
  */
 async function ensureShop(
   userId: string | undefined,
@@ -80,19 +74,12 @@ async function ensureShop(
     normalizedEmail.split('@')[0] ||
     'Shop Owner';
 
-  /**
-   * First search by email.
-   *
-   * This prevents an Auth.js Adapter user ID from being
-   * incorrectly treated as the application's Mongoose
-   * User._id.
-   */
   let user = await User.findOne({
     email: normalizedEmail,
   });
 
   /**
-   * Only use userId when an email lookup did not find
+   * Only use userId when email lookup did not find
    * an existing application user.
    */
   if (!user && userId) {
@@ -100,7 +87,7 @@ async function ensureShop(
   }
 
   /**
-   * Create the application's user if necessary.
+   * Create application user if necessary.
    */
   if (!user) {
     user = await User.create({
@@ -115,7 +102,7 @@ async function ensureShop(
   }
 
   /**
-   * Keep email/name/image synchronized where appropriate.
+   * Keep basic profile information synchronized.
    */
   if (!user.name) {
     user.name = displayName;
@@ -143,7 +130,7 @@ async function ensureShop(
   }
 
   /**
-   * Find the user's existing shop.
+   * Find existing shop.
    */
   let shop = user.shopId
     ? await Shop.findById(user.shopId)
@@ -152,7 +139,7 @@ async function ensureShop(
       });
 
   /**
-   * Create the shop if it does not exist.
+   * Create shop if necessary.
    */
   if (!shop) {
     shop = await Shop.findOneAndUpdate(
@@ -181,7 +168,7 @@ async function ensureShop(
   }
 
   /**
-   * Attach shop to the application's User document.
+   * Attach shop to application User.
    */
   if (!user.shopId) {
     user.shopId = shop._id;
@@ -207,17 +194,6 @@ const providerList: any[] = [];
 
 /**
  * Google OAuth.
- *
- * allowDangerousEmailAccountLinking is intentionally enabled
- * because this application supports both:
- *
- *   1. Email/password accounts
- *   2. Google OAuth accounts
- *
- * When the verified Google email matches an existing account,
- * Auth.js can link the OAuth account instead of throwing:
- *
- * OAuthAccountNotLinked
  */
 if (
   process.env.GOOGLE_CLIENT_ID &&
@@ -227,7 +203,6 @@ if (
     Google({
       clientId: process.env.GOOGLE_CLIENT_ID,
       clientSecret: process.env.GOOGLE_CLIENT_SECRET,
-
       allowDangerousEmailAccountLinking: true,
     }),
   );
@@ -245,6 +220,7 @@ providerList.push(
         label: 'Email',
         type: 'email',
       },
+
       password: {
         label: 'Password',
         type: 'password',
@@ -270,18 +246,10 @@ providerList.push(
         .select('+password')
         .lean();
 
-      /**
-       * User does not exist or has no password.
-       *
-       * This can happen for an OAuth-only account.
-       */
       if (!user?.password) {
         return null;
       }
 
-      /**
-       * Suspended users cannot sign in.
-       */
       if (user.status === 'SUSPENDED') {
         return null;
       }
@@ -295,12 +263,6 @@ providerList.push(
         return null;
       }
 
-      /**
-       * Credentials users already belong to the application's
-       * Mongoose User collection, so passing their ID is safe.
-       *
-       * ensureShop() still checks email first.
-       */
       const ensured = await ensureShop(
         String(user._id),
         user.name || 'Shop Owner',
@@ -357,20 +319,10 @@ export const authConfig = {
         email,
       });
 
-      /**
-       * Existing suspended account cannot authenticate.
-       */
       if (existing?.status === 'SUSPENDED') {
         return false;
       }
 
-      /**
-       * If the application User does not exist yet,
-       * create it.
-       *
-       * Auth.js Adapter may already have created its own
-       * user document at this point. That is okay.
-       */
       if (!existing) {
         await User.create({
           name:
@@ -398,11 +350,6 @@ export const authConfig = {
        */
       if (user?.email) {
         const ensured = await ensureShop(
-          /**
-           * Do NOT blindly trust user.id here for OAuth.
-           * Auth.js Adapter and Mongoose User can have
-           * different IDs.
-           */
           undefined,
           String(
             user.name ||
@@ -451,8 +398,7 @@ export const authConfig = {
     },
 
     /**
-     * Expose application-specific JWT fields
-     * on session.user.
+     * Expose JWT fields on session.user.
      */
     async session({ session, token }: any) {
       if (session.user) {
