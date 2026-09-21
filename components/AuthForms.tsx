@@ -1,10 +1,8 @@
+
 'use client';
 
 import { useState } from 'react';
-import {
-  signIn,
-  getSession,
-} from 'next-auth/react';
+import { signIn } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 
 import {
@@ -15,23 +13,6 @@ import {
 type CredentialsFormProps = {
   mode: 'signin' | 'signup';
 };
-
-/**
- * Redirect authenticated users according to their role.
- */
-async function redirectAfterLogin(
-  router: ReturnType<typeof useRouter>,
-) {
-  const session = await getSession();
-
-  if (session?.user?.role === 'ADMIN') {
-    router.push('/admin');
-  } else {
-    router.push('/dashboard');
-  }
-
-  router.refresh();
-}
 
 export function CredentialsForm({
   mode,
@@ -144,12 +125,10 @@ export function CredentialsForm({
         }
 
         /**
-         * Credentials login succeeded.
-         *
-         * ADMIN → /admin
-         * USER  → /dashboard
+         * Use the central role-based redirect.
          */
-        await redirectAfterLogin(router);
+        router.push('/auth/redirect');
+        router.refresh();
 
         return;
       }
@@ -175,12 +154,13 @@ export function CredentialsForm({
       }
 
       /**
-       * Login succeeded.
+       * Use the central role-based redirect.
        *
        * ADMIN → /admin
        * USER  → /dashboard
        */
-      await redirectAfterLogin(router);
+      router.push('/auth/redirect');
+      router.refresh();
     } catch (error) {
       console.error(
         'Credentials authentication error:',
