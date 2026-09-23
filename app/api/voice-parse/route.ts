@@ -329,10 +329,10 @@ function isPaymentCommand(
     normalizeText(transcript);
 
   return (
-    /(?:জমা|পরিশোধ|দিয়েছে|দিয়েছে|দিলেন|পেলাম|ফেরত)/i.test(
+    /(?:(?:জমা|পরিশোধ|দিয়েছে|দিয়েছে|দিলাম|দিল|দিলেন|পেলাম|ফেরত|দিয়েছি|দিয়েছি|দেওয়া|দেওয়ার))/i.test(
       text,
     ) ||
-    /\b(?:joma|jama|paid|payment|pay|received|receive|dise|diyeche|dilo)\b/i.test(
+    /\b(?:\b(?:joma|jama|paid|payment|pay|received|receive|dise|diyeche|dilo|dilam|dil|diyechi|diyachi)\b)\b/i.test(
       text,
     )
   );
@@ -1053,6 +1053,32 @@ function extractBalanceEntityName(transcript: string): string | null {
   return null;
 }
 
+function buildDeterministicPaymentIntent(transcript: string) {
+  if (!extractAmount(transcript) || !isPaymentCommand(transcript) || isSupplierCommand(transcript) || isBalanceQuestion(transcript)) return null;
+  const entityName = extractPartyNameForTransaction(transcript);
+  if (!entityName) return null;
+  const amount = extractAmount(transcript)!;
+  return {
+    intent: 'CREATE_TRANSACTION',
+    entity_type: 'CUSTOMER',
+    entity_name: entityName,
+    amount,
+    quantity: 0,
+    unit: null,
+    transaction_type: 'DUE_RECEIVED',
+    notes: null,
+    phone: null,
+    buy_price: null,
+    sell_price: null,
+    low_stock_threshold: null,
+    party_type: 'CUSTOMER',
+    items: [],
+    paid_amount: amount,
+    search_query: null,
+    target_id: null,
+  };
+}
+
 function buildDeterministicBalanceIntent(transcript: string) {
   if (!isBalanceQuestion(transcript)) return null;
   const entityName = extractBalanceEntityName(transcript);
@@ -1160,6 +1186,22 @@ export async function POST(
   const deterministicBalance = buildDeterministicBalanceIntent(
     body.data.transcript,
   );
+
+  const deterministicPayment = buildDeterministicPaymentIntent(
+    body.data.transcript,
+  );
+
+  if (deterministicPayment) {
+    const parsed = VoiceIntentSchema.safeParse(deterministicPayment);
+    if (parsed.success) {
+      return NextResponse.json({
+        ok: true,
+        ...parsed.data,
+        provider: 'deterministic',
+        transcript: body.data.transcript,
+      });
+    }
+  }
 
   if (deterministicBalance) {
     const parsed = VoiceIntentSchema.safeParse(deterministicBalance);
