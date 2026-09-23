@@ -1079,6 +1079,25 @@ function buildDeterministicBalanceIntent(transcript: string) {
 }
 
 /* -------------------------------------------------------------------------- */
+/* Resilient AI JSON parsing                                                  */
+/* -------------------------------------------------------------------------- */
+
+function parseAIJson(raw: string): unknown | null {
+  const text = raw.replace(/^\uFEFF/, '').replace(/^\s*```(?:json)?\s*/i, '').replace(/\s*```\s*$/i, '').trim();
+  if (!text) return null;
+  try { return JSON.parse(text); } catch {
+    const first = text.indexOf('{');
+    const last = text.lastIndexOf('}');
+    if (first < 0 || last <= first) return null;
+    try { return JSON.parse(text.slice(first, last + 1)); } catch { return null; }
+  }
+}
+
+function parserFailure(message: string, provider: string) {
+  return new Error('Voice parser [' + provider + ']: ' + message);
+}
+
+/* -------------------------------------------------------------------------- */
 /* POST                                                                       */
 /* -------------------------------------------------------------------------- */
 
@@ -1233,53 +1252,18 @@ export async function POST(
           ?.content ||
         '{}';
 
-      const clean =
-        raw
-          .replace(
-            /^```(?:json)?\s*/i,
-            '',
-          )
-          .replace(
-            /\s*```$/,
-            '',
-          )
-          .trim();
+      const raw = completion.choices[0]?.message?.content || '';
 
-      let aiData: unknown;
-
-      try {
-        aiData =
-          JSON.parse(clean);
-      } catch {
-        return NextResponse.json(
-          {
-            error:
-              'Invalid JSON returned by AI',
-          },
-          {
-            status: 422,
-          },
-        );
+      const aiData = parseAIJson(raw);
+      if (aiData === null) {
+        lastError = parserFailure('provider returned malformed JSON', provider);
+        continue;
       }
 
-      const parsed =
-        VoiceIntentSchema.safeParse(
-          aiData,
-        );
-
+      const parsed = VoiceIntentSchema.safeParse(aiData);
       if (!parsed.success) {
-        return NextResponse.json(
-          {
-            error:
-              'Invalid parser output',
-
-            issues:
-              parsed.error.issues,
-          },
-          {
-            status: 422,
-          },
-        );
+        lastError = parserFailure('provider returned schema-invalid intent', provider);
+        continue;
       }
 
       const corrected =
@@ -1325,12 +1309,9 @@ export async function POST(
       lastError =
         error;
 
-      if (
-        !shouldFallback(
-          error,
-        )
-      ) {
-        break;
+      if (!shouldFallback(error)) {
+        lastError = error;
+        continue;
       }
     }
   }
