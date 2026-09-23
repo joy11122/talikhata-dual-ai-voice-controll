@@ -466,11 +466,12 @@ async function readBalance(
         party.partyType,
     },
 
-    balance: money(
-      safeNumber(
-        party.currentBalance,
-      ),
-    ),
+    // currentBalance convention:
+    // +value = customer owes the shop (receivable)
+    // -value = shop owes the customer (payable)
+    balance: money(safeNumber(party.currentBalance)),
+    receivable: money(Math.max(0, safeNumber(party.currentBalance))),
+    payable: money(Math.max(0, -safeNumber(party.currentBalance))),
   };
 }
 
