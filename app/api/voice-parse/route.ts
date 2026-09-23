@@ -983,6 +983,53 @@ function extractExplicitPartyCreation(transcript: string) {
 }
 
 /* -------------------------------------------------------------------------- */
+/* Deterministic balance question parser                                      */
+/* -------------------------------------------------------------------------- */
+
+function extractBalanceEntityName(transcript: string): string | null {
+  const text = normalizeDigits(transcript).trim().replace(/[।,!?;:]/g, ' ').replace(/\s+/g, ' ');
+  const patterns = [
+    /^(.+?)'s\s+(?:total\s+)?(?:balance|due|baki)\s+(?:koto|how much)\s*$/i,
+    /^(.+?)\s+er\s+(?:total\s+)?(?:baki|due|balance)\s+(?:koto|kot|how much)\s*$/i,
+    /^(.+?)\s+এর\s+(?:মোট\s+)?(?:বাকি|পাওনা|দেনা|ব্যালেন্স)\s+(?:কত|কতো)\s*$/i,
+    /^(.+?)\s+(?:এর|র)\s+(?:বাকি|পাওনা|দেনা|ব্যালেন্স)\s+(?:কত|কতো)\s*$/i,
+  ];
+  for (const pattern of patterns) {
+    const match = text.match(pattern);
+    if (match?.[1]) {
+      const name = match[1].trim();
+      if (name && !/^(?:customer|client|party)$/i.test(name)) return name;
+    }
+  }
+  return null;
+}
+
+function buildDeterministicBalanceIntent(transcript: string) {
+  if (!isBalanceQuestion(transcript)) return null;
+  const entityName = extractBalanceEntityName(transcript);
+  if (!entityName) return null;
+  return {
+    intent: 'READ_BALANCE',
+    entity_type: 'CUSTOMER',
+    entity_name: entityName,
+    amount: null,
+    quantity: 0,
+    unit: null,
+    transaction_type: null,
+    notes: null,
+    phone: null,
+    buy_price: null,
+    sell_price: null,
+    low_stock_threshold: null,
+    party_type: 'CUSTOMER',
+    items: [],
+    paid_amount: null,
+    search_query: null,
+    target_id: null,
+  };
+}
+
+/* -------------------------------------------------------------------------- */
 /* POST                                                                       */
 /* -------------------------------------------------------------------------- */
 
@@ -1038,6 +1085,24 @@ export async function POST(
         status: 400,
       },
     );
+  }
+
+  // Balance questions do not need an AI round-trip. Parse the customer
+  // name deterministically so malformed provider JSON can never block a read.
+  const deterministicBalance = buildDeterministicBalanceIntent(
+    body.data.transcript,
+  );
+
+  if (deterministicBalance) {
+    const parsed = VoiceIntentSchema.safeParse(deterministicBalance);
+    if (parsed.success) {
+      return NextResponse.json({
+        ok: true,
+        ...parsed.data,
+        provider: 'deterministic',
+        transcript: body.data.transcript,
+      });
+    }
   }
 
   const providers =
