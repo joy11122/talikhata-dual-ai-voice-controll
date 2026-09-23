@@ -1796,12 +1796,11 @@ export async function executeVoiceCommand(
     const session =
       await Party.startSession();
 
-    try {
-      let result:
-        | unknown
-        | undefined;
+    let result:
+      | unknown
+      | undefined;
 
-      const transactionOptions = {
+    const transactionOptions = {
         readConcern: { level: 'local' as const },
         writeConcern: { w: 'majority' as const },
         maxCommitTimeMS: 10000,
