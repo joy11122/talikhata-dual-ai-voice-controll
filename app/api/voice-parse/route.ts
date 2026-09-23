@@ -300,7 +300,7 @@ function isBalanceQuestion(
     /(?:কত|কতো|কয়|কয়|koto|kot|how much|balance|ব্যালেন্স|পাওনা|দেনা)/i;
 
   const due =
-    /(?:বাকি|bak[iy]|bakir|bakite|due|পাওনা|দেনা|balance)/i;
+    /(?:বাকি|bak[iy]|bakir|bakite|due|পাওনা|দেনা|balance|pabo|pabe|pabo[e]?|পাবো|পাব|পাবে|পাও)/i;
 
   return (
     question.test(text) &&
@@ -1042,6 +1042,9 @@ function extractBalanceEntityName(transcript: string): string | null {
   const patterns = [
     /^(.+?)'s\s+(?:total\s+)?(?:balance|due|baki)\s+(?:koto|how much)\s*$/i,
     /^(.+?)\s+er\s+(?:total\s+)?(?:baki|due|balance)\s+(?:koto|kot|how much)\s*$/i,
+    /^(.+?)\s+er\s+kache\s+(?:koto|kot|how much)\s+(?:taka\s+)?(?:pabo|pab|pab[o]?e|pabe|due|baki)\s*$/i,
+    /^(.+?)\s+kache\s+(?:koto|kot|how much)\s+(?:taka\s+)?(?:pabo|pab|pab[o]?e|pabe)\s*$/i,
+    /^(.+?)\s+(?:baki|due|balance)\s+(?:koto|kot|how much)\s*$/i,
     /^(.+?)(?:ের|এর|র)\s+(?:মোট\s+)?(?:বাকি|পাওনা|দেনা|ব্যালেন্স)\s+(?:কত|কতো)\s*$/i,
     /^(.+?)(?:ের|এর|র)\s+(?:মোট\s+)?(?:কত)\s+(?:টাকা|টাকায়|টাকার)?\s*(?:বাকি|পাওনা|দেনা|ব্যালেন্স)\s*$/i,
     /^(.+?)(?:ের|এর|র)\s+(?:মোট\s+)?(?:বাকি|পাওনা|দেনা|ব্যালেন্স)\s+(?:কত|কতো)\s+(?:টাকা|টাকায়|টাকার)\s*$/i,
