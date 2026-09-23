@@ -404,6 +404,43 @@ function isCustomerCommand(
 }
 
 /* -------------------------------------------------------------------------- */
+/* Dynamic customer name extraction for due/payment commands                  */
+/* -------------------------------------------------------------------------- */
+
+function extractPartyNameForTransaction(transcript: string): string | null {
+  const text = normalizeDigits(transcript)
+    .trim()
+    .replace(/[।,!?;:]/g, ' ')
+    .replace(/\s+/g, ' ');
+
+  const patterns = [
+    /^(.+?)(?:এর|র)\s+(?:কাছে\s+)?(?:\d[\d,]*(?:\.\d+)?\s*)?(?:টাকা|টাকায়|টাকার|tk|taka)?\s*(?:বাকি|পাওনা)\s*(?:করে|দাও|দিলাম|দিলেন|দিতে|করো)?\s*$/i,
+    /^(.+?)\s+(?:কে|কে)\s+(?:\d[\d,]*(?:\.\d+)?\s*)?(?:টাকা|tk|taka)?\s*(?:বাকিতে|বাকি)\s*(?:দাও|দিলাম|দিলেন|দিতে|দাও|করো)?\s*$/i,
+    /^(.+?)(?:এর|র)\s+(?:কাছে\s+)?(?:বাকি|পাওনা)\s+(?:\d[\d,]*(?:\.\d+)?\s*)?(?:টাকা|টাকার|tk|taka)?\s*(?:করে|দাও|দিলাম|দিলেন|করো)?\s*$/i,
+    /^(.+?)\s+er\s+(?:kache\s+)?(?:\d[\d,]*(?:\.\d+)?\s*)?(?:taka|tk)?\s*(?:baki|due)\s*(?:kore|dao|dilam|dilo|kor[o]?|diben)?\s*$/i,
+  ];
+
+  for (const pattern of patterns) {
+    const match = text.match(pattern);
+    if (!match?.[1]) continue;
+
+    const name = match[1]
+      .trim()
+      .replace(/(?:এর|র|ে|কে)$/u, '')
+      .trim();
+
+    if (
+      name &&
+      !/^(?:customer|client|party|supplier|সাপ্লায়ার|সরবরাহকারী)$/i.test(name)
+    ) {
+      return name;
+    }
+  }
+
+  return null;
+}
+
+/* -------------------------------------------------------------------------- */
 /* Deterministic correction                                                   */
 /* -------------------------------------------------------------------------- */
 
@@ -470,6 +507,10 @@ function correctIntent(
       transaction_type:
         'DUE_RECEIVED',
 
+      entity_name:
+        extractPartyNameForTransaction(transcript) ??
+        aiData.entity_name,
+
       paid_amount:
         amount,
     };
@@ -499,6 +540,10 @@ function correctIntent(
 
       transaction_type:
         'DUE_GIVEN',
+
+      entity_name:
+        extractPartyNameForTransaction(transcript) ??
+        aiData.entity_name,
 
       paid_amount:
         0,
