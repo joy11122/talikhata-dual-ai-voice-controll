@@ -527,6 +527,12 @@ export async function POST(
 
     if (
       [
+        'NOT_FOUND',
+        'MISSING_ENTITY',
+        'DUPLICATE_ENTITY',
+        'INVALID_PARTY',
+        'INVALID_PRODUCT',
+        'INSUFFICIENT_DELETE_INFO',
         'AMBIGUOUS_ENTITY',
         'CONFIRMATION_REQUIRED',
         'AMOUNT_MISMATCH',

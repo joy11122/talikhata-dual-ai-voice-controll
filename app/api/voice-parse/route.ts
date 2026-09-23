@@ -300,7 +300,7 @@ function isBalanceQuestion(
     /(?:কত|কতো|কয়|কয়|koto|kot|how much|balance|ব্যালেন্স|পাওনা|দেনা)/i;
 
   const due =
-    /(?:বাকি|bak[iy]|bakir|bakite|due|পাওনা|দেনা|balance)/i;
+    /(?:বাকি|bak[iy]|bakir|bakite|due|পাওনা|দেনা|balance|pabo|pabe|pabo[e]?|পাবো|পাব|পাবে|পাও)/i;
 
   return (
     question.test(text) &&
@@ -329,10 +329,10 @@ function isPaymentCommand(
     normalizeText(transcript);
 
   return (
-    /(?:জমা|পরিশোধ|দিয়েছে|দিয়েছে|দিলেন|পেলাম|ফেরত)/i.test(
+    /(?:(?:জমা|পরিশোধ|দিয়েছে|দিয়েছে|দিলাম|দিল|দিলেন|পেলাম|ফেরত|দিয়েছি|দিয়েছি|দেওয়া|দেওয়ার))/i.test(
       text,
     ) ||
-    /\b(?:joma|jama|paid|payment|pay|received|receive|dise|diyeche|dilo)\b/i.test(
+    /\b(?:\b(?:joma|jama|paid|payment|pay|received|receive|dise|diyeche|dilo|dilam|dil|diyechi|diyachi)\b)\b/i.test(
       text,
     )
   );
@@ -404,6 +404,49 @@ function isCustomerCommand(
 }
 
 /* -------------------------------------------------------------------------- */
+/* Dynamic customer name extraction for due/payment commands                  */
+/* -------------------------------------------------------------------------- */
+
+function extractPartyNameForTransaction(transcript: string): string | null {
+  const text = normalizeDigits(transcript)
+    .trim()
+    .replace(/[।,!?;:]/g, ' ')
+    .replace(/\s+/g, ' ');
+
+  const patterns = [
+    // করিমকে ৩০০ টাকা দিলাম
+    /^(.+?)\s*কে\s*\d[\d,]*(?:\.\d+)?\s*(?:টাকা|tk|taka)?\s*(?:দিলাম|দিল|দিয়েছি|দিয়েছি|দিয়েছে|দিয়েছে|দিলেন|দাও|দিতে|দেওয়া|দেওয়ার)?\s*$/iu,
+    // করিমের কাছে ৩০০ টাকা বাকি দিলাম / পাওনা করো
+    /^(.+?)\s*(?:এর|র)\s*কাছে\s*\d[\d,]*(?:\.\d+)?\s*(?:টাকা|টাকায়|টাকার|tk|taka)?\s*(?:বাকি|পাওনা)\s*(?:করে|দাও|দিলাম|দিলেন|দিতে|করো)?\s*$/iu,
+    // করিমের বাকি ৩০০ টাকা
+    /^(.+?)\s*(?:এর|র)\s*(?:বাকি|পাওনা)\s*\d[\d,]*(?:\.\d+)?\s*(?:টাকা|টাকার|tk|taka)?\s*(?:করে|দাও|দিলাম|দিলেন|করো)?\s*$/iu,
+    // rahim er kache 500 taka baki dilam
+    /^(.+?)\s+er\s+kache\s+\d[\d,]*(?:\.\d+)?\s*(?:taka|tk)?\s*(?:baki|due)\s*(?:kore|dao|dilam|dilo|dil|diben|kor[o]?|dite)?\s*$/i,
+    // karim ke 300 taka dilam
+    /^(.+?)\s+ke\s+\d[\d,]*(?:\.\d+)?\s*(?:taka|tk)?\s*(?:dilam|dil|diyechi|diyachi|dise|diyeche|dilo|dao|dite)?\s*$/i,
+  ];
+
+  for (const pattern of patterns) {
+    const match = text.match(pattern);
+    if (!match?.[1]) continue;
+
+    const name = match[1]
+      .trim()
+      .replace(/(?:এর|র|কে|ে)$/u, '')
+      .trim();
+
+    if (
+      name &&
+      !/^(?:customer|client|party|supplier|সাপ্লায়ার|সরবরাহকারী)$/iu.test(name)
+    ) {
+      return name;
+    }
+  }
+
+  return null;
+}
+
+/* -------------------------------------------------------------------------- */
 /* Deterministic correction                                                   */
 /* -------------------------------------------------------------------------- */
 
@@ -470,6 +513,10 @@ function correctIntent(
       transaction_type:
         'DUE_RECEIVED',
 
+      entity_name:
+        extractPartyNameForTransaction(transcript) ??
+        aiData.entity_name,
+
       paid_amount:
         amount,
     };
@@ -499,6 +546,10 @@ function correctIntent(
 
       transaction_type:
         'DUE_GIVEN',
+
+      entity_name:
+        extractPartyNameForTransaction(transcript) ??
+        aiData.entity_name,
 
       paid_amount:
         0,
@@ -959,6 +1010,153 @@ The server will ask for clarification when required.
 `;
 
 /* -------------------------------------------------------------------------- */
+/* Deterministic party creation                                               */
+/* -------------------------------------------------------------------------- */
+
+function extractExplicitPartyCreation(transcript: string) {
+  const text = normalizeDigits(transcript).trim().replace(/[।!?;:]/g, ' ').replace(/\\s+/g, ' ');
+  const patterns: Array<{ regex: RegExp; type: 'CUSTOMER' | 'SUPPLIER' }> = [
+    { regex: /^(.+?)\\s+নামে\\s+(?:নতুন\\s+)?(?:কাস্টমার|গ্রাহক|ক্রেতা)\\s+(?:হিসেবে\\s+)?(?:যোগ(?:\\s+করো|\\s+করুন)?|বানাও|তৈরি(?:\\s+করো|\\s+করুন)?)\\s*$/i, type: 'CUSTOMER' },
+    { regex: /^(.+?)\\s+(?:নামে\\s+)?(?:নতুন\\s+)?(?:customer|client)\\s+(?:হিসেবে\\s+)?(?:যোগ(?:\\s+(?:করো|করুন|কর))?|add|create|register)\\s*$/i, type: 'CUSTOMER' },
+    { regex: /^(?:add|create|register)\\s+(?:a\\s+)?(?:new\\s+)?customer\\s+(?:named\\s+)?(.+?)\\s*$/i, type: 'CUSTOMER' },
+    { regex: /^(.+?)\\s+নামে\\s+(?:নতুন\\s+)?(?:সাপ্লায়ার|সাপ্লায়ার|সরবরাহকারী)\\s+(?:হিসেবে\\s+)?(?:যোগ(?:\\s+করো|\\s+করুন)?|বানাও|তৈরি(?:\\s+করো|\\s+করুন)?)\\s*$/i, type: 'SUPPLIER' },
+    { regex: /^(.+?)\\s+(?:নামে\\s+)?(?:নতুন\\s+)?(?:supplier|vendor)\\s+(?:হিসেবে\\s+)?(?:যোগ(?:\\s+(?:করো|করুন|কর))?|add|create|register)\\s*$/i, type: 'SUPPLIER' },
+    { regex: /^(?:add|create|register)\\s+(?:a\\s+)?(?:new\\s+)?supplier\\s+(?:named\\s+)?(.+?)\\s*$/i, type: 'SUPPLIER' },
+  ];
+  for (const pattern of patterns) {
+    const match = text.match(pattern.regex);
+    if (match?.[1]) {
+      const name = match[1].trim().replace(/^(?:the|a|an)\\s+/i, '').trim();
+      if (name) return { name, partyType: pattern.type };
+    }
+  }
+  return null;
+}
+
+/* -------------------------------------------------------------------------- */
+/* Deterministic balance question parser                                      */
+/* -------------------------------------------------------------------------- */
+
+function extractBalanceEntityName(transcript: string): string | null {
+  const text = normalizeDigits(transcript).trim().replace(/[।,!?;:]/g, ' ').replace(/\s+/g, ' ');
+  const patterns = [
+    /^(.+?)'s\s+(?:total\s+)?(?:balance|due|baki)\s+(?:koto|how much)\s*$/i,
+    /^(.+?)\s+er\s+(?:total\s+)?(?:baki|due|balance)\s+(?:koto|kot|how much)\s*$/i,
+    /^(.+?)\s+er\s+kache\s+(?:koto|kot|how much)\s+(?:taka\s+)?(?:pabo|pab|pab[o]?e|pabe|due|baki)\s*$/i,
+    /^(.+?)\s+kache\s+(?:koto|kot|how much)\s+(?:taka\s+)?(?:pabo|pab|pab[o]?e|pabe)\s*$/i,
+    /^(.+?)\s+(?:baki|due|balance)\s+(?:koto|kot|how much)\s*$/i,
+    /^(.+?)(?:ের|এর|র)\s+(?:মোট\s+)?(?:বাকি|পাওনা|দেনা|ব্যালেন্স)\s+(?:কত|কতো)\s*$/i,
+    /^(.+?)(?:ের|এর|র)\s+(?:মোট\s+)?(?:কত)\s+(?:টাকা|টাকায়|টাকার)?\s*(?:বাকি|পাওনা|দেনা|ব্যালেন্স)\s*$/i,
+    /^(.+?)(?:ের|এর|র)\s+(?:মোট\s+)?(?:বাকি|পাওনা|দেনা|ব্যালেন্স)\s+(?:কত|কতো)\s+(?:টাকা|টাকায়|টাকার)\s*$/i,
+    /^(.+?)(?:ের|এর|র)\s+(?:বাকি|পাওনা|দেনা|ব্যালেন্স)\s*কত\s*$/i,
+    /^(.+?)(?:ের|র)\s+(?:মোট\s+)?(?:বাকি|পাওনা|দেনা|ব্যালেন্স)\s+(?:কত|কতো)\s*$/i,
+    /^(.+?)\s+(?:ের|এর|র)\s+(?:বাকি|পাওনা|দেনা|ব্যালেন্স)\s+(?:কত|কতো)\s*$/i,
+  ];
+  for (const pattern of patterns) {
+    const match = text.match(pattern);
+    if (match?.[1]) {
+      const name = match[1].trim().replace(/[\u09c7]$/u, '');
+      if (name && !/^(?:customer|client|party)$/i.test(name)) return name;
+    }
+  }
+  return null;
+}
+
+function buildDeterministicPaymentIntent(transcript: string) {
+  const amount = extractAmount(transcript);
+  const entityName = extractPartyNameForTransaction(transcript);
+  if (
+    amount === null ||
+    !entityName ||
+    !isPaymentCommand(transcript) ||
+    isSupplierCommand(transcript) ||
+    isBalanceQuestion(transcript)
+  ) return null;
+
+  // Direction matters:
+  // "করিমকে ৩০০ টাকা দিলাম" = I gave money/credit to Karim -> DUE_GIVEN.
+  // "করিম ৩০০ টাকা দিল" / "করিমের কাছ থেকে ৩০০ টাকা পেলাম" =
+  // Karim paid me -> DUE_RECEIVED.
+  const normalized = normalizeDigits(transcript).toLowerCase();
+  const receivedByMe =
+    /(?:কাছ থেকে|কাছথেকে|থেকে)\s*(?:\d|[০-৯]).*(?:পেলাম|নিলাম|দিল|দিয়েছে|দিয়েছে)/iu.test(normalized) ||
+    /(?:^|\s)(?:করিম|রহিম|সুমন|সোহেল|গ্রাহক)\s+(?:\d|[০-৯]).*(?:দিল|দিয়েছে|দিয়েছে|দিয়েছে)$/iu.test(normalized) ||
+    /(?:from|theke|kache theke|kacher theke).*\b(?:pelam|nilam|received|paid|dise|diyeche)\b/i.test(normalized);
+
+  const gaveToParty =
+    /(?:কে|কে\s+|কে$).*?(?:দিলাম|দিয়েছি|দিয়েছি|দিলেন|দাও|দেওয়া)/iu.test(normalized) ||
+    /\b(?:ke)\b.*\b(?:dilam|diyechi|diyachi|dil|gave|give|lent)\b/i.test(normalized);
+
+  const transactionType = receivedByMe && !gaveToParty
+    ? 'DUE_RECEIVED'
+    : 'DUE_GIVEN';
+
+  return {
+    intent: 'CREATE_TRANSACTION',
+    entity_type: 'CUSTOMER',
+    entity_name: entityName,
+    amount,
+    quantity: 0,
+    unit: null,
+    transaction_type: transactionType,
+    notes: null,
+    phone: null,
+    buy_price: null,
+    sell_price: null,
+    low_stock_threshold: null,
+    party_type: 'CUSTOMER',
+    items: [],
+    paid_amount: transactionType === 'DUE_RECEIVED' ? amount : 0,
+    search_query: null,
+    target_id: null,
+  };
+}
+
+function buildDeterministicBalanceIntent(transcript: string) {
+  if (!isBalanceQuestion(transcript)) return null;
+  const entityName = extractBalanceEntityName(transcript);
+  if (!entityName) return null;
+  return {
+    intent: 'READ_BALANCE',
+    entity_type: 'CUSTOMER',
+    entity_name: entityName,
+    amount: null,
+    quantity: 0,
+    unit: null,
+    transaction_type: null,
+    notes: null,
+    phone: null,
+    buy_price: null,
+    sell_price: null,
+    low_stock_threshold: null,
+    party_type: 'CUSTOMER',
+    items: [],
+    paid_amount: null,
+    search_query: null,
+    target_id: null,
+  };
+}
+
+/* -------------------------------------------------------------------------- */
+/* Resilient AI JSON parsing                                                  */
+/* -------------------------------------------------------------------------- */
+
+function parseAIJson(raw: string): unknown | null {
+  const text = raw.replace(/^\uFEFF/, '').replace(/^\s*```(?:json)?\s*/i, '').replace(/\s*```\s*$/i, '').trim();
+  if (!text) return null;
+  try { return JSON.parse(text); } catch {
+    const first = text.indexOf('{');
+    const last = text.lastIndexOf('}');
+    if (first < 0 || last <= first) return null;
+    try { return JSON.parse(text.slice(first, last + 1)); } catch { return null; }
+  }
+}
+
+function parserFailure(message: string, provider: string) {
+  return new Error('Voice parser [' + provider + ']: ' + message);
+}
+
+/* -------------------------------------------------------------------------- */
 /* POST                                                                       */
 /* -------------------------------------------------------------------------- */
 
@@ -1014,6 +1212,40 @@ export async function POST(
         status: 400,
       },
     );
+  }
+
+  // Balance questions do not need an AI round-trip. Parse the customer
+  // name deterministically so malformed provider JSON can never block a read.
+  const deterministicBalance = buildDeterministicBalanceIntent(
+    body.data.transcript,
+  );
+
+  const deterministicPayment = buildDeterministicPaymentIntent(
+    body.data.transcript,
+  );
+
+  if (deterministicPayment) {
+    const parsed = VoiceIntentSchema.safeParse(deterministicPayment);
+    if (parsed.success) {
+      return NextResponse.json({
+        ok: true,
+        ...parsed.data,
+        provider: 'deterministic',
+        transcript: body.data.transcript,
+      });
+    }
+  }
+
+  if (deterministicBalance) {
+    const parsed = VoiceIntentSchema.safeParse(deterministicBalance);
+    if (parsed.success) {
+      return NextResponse.json({
+        ok: true,
+        ...parsed.data,
+        provider: 'deterministic',
+        transcript: body.data.transcript,
+      });
+    }
   }
 
   const providers =
@@ -1095,53 +1327,16 @@ export async function POST(
           ?.content ||
         '{}';
 
-      const clean =
-        raw
-          .replace(
-            /^```(?:json)?\s*/i,
-            '',
-          )
-          .replace(
-            /\s*```$/,
-            '',
-          )
-          .trim();
-
-      let aiData: unknown;
-
-      try {
-        aiData =
-          JSON.parse(clean);
-      } catch {
-        return NextResponse.json(
-          {
-            error:
-              'Invalid JSON returned by AI',
-          },
-          {
-            status: 422,
-          },
-        );
+      const aiData = parseAIJson(raw);
+      if (aiData === null) {
+        lastError = parserFailure('provider returned malformed JSON', provider);
+        continue;
       }
 
-      const parsed =
-        VoiceIntentSchema.safeParse(
-          aiData,
-        );
-
+      const parsed = VoiceIntentSchema.safeParse(aiData);
       if (!parsed.success) {
-        return NextResponse.json(
-          {
-            error:
-              'Invalid parser output',
-
-            issues:
-              parsed.error.issues,
-          },
-          {
-            status: 422,
-          },
-        );
+        lastError = parserFailure('provider returned schema-invalid intent', provider);
+        continue;
       }
 
       const corrected =
@@ -1187,12 +1382,9 @@ export async function POST(
       lastError =
         error;
 
-      if (
-        !shouldFallback(
-          error,
-        )
-      ) {
-        break;
+      if (!shouldFallback(error)) {
+        lastError = error;
+        continue;
       }
     }
   }
