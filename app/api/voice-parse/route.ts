@@ -414,10 +414,16 @@ function extractPartyNameForTransaction(transcript: string): string | null {
     .replace(/\s+/g, ' ');
 
   const patterns = [
-    /^(.+?)(?:এর|র)\s+(?:কাছে\s+)?(?:\d[\d,]*(?:\.\d+)?\s*)?(?:টাকা|টাকায়|টাকার|tk|taka)?\s*(?:বাকি|পাওনা)\s*(?:করে|দাও|দিলাম|দিলেন|দিতে|করো)?\s*$/i,
-    /^(.+?)\s+(?:কে|কে)\s+(?:\d[\d,]*(?:\.\d+)?\s*)?(?:টাকা|tk|taka)?\s*(?:বাকিতে|বাকি)\s*(?:দাও|দিলাম|দিলেন|দিতে|দাও|করো)?\s*$/i,
-    /^(.+?)(?:এর|র)\s+(?:কাছে\s+)?(?:বাকি|পাওনা)\s+(?:\d[\d,]*(?:\.\d+)?\s*)?(?:টাকা|টাকার|tk|taka)?\s*(?:করে|দাও|দিলাম|দিলেন|করো)?\s*$/i,
-    /^(.+?)\s+er\s+(?:kache\s+)?(?:\d[\d,]*(?:\.\d+)?\s*)?(?:taka|tk)?\s*(?:baki|due)\s*(?:kore|dao|dilam|dilo|kor[o]?|diben)?\s*$/i,
+    // করিমকে ৩০০ টাকা দিলাম
+    /^(.+?)\s*কে\s*\d[\d,]*(?:\.\d+)?\s*(?:টাকা|tk|taka)?\s*(?:দিলাম|দিল|দিয়েছি|দিয়েছি|দিয়েছে|দিয়েছে|দিলেন|দাও|দিতে|দেওয়া|দেওয়ার)?\s*$/iu,
+    // করিমের কাছে ৩০০ টাকা বাকি দিলাম / পাওনা করো
+    /^(.+?)\s*(?:এর|র)\s*কাছে\s*\d[\d,]*(?:\.\d+)?\s*(?:টাকা|টাকায়|টাকার|tk|taka)?\s*(?:বাকি|পাওনা)\s*(?:করে|দাও|দিলাম|দিলেন|দিতে|করো)?\s*$/iu,
+    // করিমের বাকি ৩০০ টাকা
+    /^(.+?)\s*(?:এর|র)\s*(?:বাকি|পাওনা)\s*\d[\d,]*(?:\.\d+)?\s*(?:টাকা|টাকার|tk|taka)?\s*(?:করে|দাও|দিলাম|দিলেন|করো)?\s*$/iu,
+    // rahim er kache 500 taka baki dilam
+    /^(.+?)\s+er\s+kache\s+\d[\d,]*(?:\.\d+)?\s*(?:taka|tk)?\s*(?:baki|due)\s*(?:kore|dao|dilam|dilo|dil|diben|kor[o]?|dite)?\s*$/i,
+    // karim ke 300 taka dilam
+    /^(.+?)\s+ke\s+\d[\d,]*(?:\.\d+)?\s*(?:taka|tk)?\s*(?:dilam|dil|diyechi|diyachi|dise|diyeche|dilo|dao|dite)?\s*$/i,
   ];
 
   for (const pattern of patterns) {
@@ -426,12 +432,12 @@ function extractPartyNameForTransaction(transcript: string): string | null {
 
     const name = match[1]
       .trim()
-      .replace(/(?:এর|র|ে|কে)$/u, '')
+      .replace(/(?:এর|র|কে|ে)$/u, '')
       .trim();
 
     if (
       name &&
-      !/^(?:customer|client|party|supplier|সাপ্লায়ার|সরবরাহকারী)$/i.test(name)
+      !/^(?:customer|client|party|supplier|সাপ্লায়ার|সরবরাহকারী)$/iu.test(name)
     ) {
       return name;
     }
