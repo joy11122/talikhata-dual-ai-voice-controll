@@ -1252,8 +1252,6 @@ export async function POST(
           ?.content ||
         '{}';
 
-      const raw = completion.choices[0]?.message?.content || '';
-
       const aiData = parseAIJson(raw);
       if (aiData === null) {
         lastError = parserFailure('provider returned malformed JSON', provider);
