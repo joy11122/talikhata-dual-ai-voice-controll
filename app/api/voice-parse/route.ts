@@ -991,7 +991,8 @@ function extractBalanceEntityName(transcript: string): string | null {
   const patterns = [
     /^(.+?)'s\s+(?:total\s+)?(?:balance|due|baki)\s+(?:koto|how much)\s*$/i,
     /^(.+?)\s+er\s+(?:total\s+)?(?:baki|due|balance)\s+(?:koto|kot|how much)\s*$/i,
-    /^(.+?)\s+এর\s+(?:মোট\s+)?(?:বাকি|পাওনা|দেনা|ব্যালেন্স)\s+(?:কত|কতো)\s*$/i,
+    /^(.+?)(?:এর|র)\s+(?:মোট\s+)?(?:বাকি|পাওনা|দেনা|ব্যালেন্স)\s+(?:কত|কতো)\s*$/i,
+    /^(.+?)(?:ের|র)\s+(?:মোট\s+)?(?:বাকি|পাওনা|দেনা|ব্যালেন্স)\s+(?:কত|কতো)\s*$/i,
     /^(.+?)\s+(?:এর|র)\s+(?:বাকি|পাওনা|দেনা|ব্যালেন্স)\s+(?:কত|কতো)\s*$/i,
   ];
   for (const pattern of patterns) {
