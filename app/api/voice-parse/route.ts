@@ -959,6 +959,30 @@ The server will ask for clarification when required.
 `;
 
 /* -------------------------------------------------------------------------- */
+/* Deterministic party creation                                               */
+/* -------------------------------------------------------------------------- */
+
+function extractExplicitPartyCreation(transcript: string) {
+  const text = normalizeDigits(transcript).trim().replace(/[।!?;:]/g, ' ').replace(/\\s+/g, ' ');
+  const patterns: Array<{ regex: RegExp; type: 'CUSTOMER' | 'SUPPLIER' }> = [
+    { regex: /^(.+?)\\s+নামে\\s+(?:নতুন\\s+)?(?:কাস্টমার|গ্রাহক|ক্রেতা)\\s+(?:হিসেবে\\s+)?(?:যোগ(?:\\s+করো|\\s+করুন)?|বানাও|তৈরি(?:\\s+করো|\\s+করুন)?)\\s*$/i, type: 'CUSTOMER' },
+    { regex: /^(.+?)\\s+(?:নামে\\s+)?(?:নতুন\\s+)?(?:customer|client)\\s+(?:হিসেবে\\s+)?(?:যোগ(?:\\s+(?:করো|করুন|কর))?|add|create|register)\\s*$/i, type: 'CUSTOMER' },
+    { regex: /^(?:add|create|register)\\s+(?:a\\s+)?(?:new\\s+)?customer\\s+(?:named\\s+)?(.+?)\\s*$/i, type: 'CUSTOMER' },
+    { regex: /^(.+?)\\s+নামে\\s+(?:নতুন\\s+)?(?:সাপ্লায়ার|সাপ্লায়ার|সরবরাহকারী)\\s+(?:হিসেবে\\s+)?(?:যোগ(?:\\s+করো|\\s+করুন)?|বানাও|তৈরি(?:\\s+করো|\\s+করুন)?)\\s*$/i, type: 'SUPPLIER' },
+    { regex: /^(.+?)\\s+(?:নামে\\s+)?(?:নতুন\\s+)?(?:supplier|vendor)\\s+(?:হিসেবে\\s+)?(?:যোগ(?:\\s+(?:করো|করুন|কর))?|add|create|register)\\s*$/i, type: 'SUPPLIER' },
+    { regex: /^(?:add|create|register)\\s+(?:a\\s+)?(?:new\\s+)?supplier\\s+(?:named\\s+)?(.+?)\\s*$/i, type: 'SUPPLIER' },
+  ];
+  for (const pattern of patterns) {
+    const match = text.match(pattern.regex);
+    if (match?.[1]) {
+      const name = match[1].trim().replace(/^(?:the|a|an)\\s+/i, '').trim();
+      if (name) return { name, partyType: pattern.type };
+    }
+  }
+  return null;
+}
+
+/* -------------------------------------------------------------------------- */
 /* POST                                                                       */
 /* -------------------------------------------------------------------------- */
 
