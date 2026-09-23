@@ -1778,6 +1778,12 @@ export async function executeVoiceCommand(
      * -------------------------------------------------------------
      */
 
+    const transactionOptions = {
+      readConcern: { level: 'local' as const },
+      writeConcern: { w: 'majority' as const },
+      maxCommitTimeMS: 10000,
+    };
+
     await session.withTransaction(
       async () => {
         switch (
@@ -1950,6 +1956,7 @@ export async function executeVoiceCommand(
           },
         );
       },
+      transactionOptions,
     );
 
     return result;
