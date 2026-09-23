@@ -1741,6 +1741,8 @@ export async function executeVoiceCommand(
 
   await connectDB();
 
+  let session: any = null;
+
   try {
     /*
      * -------------------------------------------------------------
@@ -1793,7 +1795,7 @@ export async function executeVoiceCommand(
       return result;
     }
 
-    const session =
+    session =
       await Party.startSession();
 
     let result:
@@ -2101,6 +2103,8 @@ export async function executeVoiceCommand(
 
     throw unknownError;
   } finally {
-    await session.endSession();
+    if (session) {
+      await session.endSession();
+    }
   }
 }
