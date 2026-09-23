@@ -1060,10 +1060,34 @@ function extractBalanceEntityName(transcript: string): string | null {
 }
 
 function buildDeterministicPaymentIntent(transcript: string) {
-  if (!extractAmount(transcript) || !isPaymentCommand(transcript) || isSupplierCommand(transcript) || isBalanceQuestion(transcript)) return null;
+  const amount = extractAmount(transcript);
   const entityName = extractPartyNameForTransaction(transcript);
-  if (!entityName) return null;
-  const amount = extractAmount(transcript)!;
+  if (
+    amount === null ||
+    !entityName ||
+    !isPaymentCommand(transcript) ||
+    isSupplierCommand(transcript) ||
+    isBalanceQuestion(transcript)
+  ) return null;
+
+  // Direction matters:
+  // "করিমকে ৩০০ টাকা দিলাম" = I gave money/credit to Karim -> DUE_GIVEN.
+  // "করিম ৩০০ টাকা দিল" / "করিমের কাছ থেকে ৩০০ টাকা পেলাম" =
+  // Karim paid me -> DUE_RECEIVED.
+  const normalized = normalizeDigits(transcript).toLowerCase();
+  const receivedByMe =
+    /(?:কাছ থেকে|কাছথেকে|থেকে)\s*(?:\d|[০-৯]).*(?:পেলাম|নিলাম|দিল|দিয়েছে|দিয়েছে)/iu.test(normalized) ||
+    /(?:^|\s)(?:করিম|রহিম|সুমন|সোহেল|গ্রাহক)\s+(?:\d|[০-৯]).*(?:দিল|দিয়েছে|দিয়েছে|দিয়েছে)$/iu.test(normalized) ||
+    /(?:from|theke|kache theke|kacher theke).*\b(?:pelam|nilam|received|paid|dise|diyeche)\b/i.test(normalized);
+
+  const gaveToParty =
+    /(?:কে|কে\s+|কে$).*?(?:দিলাম|দিয়েছি|দিয়েছি|দিলেন|দাও|দেওয়া)/iu.test(normalized) ||
+    /\b(?:ke)\b.*\b(?:dilam|diyechi|diyachi|dil|gave|give|lent)\b/i.test(normalized);
+
+  const transactionType = receivedByMe && !gaveToParty
+    ? 'DUE_RECEIVED'
+    : 'DUE_GIVEN';
+
   return {
     intent: 'CREATE_TRANSACTION',
     entity_type: 'CUSTOMER',
@@ -1071,7 +1095,7 @@ function buildDeterministicPaymentIntent(transcript: string) {
     amount,
     quantity: 0,
     unit: null,
-    transaction_type: 'DUE_RECEIVED',
+    transaction_type: transactionType,
     notes: null,
     phone: null,
     buy_price: null,
@@ -1079,7 +1103,7 @@ function buildDeterministicPaymentIntent(transcript: string) {
     low_stock_threshold: null,
     party_type: 'CUSTOMER',
     items: [],
-    paid_amount: amount,
+    paid_amount: transactionType === 'DUE_RECEIVED' ? amount : 0,
     search_query: null,
     target_id: null,
   };
