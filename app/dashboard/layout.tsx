@@ -12,8 +12,6 @@ import {
 import UserMenu from '@/components/UserMenu';
 import VoiceControl from '@/components/VoiceControl';
 
-export const dynamic = 'force-dynamic';
-
 type DashboardLink = { href: string; label: string; icon: LucideIcon };
 
 const links: DashboardLink[] = [
@@ -38,6 +36,15 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const [collapsed, setCollapsed] = useState(false);
   const user = session?.user;
 
+  // Header Title Resolution Fix
+  const activeSubLink = links
+    .filter((x) => x.href !== '/dashboard')
+    .find((x) => pathname.startsWith(x.href));
+
+  const currentTitle = pathname === '/dashboard'
+    ? 'New conversation'
+    : activeSubLink?.label || 'TaliKhata';
+
   const sidebar = (
     <aside
       className={[
@@ -54,6 +61,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           type="button"
           onClick={() => setCollapsed((v) => !v)}
           className="hidden rounded-lg p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-700 md:block"
+          aria-expanded={!collapsed}
           aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
         >
           {collapsed ? <PanelLeftOpen size={18} /> : <PanelLeftClose size={18} />}
@@ -120,7 +128,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           </button>
           <div className="ml-2 flex items-center gap-2 md:ml-0">
             <Home size={17} className="text-slate-400" />
-            <span className="text-sm font-medium text-slate-600">{pathname === '/dashboard' ? 'New conversation' : links.find((x) => pathname.startsWith(x.href))?.label || 'TaliKhata'}</span>
+            <span className="text-sm font-medium text-slate-600">{currentTitle}</span>
           </div>
           <div className="ml-auto">{status !== 'loading' && <UserMenu name={user?.name ?? ''} email={user?.email ?? ''} />}</div>
         </header>
