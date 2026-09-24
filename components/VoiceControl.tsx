@@ -1,5 +1,5 @@
 'use client';
-import {useRef,useState} from 'react';
+import {useEffect,useRef,useState} from 'react';
 import {Mic,Loader2,Check,AlertCircle,X,Send,ChevronRight} from 'lucide-react';
 import {AnimatePresence,motion} from 'framer-motion';
 
@@ -24,6 +24,7 @@ function message(c:any,result:any){
 
 export default function VoiceControl(){
  const[state,setState]=useState<State>('Idle');const[text,setText]=useState('');const[error,setError]=useState('');const[result,setResult]=useState<any>(null);const[pending,setPending]=useState<Pending|null>(null);const latest=useRef('');const recognition=useRef<any>(null);
+ useEffect(()=>{const onCommand=(event:Event)=>{const value=(event as CustomEvent<string>).detail;if(typeof value==='string'&&value.trim())setText(value)};window.addEventListener('talikhata:command',onCommand);return()=>window.removeEventListener('talikhata:command',onCommand)},[]);
  const speak=(s:string)=>{if(typeof window!=='undefined'&&'speechSynthesis'in window){const u=new SpeechSynthesisUtterance(s);u.lang='bn-BD';u.rate=.95;window.speechSynthesis.cancel();window.speechSynthesis.speak(u)}};
  const process=async(t:string,command?:any,confirmed=false)=>{if(!t.trim()&&!command)return;setState('Processing');setError('');try{const r=await fetch('/api/voice-v2',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({transcript:t||text,confirmed,command})});const d=await r.json().catch(()=>({error:'Invalid server response'}));if(!r.ok||!d.ok){if(d.confirmationRequired){setPending({command:d.command||command,message:d.error||'এই কাজটি করার আগে confirmation প্রয়োজন।'});return;}if(d.code==='AMBIGUOUS_ENTITY'){setPending({command:d.command||command,message:d.error,matches:d.details?.matches||[]});return;}throw new Error(d.error||'Voice command failed');}setPending(null);setResult(d);setState('Success');const spoken=message(d.command,d.result);speak(spoken);window.dispatchEvent(new Event('talikhata:refresh'));setTimeout(()=>setState('Idle'),1800)}catch(e:any){setState('Error');setError(e.message||'Voice command failed')}};
  const start=()=>{setError('');setText('');latest.current='';if(!('SpeechRecognition'in window||'webkitSpeechRecognition'in window)){setError('Voice recognition নেই। নিচের text box ব্যবহার করুন।');setState('Error');return;}const C=(window as any).SpeechRecognition||(window as any).webkitSpeechRecognition;const r=new C();recognition.current=r;r.lang='bn-BD';r.interimResults=true;r.continuous=false;r.onstart=()=>setState('Listening');r.onresult=(e:any)=>{let out='';for(let i=0;i<e.results.length;i++)out+=e.results[i][0].transcript;latest.current=out;setText(out)};r.onerror=()=>{setState('Error');setError('Voice input নেওয়া যায়নি। Text command চেষ্টা করুন।')};r.onend=()=>{if(latest.current.trim())process(latest.current.trim())};r.start()};
