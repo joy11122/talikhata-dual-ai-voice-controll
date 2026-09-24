@@ -48,8 +48,8 @@ export async function POST(req:Request){
           return NextResponse.json({ok:true,tool:call.function.name,args,result,provider});
         }catch(error){
           if(error instanceof VoiceV2Error){
-            if(error.code==='CONFIRMATION_REQUIRED')return NextResponse.json({ok:false,confirmationRequired:true,error:error.message,code:error.code,tool:call.function.name,args:error.details&&typeof error.details==='object'?(error.details as any).args:args});
-            throw error;
+            if(error.code==='CONFIRMATION_REQUIRED')return NextResponse.json({ok:false,confirmationRequired:true,error:error.message,code:error.code,tool:call.function.name,args});
+            return NextResponse.json({ok:false,error:error.message,code:error.code,details:error.details,tool:call.function.name,args},{status:error.code==='FORBIDDEN'?403:error.code==='NOT_FOUND'||error.code==='AMBIGUOUS_ENTITY'||error.code==='DUPLICATE_ENTITY'?409:422});
           }
           throw error;
         }
