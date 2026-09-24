@@ -6,6 +6,7 @@ import { connectDB } from '@/lib/db';
 import Party from '@/models/Party';
 import Product from '@/models/Product';
 import Transaction from '@/models/Transaction';
+import User from '@/models/User';
 import AuditLog from '@/models/AuditLog';
 import { createTransaction, reverseTransaction, TransactionServiceError } from './transactionService';
 import { resolveParty, resolveProduct } from './entityResolver';
@@ -47,7 +48,7 @@ function localParse(t:string){
  return null;
 }
 
-const SYSTEM=`You are TaliKhata Voice Engine V2. Parse Bangla, Banglish, English and mixed shop commands. Return ONLY structured JSON. Never invent names, amounts, IDs or products. Preserve entityName as spoken. Customer credit=CREATE_DUE. Customer pays shop=RECEIVE_PAYMENT. Balance=READ_BALANCE. Party CRUD uses CREATE_PARTY/READ_PARTY/LIST_PARTIES/UPDATE_PARTY/DELETE_PARTY. Product CRUD uses CREATE_PRODUCT/READ_PRODUCT/LIST_PRODUCTS/UPDATE_PRODUCT/DELETE_PRODUCT. Inventory uses STOCK_IN/STOCK_OUT. Sales=CREATE_SALE, purchases=CREATE_PURCHASE, expenses=CREATE_EXPENSE. Destructive actions require confirmation. Financial writes above 10000 require confirmation.`;
+const SYSTEM=`You are TaliKhata Voice Engine V2. Parse Bangla, Banglish, English and mixed shop commands. Return ONLY structured JSON. Never invent names, amounts, IDs or products. Preserve entityName as spoken. Customer credit=CREATE_DUE. Customer pays shop=RECEIVE_PAYMENT. Balance=READ_BALANCE. Party CRUD uses CREATE_PARTY/READ_PARTY/LIST_PARTIES/UPDATE_PARTY/DELETE_PARTY. User CRUD is admin-only and uses CREATE_USER/READ_USER/LIST_USERS/UPDATE_USER/DELETE_USER. Product CRUD uses CREATE_PRODUCT/READ_PRODUCT/LIST_PRODUCTS/UPDATE_PRODUCT/DELETE_PRODUCT. Inventory uses STOCK_IN/STOCK_OUT. Sales=CREATE_SALE, purchases=CREATE_PURCHASE, expenses=CREATE_EXPENSE. Destructive actions require confirmation. Financial writes above 10000 require confirmation.`;
 
 async function aiParse(t:string):Promise<VoiceV2Command>{
  const providers:[string,string,string][]=[];
@@ -72,6 +73,7 @@ async function findParty(uid:string,name:string,session:any,type?:'CUSTOMER'|'SU
  if(rows.length>1)throw new VoiceV2Error('AMBIGUOUS_ENTITY',`Multiple parties matched "${name}"`,{matches:rows.slice(0,10).map((p:any)=>({id:String(p._id),name:p.name,phone:p.phone||null,balance:p.currentBalance}))});
  return rows[0];
 }
+async function requireAdmin(userId:string){const u=await User.findById(userId).select('role status').lean();if(!u||u.status!=='ACTIVE'||u.role!=='ADMIN')throw new VoiceV2Error('FORBIDDEN','Admin permission is required for user management.');return u;}
 async function findProduct(uid:string,name:string,session:any){const rows=await resolveProduct(uid,name,session);if(!rows.length)throw new VoiceV2Error('NOT_FOUND',`Product "${name}" was not found`,{name});if(rows.length>1)throw new VoiceV2Error('AMBIGUOUS_ENTITY',`Multiple products matched "${name}"`,{matches:rows.slice(0,10).map((p:any)=>({id:String(p._id),name:p.name,stock:p.stockQuantity,unit:p.unit}))});return rows[0];}
 function confirm(c:VoiceV2Command,yes:boolean){if((c.confirmRequired||['DELETE_PARTY','DELETE_PRODUCT','DELETE_TRANSACTION'].includes(c.action))&&!yes)throw new VoiceV2Error('CONFIRMATION_REQUIRED','এই কাজটি করার আগে confirmation প্রয়োজন।');}
 
@@ -81,9 +83,11 @@ export async function executeVoiceV2(c0:VoiceV2Command,userId:string,transcript=
  const c=VoiceV2Schema.parse(c0);confirm(c,confirmed);await connectDB();const uid=new Types.ObjectId(userId);
  if(commandId){const old=await AuditLog.findOne({userId:uid,commandId,status:'SUCCESS'}).lean();if(old?.result)return old.result;}
  if(c.action==='READ_BALANCE'){if(!c.entityName)throw new VoiceV2Error('MISSING_ENTITY','Customer name is required');const p=await findParty(userId,c.entityName,null,'CUSTOMER');const b=money(p.currentBalance);return {type:'READ_BALANCE',party:{id:String(p._id),name:p.name,phone:p.phone||null},balance:b,receivable:Math.max(0,b),payable:Math.max(0,-b)};}
- if(c.action==='READ_PARTY'||c.action==='READ_PRODUCT'||c.action==='LIST_PARTIES'||c.action==='LIST_PRODUCTS'||c.action==='LIST_TRANSACTIONS'){
+ if(['READ_PARTY','READ_PRODUCT','LIST_PARTIES','LIST_PRODUCTS','LIST_TRANSACTIONS','READ_USER','LIST_USERS'].includes(c.action)){
   if(c.action==='READ_PARTY'){if(!c.entityName)throw new VoiceV2Error('MISSING_ENTITY','Party name is required');return {type:'READ_PARTY',party:await findParty(userId,c.entityName,null,c.partyType||undefined)};}
   if(c.action==='READ_PRODUCT'){if(!c.entityName)throw new VoiceV2Error('MISSING_ENTITY','Product name is required');return {type:'READ_PRODUCT',product:await findProduct(userId,c.entityName,null)};}
+  if(c.action==='READ_USER'){await requireAdmin(userId);const u=await User.findOne(c.query?{email:c.query.toLowerCase(),_id:{$ne:uid}}:{_id:c.targetId&&Types.ObjectId.isValid(c.targetId)?new Types.ObjectId(c.targetId):uid}).select('-password').lean();if(!u)throw new VoiceV2Error('NOT_FOUND','User was not found');return {type:'READ_USER',user:u};}
+  if(c.action==='LIST_USERS'){await requireAdmin(userId);const rows=await User.find({}).select('-password').sort({createdAt:-1}).limit(200).lean();return {type:'LIST_USERS',items:rows};}
   if(c.action==='LIST_PARTIES'){const q:any={userId:uid};if(c.partyType)q.partyType=c.partyType;const rows=await Party.find(q).sort({name:1}).limit(200).lean();return {type:'LIST_PARTIES',items:rows.map((p:any)=>({id:String(p._id),name:p.name,phone:p.phone||null,partyType:p.partyType,balance:p.currentBalance}))};}
   if(c.action==='LIST_PRODUCTS'){return {type:'LIST_PRODUCTS',items:await Product.find({userId:uid}).sort({name:1}).limit(200).lean()};}
   return {type:'LIST_TRANSACTIONS',items:await Transaction.find({userId:uid,isDeleted:{$ne:true}}).sort({timestamp:-1}).limit(100).lean()};
@@ -91,7 +95,19 @@ export async function executeVoiceV2(c0:VoiceV2Command,userId:string,transcript=
  const session=await Party.startSession();let result:any;
  try{
   await session.withTransaction(async()=>{
-   if(c.action==='CREATE_PARTY'){
+   if(c.action==='CREATE_USER'||c.action==='UPDATE_USER'||c.action==='DELETE_USER'){
+    await requireAdmin(userId);
+    if(c.action==='CREATE_USER'){
+      const email=clean(c.query)?.toLowerCase();if(!c.entityName||!email||!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))throw new VoiceV2Error('INVALID_USER','Name and valid email are required');
+      const dup=await User.findOne({email}).session(session);if(dup)throw new VoiceV2Error('DUPLICATE_ENTITY','A user with this email already exists');
+      const [u]=await User.create([{name:c.entityName,email,phone:c.phone||undefined,role:c.partyType==='SUPPLIER'?'USER':'USER',status:'ACTIVE'}],{session});result={type:'CREATE_USER',user:{id:String(u._id),name:u.name,email:u.email,phone:u.phone||null,role:u.role,status:u.status}};
+    }else{
+      const target=c.query?.toLowerCase();const filter:any=target?{email:target}:{_id:c.targetId&&Types.ObjectId.isValid(c.targetId)?new Types.ObjectId(c.targetId):null};if(!filter._id&&!filter.email)throw new VoiceV2Error('MISSING_ENTITY','User email or id is required');
+      const u=await User.findOne(filter).session(session);if(!u)throw new VoiceV2Error('NOT_FOUND','User was not found');if(String(u._id)===userId&&c.action==='DELETE_USER')throw new VoiceV2Error('DELETE_BLOCKED','You cannot delete your own account by voice.');
+      if(c.action==='UPDATE_USER'){const set:any={};if(c.entityName)set.name=c.entityName;if(c.phone)set.phone=c.phone;if(c.notes&&['ACTIVE','SUSPENDED'].includes(c.notes))set.status=c.notes;if(c.partyType==='CUSTOMER')set.role='USER';if(!Object.keys(set).length)throw new VoiceV2Error('INVALID_UPDATE','No user fields to update');const updated=await User.findOneAndUpdate({_id:u._id},{$set:set},{new:true,session}).select('-password').lean();result={type:'UPDATE_USER',user:updated};}
+      else{const hasData=await Promise.all([Party.exists({userId:u._id}).session(session),Product.exists({userId:u._id}).session(session),Transaction.exists({userId:u._id}).session(session)]);if(hasData.some(Boolean))throw new VoiceV2Error('DELETE_BLOCKED','This user owns ledger data and cannot be deleted safely.');await User.deleteOne({_id:u._id},{session});result={type:'DELETE_USER',id:String(u._id),email:u.email};}
+    }
+   }else if(c.action==='CREATE_PARTY'){
     if(!c.entityName)throw new VoiceV2Error('MISSING_ENTITY','Party name is required');
     const pt=c.partyType||'CUSTOMER';const dup=await Party.findOne({userId:uid,name:new RegExp('^'+c.entityName.replace(/[.*+?^\${}()|[\]\\]/g,'\\$&')+'$','i')}).session(session);if(dup)throw new VoiceV2Error('DUPLICATE_ENTITY',`A party named "${c.entityName}" already exists`,{matches:[{id:String(dup._id),name:dup.name,phone:dup.phone||null,balance:dup.currentBalance}]});
     const [p]=await Party.create([{userId:uid,name:c.entityName,phone:c.phone||undefined,partyType:pt,currentBalance:0}],{session});result={type:'CREATE_PARTY',id:String(p._id),name:p.name,phone:p.phone||null,partyType:p.partyType,balance:0};
