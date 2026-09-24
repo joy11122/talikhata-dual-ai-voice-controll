@@ -16,7 +16,7 @@ export type UserStatus =
 /* Interface                                                                  */
 /* -------------------------------------------------------------------------- */
 
-export interface IUser extends mongoose.Document {
+export interface IUser {
   _id: Types.ObjectId;
 
   name: string;
@@ -99,7 +99,6 @@ const UserSchema = new Schema<IUser>(
     shopId: {
       type: Schema.Types.ObjectId,
       ref: 'Shop',
-      index: true,
     },
 
     /* -------------------------------------------------------------------- */
@@ -114,7 +113,6 @@ const UserSchema = new Schema<IUser>(
       ],
       default: 'USER',
       required: true,
-      index: true,
     },
 
     /* -------------------------------------------------------------------- */
@@ -129,7 +127,6 @@ const UserSchema = new Schema<IUser>(
       ],
       default: 'ACTIVE',
       required: true,
-      index: true,
     },
 
     /* -------------------------------------------------------------------- */
@@ -184,9 +181,6 @@ const UserSchema = new Schema<IUser>(
 /* Indexes                                                                    */
 /* -------------------------------------------------------------------------- */
 
-/*
- * Email is already unique through the schema definition.
- */
 /*
  * Useful for shop-level user queries.
  */
