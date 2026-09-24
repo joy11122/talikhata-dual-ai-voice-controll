@@ -371,7 +371,7 @@ function productPreview(
 async function resolveSingleProduct(
   userId: string,
   name: string,
-  session: any,
+  session?: any,
 ) {
   const cleanName =
     cleanString(name);
@@ -466,11 +466,12 @@ async function readBalance(
         party.partyType,
     },
 
-    balance: money(
-      safeNumber(
-        party.currentBalance,
-      ),
-    ),
+    // currentBalance convention:
+    // +value = customer owes the shop (receivable)
+    // -value = shop owes the customer (payable)
+    balance: money(safeNumber(party.currentBalance)),
+    receivable: money(Math.max(0, safeNumber(party.currentBalance))),
+    payable: money(Math.max(0, -safeNumber(party.currentBalance))),
   };
 }
 
@@ -849,7 +850,7 @@ async function createProduct(
 async function createSimpleTransaction(
   intent: VoiceIntent,
   userId: string,
-  session: any,
+  session?: any,
 ) {
   const type =
     intent.transaction_type;
@@ -1741,18 +1742,14 @@ export async function executeVoiceCommand(
 
   await connectDB();
 
-  const session =
-    await Party.startSession();
+  let session: any = null;
 
   try {
     /*
      * -------------------------------------------------------------
      * 4. Idempotency
-     *
-     * Same voice command must never execute twice.
      * -------------------------------------------------------------
      */
-
     if (commandId) {
       const previous =
         await AuditLog.findOne({
@@ -1761,24 +1758,58 @@ export async function executeVoiceCommand(
           status: 'SUCCESS',
         }).lean();
 
-      if (
-        previous?.result
-      ) {
+      if (previous?.result) {
         return previous.result;
       }
     }
+
+    /*
+     * Due/payment commands have exactly two financial writes:
+     * party balance + ledger entry. createTransaction() owns one
+     * short atomic MongoDB transaction for those writes. Keeping
+     * them out of the larger voice/audit transaction prevents a
+     * long-lived transaction from waiting on unrelated audit work.
+     */
+    if (
+      intent.intent === 'CREATE_TRANSACTION' &&
+      (intent.transaction_type === 'DUE_GIVEN' ||
+        intent.transaction_type === 'DUE_RECEIVED')
+    ) {
+      const result = await createSimpleTransaction(
+        intent,
+        sessionUserId,
+      );
+
+      try {
+        await AuditLog.create({
+          userId: uid,
+          voiceTranscript: transcript,
+          parsedIntent: intent,
+          status: 'SUCCESS',
+          commandId: commandId ?? undefined,
+          result,
+        });
+      } catch {
+        // Financial commit already succeeded; audit failure must not undo it.
+      }
+
+      return result;
+    }
+
+    session =
+      await Party.startSession();
 
     let result:
       | unknown
       | undefined;
 
-    /*
-     * -------------------------------------------------------------
-     * 5. Atomic transaction
-     * -------------------------------------------------------------
-     */
+    const transactionOptions = {
+        readConcern: { level: 'local' as const },
+        writeConcern: { w: 'majority' as const },
+        maxCommitTimeMS: 10000,
+      };
 
-    await session.withTransaction(
+      await session.withTransaction(
       async () => {
         switch (
           intent.intent
@@ -1950,6 +1981,7 @@ export async function executeVoiceCommand(
           },
         );
       },
+      transactionOptions,
     );
 
     return result;
@@ -2072,6 +2104,8 @@ export async function executeVoiceCommand(
 
     throw unknownError;
   } finally {
-    await session.endSession();
+    if (session) {
+      await session.endSession();
+    }
   }
 }

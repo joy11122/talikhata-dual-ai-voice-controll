@@ -73,7 +73,6 @@ const UserSchema = new Schema<IUser>(
       type: String,
       required: true,
       unique: true,
-      index: true,
       lowercase: true,
       trim: true,
       maxlength: 254,
@@ -188,10 +187,6 @@ const UserSchema = new Schema<IUser>(
 /*
  * Email is already unique through the schema definition.
  */
-UserSchema.index({
-  email: 1,
-});
-
 /*
  * Useful for shop-level user queries.
  */
