@@ -64,8 +64,15 @@ async function aiParse(t:string):Promise<VoiceV2Command>{
  for(const [provider,key,model] of providers){
   try{
    const client=new OpenAI({apiKey:key,baseURL:provider==='openrouter'?'https://openrouter.ai/api/v1':undefined,timeout:9000,maxRetries:0,defaultHeaders:provider==='openrouter'?{'HTTP-Referer':process.env.NEXT_PUBLIC_APP_URL||'http://localhost:3000','X-Title':'TaliKhata Voice V2'}:undefined});
-   const r=await client.chat.completions.create({model,messages:[{role:'system',content:SYSTEM},{role:'user',content:t}],temperature:0,response_format:{type:'json_schema',json_schema:{name:'talikhata_voice_v2',strict:true,schema:VoiceV2JsonSchema}}} as any);
-   return VoiceV2Schema.parse(JSON.parse(r.choices[0]?.message?.content||''));
+   const payload={model,messages:[{role:'system',content:SYSTEM},{role:'user',content:t}],temperature:0};
+   let r:any;
+   try{
+    r=await client.chat.completions.create({...payload,response_format:{type:'json_schema',json_schema:{name:'talikhata_voice_v2',strict:true,schema:VoiceV2JsonSchema}}} as any);
+   }catch(structuredError){
+    r=await client.chat.completions.create({...payload,response_format:{type:'json_object'}} as any);
+   }
+   const raw=r.choices[0]?.message?.content||'';
+   return VoiceV2Schema.parse(JSON.parse(raw));
   }catch(e){last=e instanceof Error?e.message:'provider failed';}
  }
  throw new VoiceV2Error('AI_UNAVAILABLE','Voice AI providers are temporarily unavailable. Please try again.',{cause:last});
