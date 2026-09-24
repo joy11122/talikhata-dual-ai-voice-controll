@@ -41,6 +41,11 @@ function localParse(t:string){
  if(name&&balance){const c=blank('READ_BALANCE');c.entityType='CUSTOMER';c.entityName=name;return c;}
  if(name&&amount&&payment){const c=blank('RECEIVE_PAYMENT');c.entityType='CUSTOMER';c.entityName=name;c.amount=amount;return c;}
  if(name&&amount&&due){const c=blank('CREATE_DUE');c.entityType='CUSTOMER';c.entityName=name;c.amount=amount;return c;}
+ if(/(?:নতুন\s+)?(?:customer|কাস্টমার|গ্রাহক)\s*(?:যোগ|add|create|করো|করুন)/i.test(s)){
+   const c=blank('CREATE_PARTY');c.entityType='CUSTOMER';c.partyType='CUSTOMER';
+   const m=s.match(/(?:নামে|name)?\s*([a-zA-Z\u0980-\u09FF][a-zA-Z\u0980-\u09FF\s]{1,80}?)(?:\s+(?:নামে|name))?\s*(?:নতুন\s*)?(?:customer|কাস্টমার|গ্রাহক)\s*(?:যোগ|add|create|করো|করুন)/i);
+   if(m?.[1])c.entityName=m[1].trim();return c;
+ }
  if(/(?:customer|কাস্টমার|গ্রাহক)/i.test(s)&&/(?:list|তালিকা|সব|দেখাও)/i.test(s)){const c=blank('LIST_PARTIES');c.entityType='CUSTOMER';c.partyType='CUSTOMER';return c;}
  if(/(?:supplier|সরবরাহকারী|সাপ্লায়ার)/i.test(s)&&/(?:list|তালিকা|সব|দেখাও)/i.test(s)){const c=blank('LIST_PARTIES');c.entityType='SUPPLIER';c.partyType='SUPPLIER';return c;}
  if(/(?:product|পণ্য|item)/i.test(s)&&/(?:list|তালিকা|সব|দেখাও)/i.test(s))return blank('LIST_PRODUCTS');
