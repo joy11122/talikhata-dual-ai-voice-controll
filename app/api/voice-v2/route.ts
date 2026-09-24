@@ -17,7 +17,7 @@ export async function POST(req:Request){
 
   try{
     if(parsed.data.tool&&parsed.data.args){
-      const result=await executeVoiceV2(parsed.data.tool,parsed.data.args,session.user.id,session.user.role||'USER',confirmed);
+      const result=await executeVoiceV2(parsed.data.tool,parsed.data.args,session.user.id,(session.user as any).role||'USER',confirmed);
       return NextResponse.json({ok:true,tool:parsed.data.tool,args:parsed.data.args,result,provider:'server'});
     }
 
@@ -44,7 +44,7 @@ export async function POST(req:Request){
         let args:any;
         try{args=JSON.parse(call.function.arguments||'{}');}catch{last=new Error('AI returned invalid tool arguments');continue;}
         try{
-          const result=await executeVoiceV2(call.function.name,args,session.user.id,session.user.role||'USER',confirmed);
+          const result=await executeVoiceV2(call.function.name,args,session.user.id,(session.user as any).role||'USER',confirmed);
           return NextResponse.json({ok:true,tool:call.function.name,args,result,provider});
         }catch(error){
           if(error instanceof VoiceV2Error){
