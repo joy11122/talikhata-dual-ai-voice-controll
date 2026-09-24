@@ -50,18 +50,48 @@ function localParse(t:string){
 
 const SYSTEM=`You are TaliKhata Voice Engine V2. Parse Bangla, Banglish, English and mixed shop commands. Return ONLY structured JSON. Never invent names, amounts, IDs or products. Preserve entityName as spoken. Customer credit=CREATE_DUE. Customer pays shop=RECEIVE_PAYMENT. Balance=READ_BALANCE. Party CRUD uses CREATE_PARTY/READ_PARTY/LIST_PARTIES/UPDATE_PARTY/DELETE_PARTY. User CRUD is admin-only and uses CREATE_USER/READ_USER/LIST_USERS/UPDATE_USER/DELETE_USER. Product CRUD uses CREATE_PRODUCT/READ_PRODUCT/LIST_PRODUCTS/UPDATE_PRODUCT/DELETE_PRODUCT. Inventory uses STOCK_IN/STOCK_OUT. Sales=CREATE_SALE, purchases=CREATE_PURCHASE, expenses=CREATE_EXPENSE. Destructive actions require confirmation. Financial writes above 10000 require confirmation.`;
 
+const VOICE_V2_TOOL = {
+ type:'function' as const,
+ function:{
+  name:'emit_voice_command',
+  description:'Return the single validated TaliKhata command requested by the user.',
+  parameters:VoiceV2JsonSchema
+ }
+};
+
 async function aiParse(t:string):Promise<VoiceV2Command>{
  const providers:[string,string,string][]=[];
  if(process.env.OPENAI_API_KEY)providers.push(['openai',process.env.OPENAI_API_KEY,process.env.OPENAI_VOICE_MODEL||'gpt-4.1-mini']);
  if(process.env.OPENROUTER_API_KEY)providers.push(['openrouter',process.env.OPENROUTER_API_KEY,process.env.OPENROUTER_VOICE_MODEL||'openai/gpt-4.1-mini']);
  if(!providers.length)throw new VoiceV2Error('AI_NOT_CONFIGURED','OPENAI_API_KEY or OPENROUTER_API_KEY is required');
  let last='';
+
  for(const [provider,key,model] of providers){
   try{
-   const client=new OpenAI({apiKey:key,baseURL:provider==='openrouter'?'https://openrouter.ai/api/v1':undefined,timeout:9000,maxRetries:0,defaultHeaders:provider==='openrouter'?{'HTTP-Referer':process.env.NEXT_PUBLIC_APP_URL||'http://localhost:3000','X-Title':'TaliKhata Voice V2'}:undefined});
-   const r=await client.chat.completions.create({model,messages:[{role:'system',content:SYSTEM},{role:'user',content:t}],temperature:0,response_format:{type:'json_schema',json_schema:{name:'talikhata_voice_v2',strict:true,schema:VoiceV2JsonSchema}}} as any);
-   return VoiceV2Schema.parse(JSON.parse(r.choices[0]?.message?.content||''));
-  }catch(e){last=e instanceof Error?e.message:'provider failed';}
+   const client=new OpenAI({
+    apiKey:key,
+    baseURL:provider==='openrouter'?'https://openrouter.ai/api/v1':undefined,
+    timeout:9000,
+    maxRetries:0,
+    defaultHeaders:provider==='openrouter'?{
+      'HTTP-Referer':process.env.NEXT_PUBLIC_APP_URL||'http://localhost:3000',
+      'X-Title':'TaliKhata Voice V2'
+    }:undefined
+   });
+   const r=await client.chat.completions.create({
+    model,
+    messages:[{role:'system',content:SYSTEM},{role:'user',content:t}],
+    temperature:0,
+    tools:[VOICE_V2_TOOL],
+    tool_choice:{type:'function',function:{name:'emit_voice_command'}}
+   } as any);
+   const call=r.choices[0]?.message?.tool_calls?.find((x:any)=>x.type==='function');
+   if(!call?.function?.arguments)throw new Error('Provider returned no structured voice command');
+   const parsed=JSON.parse(call.function.arguments);
+   return VoiceV2Schema.parse(parsed);
+  }catch(e){
+   last=e instanceof Error?e.message:'provider failed';
+  }
  }
  throw new VoiceV2Error('AI_UNAVAILABLE','Voice AI providers are temporarily unavailable. Please try again.',{cause:last});
 }
