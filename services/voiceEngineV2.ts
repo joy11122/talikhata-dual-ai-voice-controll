@@ -109,6 +109,24 @@ export async function executeVoiceV2(c0:VoiceV2Command,userId:string,transcript=
     if(!c.entityName||!c.amount||c.amount<=0)throw new VoiceV2Error('INVALID_TRANSACTION','Customer and positive amount are required');const p=await findParty(userId,c.entityName,session,'CUSTOMER');const tx=await createTransaction({type:c.action==='CREATE_DUE'?'DUE_GIVEN':'DUE_RECEIVED',partyId:String(p._id),amount:c.amount,quantity:0,notes:c.notes||undefined},userId,session);result={type:c.action,amount:c.amount,party:{id:String(p._id),name:p.name},transaction:tx};
    }else if(c.action==='STOCK_IN'||c.action==='STOCK_OUT'){
     if(!c.entityName||!c.quantity||c.quantity<=0)throw new VoiceV2Error('INVALID_STOCK','Product and positive quantity are required');const p=await findProduct(userId,c.entityName,session);const tx=await createTransaction({type:c.action==='STOCK_IN'?'STOCK_IN':'STOCK_OUT',productId:String(p._id),amount:money(num(c.quantity)*num(c.unitPrice)),quantity:c.quantity,unitPrice:c.unitPrice??undefined,notes:c.notes||undefined},userId,session);const fresh=await Product.findById(p._id).session(session).lean();result={type:c.action,product:{id:String(p._id),name:p.name,unit:p.unit},quantity:c.quantity,stock:num(fresh?.stockQuantity),transaction:tx};
+   }else if(c.action==='CREATE_SALE'||c.action==='CREATE_PURCHASE'){
+    if(!c.entityName||!c.quantity||c.quantity<=0||!c.unitPrice||c.unitPrice<=0)throw new VoiceV2Error('INVALID_TRADE','Product, quantity and unit price are required');
+    const p=await findProduct(userId,c.entityName,session);
+    const total=money(c.quantity*c.unitPrice),paid=num(c.paidAmount);
+    if(paid>total)throw new VoiceV2Error('INVALID_PAYMENT','Paid amount cannot exceed total amount');
+    if(c.action==='CREATE_SALE'){
+      let partyId:string|undefined;
+      if(c.query){const customer=await findParty(userId,c.query,session,'CUSTOMER');partyId=String(customer._id);}
+      const tx=await createTransaction({type:'SALE',partyId,productId:String(p._id),amount:total,quantity:c.quantity,unitPrice:c.unitPrice,paidAmount:paid,notes:c.notes||undefined},userId,session);
+      result={type:'CREATE_SALE',product:p.name,total,paidAmount:paid,due:money(total-paid),transaction:tx};
+    }else{
+      if(!c.query)throw new VoiceV2Error('PARTY_REQUIRED','Supplier name is required for a purchase');
+      const supplier=await findParty(userId,c.query,session,'SUPPLIER');
+      const tx=await createTransaction({type:'STOCK_IN',partyId:String(supplier._id),productId:String(p._id),amount:total,quantity:c.quantity,unitPrice:c.unitPrice,paidAmount:paid,notes:c.notes||undefined},userId,session);
+      const due=money(total-paid);
+      if(due>0)await Party.updateOne({_id:supplier._id,userId:uid},{$inc:{currentBalance:-due}},{session});
+      result={type:'CREATE_PURCHASE',product:p.name,supplier:supplier.name,total,paidAmount:paid,due,transaction:tx};
+    }
    }else if(c.action==='CREATE_EXPENSE'){
     if(!c.amount||c.amount<=0)throw new VoiceV2Error('INVALID_EXPENSE','Positive expense amount is required');const tx=await createTransaction({type:'EXPENSE',amount:c.amount,quantity:0,notes:c.notes||transcript},userId,session);result={type:'CREATE_EXPENSE',amount:c.amount,transaction:tx};
    }else if(c.action==='DELETE_TRANSACTION'){
