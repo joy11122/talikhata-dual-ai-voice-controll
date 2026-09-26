@@ -3,6 +3,7 @@ import 'server-only';
 
 import OpenAI from 'openai';
 import { Types } from 'mongoose';
+
 import { auth } from '@/auth';
 import { connectDB } from '@/lib/db';
 
@@ -34,6 +35,10 @@ import {
   extractNumber,
 } from '@/lib/voice/normalize';
 
+/* -------------------------------------------------------------------------- */
+/* Error                                                                      */
+/* -------------------------------------------------------------------------- */
+
 export class VoiceV2Error extends Error {
   code: string;
   details?: unknown;
@@ -50,25 +55,33 @@ export class VoiceV2Error extends Error {
   }
 }
 
-const num = (value: unknown) =>
+/* -------------------------------------------------------------------------- */
+/* Helpers                                                                    */
+/* -------------------------------------------------------------------------- */
+
+const num = (value: unknown): number =>
   typeof value === 'number' && Number.isFinite(value)
     ? value
     : 0;
 
-const money = (value: unknown) =>
+const money = (value: unknown): number =>
   Math.round(num(value) * 100) / 100;
 
-const clean = (value: unknown) =>
+const clean = (value: unknown): string | null =>
   typeof value === 'string' && value.trim()
     ? value.trim()
     : null;
 
-const norm = (value: string) =>
+const norm = (value: string): string =>
   normalizeVoiceText(value)
     .toLowerCase()
     .replace(/[।,!?;:]/g, ' ')
     .replace(/\s+/g, ' ')
     .trim();
+
+/* -------------------------------------------------------------------------- */
+/* Blank command                                                              */
+/* -------------------------------------------------------------------------- */
 
 const blank = (
   action: VoiceV2Command['action'],
@@ -89,8 +102,12 @@ const blank = (
   confirmRequired: false,
 });
 
-function partyName(text: string) {
-  const normalized = normalizeVoiceText(text)
+/* -------------------------------------------------------------------------- */
+/* Party name extraction                                                      */
+/* -------------------------------------------------------------------------- */
+
+function partyName(text: string): string | null {
+  const value = normalizeVoiceText(text)
     .replace(/[।,!?;:]/g, ' ')
     .replace(/\s+/g, ' ')
     .trim();
@@ -110,7 +127,7 @@ function partyName(text: string) {
   ];
 
   for (const pattern of patterns) {
-    const match = normalized.match(pattern);
+    const match = value.match(pattern);
 
     if (match?.[1]) {
       return match[1]
@@ -123,23 +140,28 @@ function partyName(text: string) {
   return null;
 }
 
-function localParse(text: string) {
-  const normalized = norm(text);
+/* -------------------------------------------------------------------------- */
+/* Local parser                                                               */
+/* -------------------------------------------------------------------------- */
+
+function localParse(text: string): VoiceV2Command | null {
+  const value = norm(text);
+
   const amount = extractNumber(text);
   const name = partyName(text);
 
   const balance =
     /(?:কত|কতো|বাকি|পাওনা|দেনা|balance|due|pabo|pabe|koto)/i.test(
-      normalized,
+      value,
     );
 
   const payment =
     /(?:জমা|পরিশোধ|পেলাম|দিয়েছে|দিয়েছে|paid|payment|received|receive|dilam|dilo|dise|diyeche|diyechi)/i.test(
-      normalized,
+      value,
     );
 
   const due =
-    /(?:বাকি|পাওনা|due|baki)/i.test(normalized);
+    /(?:বাকি|পাওনা|due|baki)/i.test(value);
 
   if (name && balance) {
     const command = blank('READ_BALANCE');
@@ -171,8 +193,8 @@ function localParse(text: string) {
   }
 
   if (
-    /(?:customer|কাস্টমার|গ্রাহক)/i.test(normalized) &&
-    /(?:list|তালিকা|সব|দেখাও)/i.test(normalized)
+    /(?:customer|কাস্টমার|গ্রাহক)/i.test(value) &&
+    /(?:list|তালিকা|সব|দেখাও)/i.test(value)
   ) {
     const command = blank('LIST_PARTIES');
 
@@ -183,8 +205,8 @@ function localParse(text: string) {
   }
 
   if (
-    /(?:supplier|সরবরাহকারী|সাপ্লায়ার)/i.test(normalized) &&
-    /(?:list|তালিকা|সব|দেখাও)/i.test(normalized)
+    /(?:supplier|সরবরাহকারী|সাপ্লায়ার)/i.test(value) &&
+    /(?:list|তালিকা|সব|দেখাও)/i.test(value)
   ) {
     const command = blank('LIST_PARTIES');
 
@@ -195,15 +217,15 @@ function localParse(text: string) {
   }
 
   if (
-    /(?:product|পণ্য|item)/i.test(normalized) &&
-    /(?:list|তালিকা|সব|দেখাও)/i.test(normalized)
+    /(?:product|পণ্য|item)/i.test(value) &&
+    /(?:list|তালিকা|সব|দেখাও)/i.test(value)
   ) {
     return blank('LIST_PRODUCTS');
   }
 
   if (
-    /(?:transaction|লেনদেন|হিসাব)/i.test(normalized) &&
-    /(?:list|তালিকা|দেখাও)/i.test(normalized)
+    /(?:transaction|লেনদেন|হিসাব)/i.test(value) &&
+    /(?:list|তালিকা|দেখাও)/i.test(value)
   ) {
     return blank('LIST_TRANSACTIONS');
   }
@@ -211,7 +233,81 @@ function localParse(text: string) {
   return null;
 }
 
-const SYSTEM = `You are TaliKhata Voice Engine V2. Parse Bangla, Banglish, English and mixed shop commands. Return ONLY structured JSON. Never invent names, amounts, IDs or products. Preserve entityName as spoken. Customer credit=CREATE_DUE. Customer pays shop=RECEIVE_PAYMENT. Balance=READ_BALANCE. Party CRUD uses CREATE_PARTY/READ_PARTY/LIST_PARTIES/UPDATE_PARTY/DELETE_PARTY. User CRUD is admin-only and uses CREATE_USER/READ_USER/LIST_USERS/UPDATE_USER/DELETE_USER. Product CRUD uses CREATE_PRODUCT/READ_PRODUCT/LIST_PRODUCTS/UPDATE_PRODUCT/DELETE_PRODUCT. Inventory uses STOCK_IN/STOCK_OUT. Sales=CREATE_SALE, purchases=CREATE_PURCHASE, expenses=CREATE_EXPENSE. Destructive actions require confirmation. Financial writes above 10000 require confirmation.`;
+/* -------------------------------------------------------------------------- */
+/* AI system prompt                                                           */
+/* -------------------------------------------------------------------------- */
+
+const SYSTEM = `
+You are TaliKhata Voice Engine V2.
+
+Parse Bangla, Banglish, English and mixed shop commands.
+
+Return exactly one structured command through the provided function tool.
+
+Never invent:
+- names
+- amounts
+- IDs
+- products
+- phone numbers
+
+Preserve entityName exactly as spoken whenever possible.
+
+Rules:
+
+Customer credit:
+CREATE_DUE
+
+Customer pays shop:
+RECEIVE_PAYMENT
+
+Balance:
+READ_BALANCE
+
+Party CRUD:
+CREATE_PARTY
+READ_PARTY
+LIST_PARTIES
+UPDATE_PARTY
+DELETE_PARTY
+
+User CRUD:
+CREATE_USER
+READ_USER
+LIST_USERS
+UPDATE_USER
+DELETE_USER
+
+User CRUD is admin-only.
+
+Product CRUD:
+CREATE_PRODUCT
+READ_PRODUCT
+LIST_PRODUCTS
+UPDATE_PRODUCT
+DELETE_PRODUCT
+
+Inventory:
+STOCK_IN
+STOCK_OUT
+
+Sales:
+CREATE_SALE
+
+Purchases:
+CREATE_PURCHASE
+
+Expenses:
+CREATE_EXPENSE
+
+Destructive actions require confirmation.
+
+Financial writes above 10000 require confirmation.
+`.trim();
+
+/* -------------------------------------------------------------------------- */
+/* OpenAI tool                                                                */
+/* -------------------------------------------------------------------------- */
 
 const VOICE_V2_TOOL = {
   type: 'function' as const,
@@ -226,53 +322,126 @@ const VOICE_V2_TOOL = {
   },
 };
 
+/* -------------------------------------------------------------------------- */
+/* Provider types                                                             */
+/* -------------------------------------------------------------------------- */
+
+type VoiceProvider = {
+  name: 'openai' | 'openrouter';
+  apiKey: string;
+  model: string;
+  baseURL?: string;
+};
+
+/* -------------------------------------------------------------------------- */
+/* Provider configuration                                                      */
+/* -------------------------------------------------------------------------- */
+
+function getProviders(): VoiceProvider[] {
+  const providers: VoiceProvider[] = [];
+
+  const openAIKey = process.env.OPENAI_API_KEY?.trim();
+
+  if (openAIKey) {
+    providers.push({
+      name: 'openai',
+      apiKey: openAIKey,
+      model:
+        process.env.OPENAI_VOICE_MODEL?.trim() ||
+        'gpt-4.1-mini',
+    });
+  }
+
+  const openRouterKey =
+    process.env.OPENROUTER_API_KEY?.trim();
+
+  if (openRouterKey) {
+    providers.push({
+      name: 'openrouter',
+      apiKey: openRouterKey,
+      model:
+        process.env.OPENROUTER_VOICE_MODEL?.trim() ||
+        'openai/gpt-4.1-mini',
+      baseURL: 'https://openrouter.ai/api/v1',
+    });
+  }
+
+  return providers;
+}
+
+/* -------------------------------------------------------------------------- */
+/* Tool-call extraction                                                       */
+/* -------------------------------------------------------------------------- */
+
+function getToolArguments(response: OpenAI.Chat.Completions.ChatCompletion): string {
+  const toolCalls = response.choices[0]?.message?.tool_calls;
+
+  if (!toolCalls?.length) {
+    throw new Error(
+      'Provider returned no tool calls.',
+    );
+  }
+
+  const functionCall = toolCalls.find(
+    (
+      call,
+    ): call is Extract<
+      OpenAI.Chat.Completions.ChatCompletionMessageToolCall,
+      { type: 'function' }
+    > => call.type === 'function',
+  );
+
+  if (!functionCall?.function?.arguments) {
+    throw new Error(
+      'Provider returned no function arguments.',
+    );
+  }
+
+  return functionCall.function.arguments;
+}
+
+/* -------------------------------------------------------------------------- */
+/* AI parser                                                                  */
+/* -------------------------------------------------------------------------- */
+
 async function aiParse(
   text: string,
 ): Promise<VoiceV2Command> {
-  const providers: [string, string, string][] = [];
-
-  if (process.env.OPENAI_API_KEY) {
-    providers.push([
-      'openai',
-      process.env.OPENAI_API_KEY,
-      process.env.OPENAI_VOICE_MODEL ||
-        'gpt-4.1-mini',
-    ]);
-  }
-
-  if (process.env.OPENROUTER_API_KEY) {
-    providers.push([
-      'openrouter',
-      process.env.OPENROUTER_API_KEY,
-      process.env.OPENROUTER_VOICE_MODEL ||
-        'openai/gpt-4.1-mini',
-    ]);
-  }
+  const providers = getProviders();
 
   if (!providers.length) {
     throw new VoiceV2Error(
       'AI_NOT_CONFIGURED',
-      'OPENAI_API_KEY or OPENROUTER_API_KEY is required',
+      'No voice AI provider is configured. Add OPENAI_API_KEY or OPENROUTER_API_KEY to .env.local.',
+      {
+        providers: [],
+      },
     );
   }
 
-  let last = '';
+  const errors: Array<{
+    provider: string;
+    model: string;
+    message: string;
+  }> = [];
 
-  for (const [provider, key, model] of providers) {
+  for (const provider of providers) {
     try {
+      console.info(
+        `[VoiceV2] Trying ${provider.name} with ${provider.model}`,
+      );
+
       const client = new OpenAI({
-        apiKey: key,
+        apiKey: provider.apiKey,
 
-        baseURL:
-          provider === 'openrouter'
-            ? 'https://openrouter.ai/api/v1'
-            : undefined,
+        baseURL: provider.baseURL,
 
-        timeout: 9000,
+        timeout: 15_000,
+
         maxRetries: 0,
 
         defaultHeaders:
-          provider === 'openrouter'
+          provider.name === 'openrouter'
             ? {
                 'HTTP-Referer':
                   process.env.NEXT_PUBLIC_APP_URL ||
@@ -286,7 +455,7 @@ async function aiParse(
 
       const response =
         await client.chat.completions.create({
-          model,
+          model: provider.model,
 
           messages: [
             {
@@ -311,46 +480,58 @@ async function aiParse(
           },
         });
 
-      /*
-       * OpenAI's ChatCompletionMessageToolCall is a union.
-       *
-       * Some tool calls are function calls and have `.function`,
-       * while custom tool calls do not.
-       *
-       * We explicitly narrow the union before accessing `.function`.
-       */
-      const call =
-        response.choices[0]?.message?.tool_calls?.find(
-          (
-            toolCall,
-          ): toolCall is Extract<
-            NonNullable<
-              (typeof response.choices)[number]['message']['tool_calls']
-            >[number],
-            { type: 'function' }
-          > => toolCall.type === 'function',
-        );
+      const argumentsJSON =
+        getToolArguments(response);
 
-      if (
-        !call ||
-        call.type !== 'function' ||
-        !call.function?.arguments
-      ) {
+      let parsed: unknown;
+
+      try {
+        parsed = JSON.parse(argumentsJSON);
+      } catch {
         throw new Error(
-          'Provider returned no structured voice command',
+          'Provider returned invalid JSON in function arguments.',
         );
       }
 
-      const parsed = JSON.parse(
-        call.function.arguments,
+      const validated =
+        VoiceV2Schema.safeParse(parsed);
+
+      if (!validated.success) {
+        console.error(
+          '[VoiceV2] Invalid AI command:',
+          validated.error.flatten(),
+        );
+
+        throw new Error(
+          'Provider returned a command that failed TaliKhata validation.',
+        );
+      }
+
+      console.info(
+        `[VoiceV2] ${provider.name} succeeded`,
       );
 
-      return VoiceV2Schema.parse(parsed);
+      return validated.data;
     } catch (error) {
-      last =
+      const message =
         error instanceof Error
           ? error.message
-          : 'provider failed';
+          : String(error);
+
+      errors.push({
+        provider: provider.name,
+        model: provider.model,
+        message,
+      });
+
+      console.error(
+        `[VoiceV2] ${provider.name} failed`,
+        {
+          model: provider.model,
+          message,
+          error,
+        },
+      );
     }
   }
 
@@ -358,14 +539,39 @@ async function aiParse(
     'AI_UNAVAILABLE',
     'Voice AI providers are temporarily unavailable. Please try again.',
     {
-      cause: last,
+      providers: errors,
     },
   );
 }
 
-export async function parseVoiceV2(text: string) {
-  return localParse(text) ?? (await aiParse(text));
+/* -------------------------------------------------------------------------- */
+/* Public parser                                                              */
+/* -------------------------------------------------------------------------- */
+
+export async function parseVoiceV2(
+  text: string,
+): Promise<VoiceV2Command> {
+  const normalized = text.trim();
+
+  if (!normalized) {
+    throw new VoiceV2Error(
+      'EMPTY_COMMAND',
+      'Voice command is empty.',
+    );
+  }
+
+  const local = localParse(normalized);
+
+  if (local) {
+    return local;
+  }
+
+  return aiParse(normalized);
 }
+
+/* -------------------------------------------------------------------------- */
+/* Party resolver                                                             */
+/* -------------------------------------------------------------------------- */
 
 async function findParty(
   userId: string,
@@ -420,6 +626,10 @@ async function findParty(
   return rows[0];
 }
 
+/* -------------------------------------------------------------------------- */
+/* Admin                                                                      */
+/* -------------------------------------------------------------------------- */
+
 async function requireAdmin(
   userId: string,
 ) {
@@ -440,6 +650,10 @@ async function requireAdmin(
 
   return user;
 }
+
+/* -------------------------------------------------------------------------- */
+/* Product resolver                                                           */
+/* -------------------------------------------------------------------------- */
 
 async function findProduct(
   userId: string,
@@ -482,27 +696,38 @@ async function findProduct(
   return rows[0];
 }
 
+/* -------------------------------------------------------------------------- */
+/* Confirmation                                                               */
+/* -------------------------------------------------------------------------- */
+
 function confirm(
   command: VoiceV2Command,
   confirmed: boolean,
 ) {
-  if (
-    (
-      command.confirmRequired ||
-      [
-        'DELETE_PARTY',
-        'DELETE_PRODUCT',
-        'DELETE_TRANSACTION',
-      ].includes(command.action)
-    ) &&
-    !confirmed
-  ) {
+  const destructiveActions = [
+    'DELETE_PARTY',
+    'DELETE_PRODUCT',
+    'DELETE_TRANSACTION',
+    'DELETE_USER',
+  ];
+
+  const needsConfirmation =
+    command.confirmRequired ||
+    destructiveActions.includes(
+      command.action,
+    );
+
+  if (needsConfirmation && !confirmed) {
     throw new VoiceV2Error(
       'CONFIRMATION_REQUIRED',
       'এই কাজটি করার আগে confirmation প্রয়োজন।',
     );
   }
 }
+
+/* -------------------------------------------------------------------------- */
+/* Execute Voice V2                                                           */
+/* -------------------------------------------------------------------------- */
 
 export async function executeVoiceV2(
   commandInput: VoiceV2Command,
@@ -511,6 +736,10 @@ export async function executeVoiceV2(
   confirmed = false,
   commandId?: string,
 ) {
+  /* ---------------------------------------------------------------------- */
+  /* Authentication                                                         */
+  /* ---------------------------------------------------------------------- */
+
   const sessionUser = await auth();
 
   if (
@@ -530,19 +759,30 @@ export async function executeVoiceV2(
     );
   }
 
+  /* ---------------------------------------------------------------------- */
+  /* Validate command                                                       */
+  /* ---------------------------------------------------------------------- */
+
   const command =
     VoiceV2Schema.parse(commandInput);
 
   confirm(command, confirmed);
 
+  /* ---------------------------------------------------------------------- */
+  /* Database                                                               */
+  /* ---------------------------------------------------------------------- */
+
   await connectDB();
 
-  const userObjectId =
-    new Types.ObjectId(userId);
+  const uid = new Types.ObjectId(userId);
+
+  /* ---------------------------------------------------------------------- */
+  /* Idempotency                                                             */
+  /* ---------------------------------------------------------------------- */
 
   if (commandId) {
     const old = await AuditLog.findOne({
-      userId: userObjectId,
+      userId: uid,
       commandId,
       status: 'SUCCESS',
     }).lean();
@@ -551,6 +791,10 @@ export async function executeVoiceV2(
       return old.result;
     }
   }
+
+  /* ---------------------------------------------------------------------- */
+  /* Balance                                                                */
+  /* ---------------------------------------------------------------------- */
 
   if (command.action === 'READ_BALANCE') {
     if (!command.entityName) {
@@ -594,6 +838,10 @@ export async function executeVoiceV2(
     };
   }
 
+  /* ---------------------------------------------------------------------- */
+  /* Read / List                                                             */
+  /* ---------------------------------------------------------------------- */
+
   if (
     [
       'READ_PARTY',
@@ -619,8 +867,7 @@ export async function executeVoiceV2(
           userId,
           command.entityName,
           null,
-          command.partyType ||
-            undefined,
+          command.partyType || undefined,
         ),
       };
     }
@@ -646,29 +893,30 @@ export async function executeVoiceV2(
     if (command.action === 'READ_USER') {
       await requireAdmin(userId);
 
-      const user = await User.findOne(
-        command.query
-          ? {
-              email:
-                command.query.toLowerCase(),
-              _id: {
-                $ne: userObjectId,
+      const user =
+        await User.findOne(
+          command.query
+            ? {
+                email:
+                  command.query.toLowerCase(),
+                _id: {
+                  $ne: uid,
+                },
+              }
+            : {
+                _id:
+                  command.targetId &&
+                  Types.ObjectId.isValid(
+                    command.targetId,
+                  )
+                    ? new Types.ObjectId(
+                        command.targetId,
+                      )
+                    : uid,
               },
-            }
-          : {
-              _id:
-                command.targetId &&
-                Types.ObjectId.isValid(
-                  command.targetId,
-                )
-                  ? new Types.ObjectId(
-                      command.targetId,
-                    )
-                  : userObjectId,
-            },
-      )
-        .select('-password')
-        .lean();
+        )
+          .select('-password')
+          .lean();
 
       if (!user) {
         throw new VoiceV2Error(
@@ -700,9 +948,11 @@ export async function executeVoiceV2(
       };
     }
 
-    if (command.action === 'LIST_PARTIES') {
+    if (
+      command.action === 'LIST_PARTIES'
+    ) {
       const query: any = {
-        userId: userObjectId,
+        userId: uid,
       };
 
       if (command.partyType) {
@@ -719,22 +969,24 @@ export async function executeVoiceV2(
 
       return {
         type: 'LIST_PARTIES',
-
         items: rows.map(
           (party: any) => ({
             id: String(party._id),
             name: party.name,
             phone: party.phone || null,
             partyType: party.partyType,
-            balance: party.currentBalance,
+            balance:
+              party.currentBalance,
           }),
         ),
       };
     }
 
-    if (command.action === 'LIST_PRODUCTS') {
+    if (
+      command.action === 'LIST_PRODUCTS'
+    ) {
       const rows = await Product.find({
-        userId: userObjectId,
+        userId: uid,
       })
         .sort({
           name: 1,
@@ -748,23 +1000,28 @@ export async function executeVoiceV2(
       };
     }
 
-    const rows = await Transaction.find({
-      userId: userObjectId,
-      isDeleted: {
-        $ne: true,
-      },
-    })
-      .sort({
-        timestamp: -1,
+    const rows =
+      await Transaction.find({
+        userId: uid,
+        isDeleted: {
+          $ne: true,
+        },
       })
-      .limit(100)
-      .lean();
+        .sort({
+          timestamp: -1,
+        })
+        .limit(100)
+        .lean();
 
     return {
       type: 'LIST_TRANSACTIONS',
       items: rows,
     };
   }
+
+  /* ---------------------------------------------------------------------- */
+  /* Transaction session                                                    */
+  /* ---------------------------------------------------------------------- */
 
   const session =
     await Party.startSession();
@@ -774,18 +1031,27 @@ export async function executeVoiceV2(
   try {
     await session.withTransaction(
       async () => {
+        /* ---------------------------------------------------------------- */
+        /* USER CRUD                                                         */
+        /* ---------------------------------------------------------------- */
+
         if (
-          command.action === 'CREATE_USER' ||
-          command.action === 'UPDATE_USER' ||
-          command.action === 'DELETE_USER'
+          command.action ===
+            'CREATE_USER' ||
+          command.action ===
+            'UPDATE_USER' ||
+          command.action ===
+            'DELETE_USER'
         ) {
           await requireAdmin(userId);
 
           if (
-            command.action === 'CREATE_USER'
+            command.action ===
+            'CREATE_USER'
           ) {
             const email =
-              clean(command.query)?.toLowerCase();
+              clean(command.query)
+                ?.toLowerCase();
 
             if (
               !command.entityName ||
@@ -816,12 +1082,17 @@ export async function executeVoiceV2(
               await User.create(
                 [
                   {
-                    name: command.entityName,
+                    name:
+                      command.entityName,
+
                     email,
+
                     phone:
                       command.phone ||
                       undefined,
+
                     role: 'USER',
+
                     status: 'ACTIVE',
                   },
                 ],
@@ -837,30 +1108,33 @@ export async function executeVoiceV2(
                 id: String(user._id),
                 name: user.name,
                 email: user.email,
-                phone: user.phone || null,
+                phone:
+                  user.phone || null,
                 role: user.role,
                 status: user.status,
               },
             };
           } else {
             const target =
-              command.query?.toLowerCase();
+              command.query
+                ?.toLowerCase();
 
-            const filter: any = target
-              ? {
-                  email: target,
-                }
-              : {
-                  _id:
-                    command.targetId &&
-                    Types.ObjectId.isValid(
-                      command.targetId,
-                    )
-                      ? new Types.ObjectId(
-                          command.targetId,
-                        )
-                      : null,
-                };
+            const filter: any =
+              target
+                ? {
+                    email: target,
+                  }
+                : {
+                    _id:
+                      command.targetId &&
+                      Types.ObjectId.isValid(
+                        command.targetId,
+                      )
+                        ? new Types.ObjectId(
+                            command.targetId,
+                          )
+                        : null,
+                  };
 
             if (
               !filter._id &&
@@ -885,7 +1159,8 @@ export async function executeVoiceV2(
             }
 
             if (
-              String(user._id) === userId &&
+              String(user._id) ===
+                userId &&
               command.action ===
                 'DELETE_USER'
             ) {
@@ -913,7 +1188,10 @@ export async function executeVoiceV2(
 
               if (
                 command.notes &&
-                ['ACTIVE', 'SUSPENDED'].includes(
+                [
+                  'ACTIVE',
+                  'SUSPENDED',
+                ].includes(
                   command.notes,
                 )
               ) {
@@ -929,7 +1207,8 @@ export async function executeVoiceV2(
               }
 
               if (
-                !Object.keys(update).length
+                !Object.keys(update)
+                  .length
               ) {
                 throw new VoiceV2Error(
                   'INVALID_UPDATE',
@@ -991,12 +1270,20 @@ export async function executeVoiceV2(
 
               result = {
                 type: 'DELETE_USER',
-                id: String(user._id),
+                id: String(
+                  user._id,
+                ),
                 email: user.email,
               };
             }
           }
-        } else if (
+        }
+
+        /* ---------------------------------------------------------------- */
+        /* CREATE PARTY                                                      */
+        /* ---------------------------------------------------------------- */
+
+        else if (
           command.action ===
           'CREATE_PARTY'
         ) {
@@ -1011,19 +1298,17 @@ export async function executeVoiceV2(
             command.partyType ||
             'CUSTOMER';
 
-          const escapedName =
+          const escaped =
             command.entityName.replace(
-              /[.*+?^${}()|[\]\\]/g,
+              /[.*+?^\${}()|[\]\\]/g,
               '\\$&',
             );
 
           const duplicate =
             await Party.findOne({
-              userId: userObjectId,
+              userId: uid,
               name: new RegExp(
-                '^' +
-                  escapedName +
-                  '$',
+                `^${escaped}$`,
                 'i',
               ),
             }).session(session);
@@ -1054,8 +1339,9 @@ export async function executeVoiceV2(
             await Party.create(
               [
                 {
-                  userId: userObjectId,
-                  name: command.entityName,
+                  userId: uid,
+                  name:
+                    command.entityName,
                   phone:
                     command.phone ||
                     undefined,
@@ -1078,7 +1364,13 @@ export async function executeVoiceV2(
               party.partyType,
             balance: 0,
           };
-        } else if (
+        }
+
+        /* ---------------------------------------------------------------- */
+        /* UPDATE PARTY                                                      */
+        /* ---------------------------------------------------------------- */
+
+        else if (
           command.action ===
           'UPDATE_PARTY'
         ) {
@@ -1110,7 +1402,9 @@ export async function executeVoiceV2(
               command.query;
           }
 
-          if (!Object.keys(update).length) {
+          if (
+            !Object.keys(update).length
+          ) {
             throw new VoiceV2Error(
               'INVALID_UPDATE',
               'No party fields to update',
@@ -1124,7 +1418,7 @@ export async function executeVoiceV2(
               await Party.findOneAndUpdate(
                 {
                   _id: party._id,
-                  userId: userObjectId,
+                  userId: uid,
                 },
                 {
                   $set: update,
@@ -1135,7 +1429,13 @@ export async function executeVoiceV2(
                 },
               ).lean(),
           };
-        } else if (
+        }
+
+        /* ---------------------------------------------------------------- */
+        /* DELETE PARTY                                                      */
+        /* ---------------------------------------------------------------- */
+
+        else if (
           command.action ===
           'DELETE_PARTY'
         ) {
@@ -1155,12 +1455,13 @@ export async function executeVoiceV2(
                 undefined,
             );
 
-          if (
+          const hasTransactions =
             await Transaction.exists({
-              userId: userObjectId,
+              userId: uid,
               partyId: party._id,
-            }).session(session)
-          ) {
+            }).session(session);
+
+          if (hasTransactions) {
             throw new VoiceV2Error(
               'DELETE_BLOCKED',
               'This party has transaction history and cannot be deleted safely.',
@@ -1170,7 +1471,7 @@ export async function executeVoiceV2(
           await Party.deleteOne(
             {
               _id: party._id,
-              userId: userObjectId,
+              userId: uid,
             },
             {
               session,
@@ -1182,7 +1483,13 @@ export async function executeVoiceV2(
             id: String(party._id),
             name: party.name,
           };
-        } else if (
+        }
+
+        /* ---------------------------------------------------------------- */
+        /* CREATE PRODUCT                                                    */
+        /* ---------------------------------------------------------------- */
+
+        else if (
           command.action ===
           'CREATE_PRODUCT'
         ) {
@@ -1196,19 +1503,17 @@ export async function executeVoiceV2(
             );
           }
 
-          const escapedName =
+          const escaped =
             command.entityName.replace(
-              /[.*+?^${}()|[\]\\]/g,
+              /[.*+?^\${}()|[\]\\]/g,
               '\\$&',
             );
 
           const duplicate =
             await Product.findOne({
-              userId: userObjectId,
+              userId: uid,
               name: new RegExp(
-                '^' +
-                  escapedName +
-                  '$',
+                `^${escaped}$`,
                 'i',
               ),
             }).session(session);
@@ -1224,9 +1529,11 @@ export async function executeVoiceV2(
             await Product.create(
               [
                 {
-                  userId: userObjectId,
-                  name: command.entityName,
-                  unit: command.unit,
+                  userId: uid,
+                  name:
+                    command.entityName,
+                  unit:
+                    command.unit,
                   stockQuantity:
                     num(command.quantity),
                   buyPrice:
@@ -1242,7 +1549,9 @@ export async function executeVoiceV2(
 
           result = {
             type: 'CREATE_PRODUCT',
-            id: String(product._id),
+            id: String(
+              product._id,
+            ),
             name: product.name,
             unit: product.unit,
             stock:
@@ -1252,7 +1561,13 @@ export async function executeVoiceV2(
             sellPrice:
               product.sellPrice,
           };
-        } else if (
+        }
+
+        /* ---------------------------------------------------------------- */
+        /* UPDATE PRODUCT                                                    */
+        /* ---------------------------------------------------------------- */
+
+        else if (
           command.action ===
           'UPDATE_PRODUCT'
         ) {
@@ -1278,7 +1593,8 @@ export async function executeVoiceV2(
           }
 
           if (
-            command.unitPrice !== null
+            command.unitPrice !==
+            null
           ) {
             update.buyPrice =
               num(command.unitPrice);
@@ -1289,7 +1605,9 @@ export async function executeVoiceV2(
               command.query;
           }
 
-          if (!Object.keys(update).length) {
+          if (
+            !Object.keys(update).length
+          ) {
             throw new VoiceV2Error(
               'INVALID_UPDATE',
               'No product fields to update',
@@ -1303,7 +1621,7 @@ export async function executeVoiceV2(
               await Product.findOneAndUpdate(
                 {
                   _id: product._id,
-                  userId: userObjectId,
+                  userId: uid,
                 },
                 {
                   $set: update,
@@ -1314,7 +1632,13 @@ export async function executeVoiceV2(
                 },
               ).lean(),
           };
-        } else if (
+        }
+
+        /* ---------------------------------------------------------------- */
+        /* DELETE PRODUCT                                                    */
+        /* ---------------------------------------------------------------- */
+
+        else if (
           command.action ===
           'DELETE_PRODUCT'
         ) {
@@ -1332,12 +1656,13 @@ export async function executeVoiceV2(
               session,
             );
 
-          if (
+          const hasTransactions =
             await Transaction.exists({
-              userId: userObjectId,
+              userId: uid,
               productId: product._id,
-            }).session(session)
-          ) {
+            }).session(session);
+
+          if (hasTransactions) {
             throw new VoiceV2Error(
               'DELETE_BLOCKED',
               'This product has transaction history and cannot be deleted safely.',
@@ -1347,7 +1672,7 @@ export async function executeVoiceV2(
           await Product.deleteOne(
             {
               _id: product._id,
-              userId: userObjectId,
+              userId: uid,
             },
             {
               session,
@@ -1356,10 +1681,18 @@ export async function executeVoiceV2(
 
           result = {
             type: 'DELETE_PRODUCT',
-            id: String(product._id),
+            id: String(
+              product._id,
+            ),
             name: product.name,
           };
-        } else if (
+        }
+
+        /* ---------------------------------------------------------------- */
+        /* DUE / PAYMENT                                                     */
+        /* ---------------------------------------------------------------- */
+
+        else if (
           command.action ===
             'CREATE_DUE' ||
           command.action ===
@@ -1416,13 +1749,21 @@ export async function executeVoiceV2(
               command.amount,
 
             party: {
-              id: String(party._id),
+              id: String(
+                party._id,
+              ),
               name: party.name,
             },
 
             transaction,
           };
-        } else if (
+        }
+
+        /* ---------------------------------------------------------------- */
+        /* STOCK                                                              */
+        /* ---------------------------------------------------------------- */
+
+        else if (
           command.action ===
             'STOCK_IN' ||
           command.action ===
@@ -1460,7 +1801,9 @@ export async function executeVoiceV2(
                 ),
 
                 amount: money(
-                  num(command.quantity) *
+                  num(
+                    command.quantity,
+                  ) *
                     num(
                       command.unitPrice,
                     ),
@@ -1508,7 +1851,13 @@ export async function executeVoiceV2(
 
             transaction,
           };
-        } else if (
+        }
+
+        /* ---------------------------------------------------------------- */
+        /* SALE / PURCHASE                                                   */
+        /* ---------------------------------------------------------------- */
+
+        else if (
           command.action ===
             'CREATE_SALE' ||
           command.action ===
@@ -1671,9 +2020,9 @@ export async function executeVoiceV2(
             if (due > 0) {
               await Party.updateOne(
                 {
-                  _id: supplier._id,
-                  userId:
-                    userObjectId,
+                  _id:
+                    supplier._id,
+                  userId: uid,
                 },
                 {
                   $inc: {
@@ -1705,7 +2054,13 @@ export async function executeVoiceV2(
               transaction,
             };
           }
-        } else if (
+        }
+
+        /* ---------------------------------------------------------------- */
+        /* EXPENSE                                                            */
+        /* ---------------------------------------------------------------- */
+
+        else if (
           command.action ===
           'CREATE_EXPENSE'
         ) {
@@ -1739,13 +2094,17 @@ export async function executeVoiceV2(
 
           result = {
             type: 'CREATE_EXPENSE',
-
             amount:
               command.amount,
-
             transaction,
           };
-        } else if (
+        }
+
+        /* ---------------------------------------------------------------- */
+        /* DELETE TRANSACTION                                                */
+        /* ---------------------------------------------------------------- */
+
+        else if (
           command.action ===
           'DELETE_TRANSACTION'
         ) {
@@ -1771,7 +2130,13 @@ export async function executeVoiceV2(
                 session,
               ),
           };
-        } else {
+        }
+
+        /* ---------------------------------------------------------------- */
+        /* Unsupported                                                        */
+        /* ---------------------------------------------------------------- */
+
+        else {
           throw new VoiceV2Error(
             'UNSUPPORTED_ACTION',
             `Action ${command.action} is not implemented yet.`,
@@ -1787,7 +2152,7 @@ export async function executeVoiceV2(
           w: 'majority',
         },
 
-        maxCommitTimeMS: 10000,
+        maxCommitTimeMS: 10_000,
       },
     );
   } catch (error) {
@@ -1811,13 +2176,24 @@ export async function executeVoiceV2(
     await session.endSession();
   }
 
+  /* ---------------------------------------------------------------------- */
+  /* Audit                                                                   */
+  /* ---------------------------------------------------------------------- */
+
   if (commandId) {
     await AuditLog.create({
-      userId: userObjectId,
-      voiceTranscript: transcript,
-      parsedIntent: command,
+      userId: uid,
+
+      voiceTranscript:
+        transcript,
+
+      parsedIntent:
+        command,
+
       status: 'SUCCESS',
+
       commandId,
+
       result,
     }).catch(() => {});
   }
