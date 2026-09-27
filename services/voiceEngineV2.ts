@@ -85,13 +85,14 @@ async function aiParse(t:string):Promise<VoiceV2Command>{
     tools:[VOICE_V2_TOOL],
     tool_choice:{type:'function',function:{name:'emit_voice_command'}}
    } as any);
-   // OpenAI's current SDK types include both function and custom tool calls.
-   // Narrow the union explicitly so this remains compatible with the installed SDK.
-   const call = r.choices[0]?.message?.tool_calls?.find(
-    (x): x is { type: 'function'; function: { arguments?: string } } => x.type === 'function'
-   );
-   if(!call?.function?.arguments)throw new Error('Provider returned no structured voice command');
-   const parsed=JSON.parse(call.function.arguments);
+   // The SDK exposes function/custom tool-call variants. Filter by type,
+   // then read the function payload from the narrowed runtime value.
+   const call = r.choices[0]?.message?.tool_calls?.find((x) => x.type === 'function');
+   const args = (call as any)?.function?.arguments;
+   if(typeof args !== 'string' || !args.trim()){
+    throw new Error('Provider returned no structured voice command');
+   }
+   const parsed=JSON.parse(args);
    return VoiceV2Schema.parse(parsed);
   }catch(e){
    last=e instanceof Error?e.message:'provider failed';
