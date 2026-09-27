@@ -41,12 +41,27 @@ export default function VoiceControl(){
      {error&&<div className="mb-2 rounded-2xl border border-red-100 bg-white px-4 py-3 text-xs text-red-600 shadow-lg">{error}</div>}
      <form onSubmit={submit} className="flex items-center gap-2 rounded-[28px] border border-slate-200 bg-white p-2 shadow-[0_8px_32px_rgba(15,23,42,0.12)] focus-within:border-emerald-400 focus-within:ring-2 focus-within:ring-emerald-100">
        <input value={text} onChange={e=>setText(e.target.value)} aria-label="Voice command text fallback" placeholder="Message TaliKhata..." className="min-w-0 flex-1 bg-transparent px-3 py-2.5 text-sm text-slate-900 outline-none placeholder:text-slate-400 sm:text-base"/>
-       <button type="button" onClick={start} disabled={state==='Listening'||state==='Processing'} className={'flex h-10 w-10 shrink-0 items-center justify-center rounded-full transition disabled:cursor-not-allowed disabled:opacity-60 '+(state==='Error'?'bg-red-50 text-red-600':state==='Success'?'bg-emerald-50 text-emerald-600':'bg-slate-100 text-slate-700 hover:bg-emerald-50 hover:text-emerald-700')} aria-label="Start voice command">
-         {state==='Listening'?<motion.div animate={{scale:[1,1.18,1]}} transition={{repeat:Infinity,duration:.8}}><Mic size={19}/></motion.div>:state==='Processing'?<Loader2 size={19} className="animate-spin"/>:state==='Success'?<Check size={19}/>:state==='Error'?<AlertCircle size={19}/>:<Mic size={19}/>}
-       </button>
-       <button type="submit" disabled={state==='Processing'||!text.trim()} className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-slate-900 text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-40" aria-label="Send command">
-         <Send size={18}/>
-       </button>
+       <div className="flex shrink-0 items-center gap-1 rounded-2xl bg-slate-50 p-1">
+         <button
+           type="button"
+           onClick={start}
+           disabled={state==='Listening'||state==='Processing'}
+           className={'flex h-10 w-10 items-center justify-center rounded-xl transition-all disabled:cursor-not-allowed disabled:opacity-60 '+(state==='Error'?'bg-red-50 text-red-600':state==='Success'?'bg-emerald-50 text-emerald-600':state==='Listening'?'bg-emerald-600 text-white shadow-sm':'bg-white text-emerald-600 shadow-sm hover:bg-emerald-50')}
+           aria-label="Start voice command"
+           title="Voice command"
+         >
+           {state==='Listening'?<motion.div animate={{scale:[1,1.18,1]}} transition={{repeat:Infinity,duration:.8}}><Mic size={19}/></motion.div>:state==='Processing'?<Loader2 size={19} className="animate-spin"/>:state==='Success'?<Check size={19}/>:state==='Error'?<AlertCircle size={19}/>:<Mic size={19}/>}
+         </button>
+         <button
+           type="submit"
+           disabled={state==='Processing'||!text.trim()}
+           className="flex h-10 w-10 items-center justify-center rounded-xl bg-slate-900 text-white transition-all hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-40"
+           aria-label="Send command"
+           title="Send command"
+         >
+           <Send size={18}/>
+         </button>
+       </div>
      </form>
      <div className="mt-1.5 flex items-center justify-center gap-2 text-[10px] text-slate-400"><span className={'h-1.5 w-1.5 rounded-full '+(state==='Listening'?'bg-red-500':state==='Processing'?'bg-amber-500':state==='Success'?'bg-emerald-500':'bg-slate-300')}></span><span>{state==='Idle'?'Voice or text command':state}</span></div>
    </div>
