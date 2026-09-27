@@ -1,270 +1,131 @@
-
 'use client';
 
 import Link from 'next/link';
 import { useState } from 'react';
+import { usePathname } from 'next/navigation';
 import { useSession } from 'next-auth/react';
 import {
-  Menu,
-  X,
-  Home,
-  Users,
-  Boxes,
-  ShoppingCart,
-  Truck,
-  WalletCards,
-  BookOpen,
-  Sunset,
-  BarChart3,
-  Bot,
-  ScrollText,
-  Settings,
-  Mic,
-  type LucideIcon,
+  Menu, X, Home, Users, Boxes, ShoppingCart, Truck, WalletCards,
+  BookOpen, Sunset, BarChart3, Bot, ScrollText, Settings, Mic,
+  Plus, PanelLeftClose, PanelLeftOpen, type LucideIcon,
 } from 'lucide-react';
-
 import UserMenu from '@/components/UserMenu';
 import VoiceControl from '@/components/VoiceControl';
 
-/**
- * This dashboard is authenticated and user-specific.
- * It must always be dynamically rendered.
- */
 export const dynamic = 'force-dynamic';
 
-type DashboardLink = {
-  href: string;
-  label: string;
-  icon: LucideIcon;
-};
+type DashboardLink = { href: string; label: string; icon: LucideIcon };
 
 const links: DashboardLink[] = [
-  {
-    href: '/dashboard',
-    label: 'Overview',
-    icon: Home,
-  },
-  {
-    href: '/dashboard/parties',
-    label: 'বাকি',
-    icon: Users,
-  },
-  {
-    href: '/dashboard/products',
-    label: 'স্টক',
-    icon: Boxes,
-  },
-  {
-    href: '/dashboard/sales',
-    label: 'বিক্রি',
-    icon: ShoppingCart,
-  },
-  {
-    href: '/dashboard/purchases',
-    label: 'ক্রয়',
-    icon: Truck,
-  },
-  {
-    href: '/dashboard/payments',
-    label: 'পেমেন্ট',
-    icon: WalletCards,
-  },
-  {
-    href: '/dashboard/transactions',
-    label: 'লেনদেন',
-    icon: BookOpen,
-  },
-  {
-    href: '/dashboard/closing',
-    label: 'দিন শেষ',
-    icon: Sunset,
-  },
-  {
-    href: '/dashboard/reports',
-    label: 'রিপোর্ট',
-    icon: BarChart3,
-  },
-  {
-    href: '/dashboard/assistant',
-    label: 'Assistant',
-    icon: Bot,
-  },
-  {
-    href: '/dashboard/audit',
-    label: 'Voice Audit',
-    icon: ScrollText,
-  },
-  {
-    href: '/dashboard/settings',
-    label: 'Settings',
-    icon: Settings,
-  },
+  { href: '/dashboard', label: 'নতুন হিসাব', icon: Plus },
+  { href: '/dashboard/parties', label: 'বাকি / কাস্টমার', icon: Users },
+  { href: '/dashboard/products', label: 'স্টক / পণ্য', icon: Boxes },
+  { href: '/dashboard/sales', label: 'বিক্রি', icon: ShoppingCart },
+  { href: '/dashboard/purchases', label: 'ক্রয়', icon: Truck },
+  { href: '/dashboard/payments', label: 'পেমেন্ট', icon: WalletCards },
+  { href: '/dashboard/transactions', label: 'লেনদেন', icon: BookOpen },
+  { href: '/dashboard/closing', label: 'দিন শেষ', icon: Sunset },
+  { href: '/dashboard/reports', label: 'রিপোর্ট', icon: BarChart3 },
+  { href: '/dashboard/assistant', label: 'Assistant', icon: Bot },
+  { href: '/dashboard/audit', label: 'Voice Audit', icon: ScrollText },
+  { href: '/dashboard/settings', label: 'Settings', icon: Settings },
 ];
 
-export default function DashboardLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const { data: session, status } = useSession();
-  const [menuOpen, setMenuOpen] = useState(false);
-
+  const pathname = usePathname();
+  const [mobileOpen, setMobileOpen] = useState(false);
+  const [collapsed, setCollapsed] = useState(false);
   const user = session?.user;
 
-  const closeMenu = () => {
-    setMenuOpen(false);
-  };
-
-  return (
-    <div className="min-h-screen bg-[#f5f5f7] md:flex">
-      {/* Mobile overlay */}
-      {menuOpen && (
+  const sidebar = (
+    <aside
+      className={[
+        'flex h-full flex-col border-r border-black/[0.07] bg-white',
+        collapsed ? 'w-[76px]' : 'w-[258px]',
+      ].join(' ')}
+    >
+      <div className="flex h-16 items-center gap-2 px-3">
+        <Link href="/dashboard" onClick={() => setMobileOpen(false)} className="flex min-w-0 flex-1 items-center gap-2 px-2">
+          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-emerald-600 text-sm font-bold text-white">T</span>
+          {!collapsed && <span className="truncate text-[17px] font-semibold tracking-[-0.03em]">TaliKhata<span className="text-emerald-600">.</span></span>}
+        </Link>
         <button
           type="button"
-          aria-label="Close dashboard menu"
-          className="fixed inset-0 z-40 bg-black/20 backdrop-blur-[1px] md:hidden"
-          onClick={closeMenu}
-        />
-      )}
-
-      {/* Sidebar */}
-      <aside
-        className={[
-          'fixed inset-y-0 left-0 z-50',
-          'w-[min(86vw,292px)]',
-          'border-r border-black/[0.08]',
-          'bg-white/95 p-4',
-          'shadow-xl backdrop-blur-xl',
-          'transition-transform duration-200 ease-out',
-          'md:static md:w-64 md:translate-x-0 md:shadow-none',
-          menuOpen ? 'translate-x-0' : '-translate-x-full',
-        ].join(' ')}
-      >
-        {/* Sidebar header */}
-        <div className="flex items-center justify-between px-2 py-2">
-          <Link
-            href="/dashboard"
-            onClick={closeMenu}
-            className="text-[21px] font-semibold tracking-[-0.03em]"
-          >
-            TaliKhata
-            <span className="text-emerald-600">.</span>
-          </Link>
-
-          <button
-            type="button"
-            onClick={closeMenu}
-            className="rounded-xl p-2 text-slate-500 transition hover:bg-black/[0.05] md:hidden"
-            aria-label="Close dashboard menu"
-          >
-            <X size={20} />
-          </button>
-        </div>
-
-        {/* Navigation */}
-        <nav
-          className="mt-5 space-y-0.5"
-          aria-label="Dashboard navigation"
+          onClick={() => setCollapsed((v) => !v)}
+          className="hidden rounded-lg p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-700 md:block"
+          aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
         >
-          {/* Admin link */}
-          {user?.role === 'ADMIN' && (
-            <Link
-              href="/admin"
-              onClick={closeMenu}
-              className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-[14px] font-medium text-slate-700 transition hover:bg-emerald-50 hover:text-emerald-700"
-            >
-              <Settings size={18} strokeWidth={1.9} />
-              <span>Admin Panel</span>
-            </Link>
-          )}
+          {collapsed ? <PanelLeftOpen size={18} /> : <PanelLeftClose size={18} />}
+        </button>
+        <button type="button" onClick={() => setMobileOpen(false)} className="rounded-lg p-2 text-slate-400 md:hidden" aria-label="Close menu">
+          <X size={19} />
+        </button>
+      </div>
 
-          {/* Dashboard links */}
-          {links.map(({ href, label, icon: Icon }) => (
-            <Link
-              key={href}
-              href={href}
-              onClick={closeMenu}
-              className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-[14px] font-medium text-slate-700 transition hover:bg-emerald-50 hover:text-emerald-700"
-            >
-              <Icon size={18} strokeWidth={1.9} />
-              <span>{label}</span>
-            </Link>
-          ))}
-        </nav>
-
-        {/* Voice status */}
-        <div className="mt-6 rounded-xl border border-emerald-100 bg-emerald-50/70 p-4 text-sm text-emerald-800">
-          <Mic size={18} strokeWidth={1.9} />
-
-          <p className="mt-2 font-semibold">
-            Voice ready
-          </p>
-
-          <p className="mt-1 leading-5 text-emerald-700">
-            Use the floating mic to manage your shop.
-          </p>
-        </div>
-      </aside>
-
-      {/* Main application */}
-      <div className="min-w-0 flex-1">
-        {/* Top header */}
-        <header className="sticky top-0 z-30 flex min-h-16 items-center justify-between border-b border-black/[0.07] bg-white/85 px-4 backdrop-blur-xl md:px-8">
-          {/* Mobile brand/menu */}
-          <div className="flex items-center gap-3">
-            <button
-              type="button"
-              onClick={() => setMenuOpen(true)}
-              className="rounded-xl p-2 text-slate-700 transition hover:bg-black/[0.05] md:hidden"
-              aria-label="Open dashboard menu"
-              aria-expanded={menuOpen}
-              aria-controls="dashboard-sidebar"
-            >
-              <Menu size={21} />
-            </button>
-
-            <Link
-              href="/dashboard"
-              className="text-[18px] font-semibold tracking-[-0.025em] md:hidden"
-            >
-              TaliKhata
-              <span className="text-emerald-600">.</span>
-            </Link>
-          </div>
-
-          {/* User menu */}
-          <div className="ml-auto">
-            {status !== 'loading' && (
-              <UserMenu
-                name={user?.name ?? ''}
-                email={user?.email ?? ''}
-              />
-            )}
-          </div>
-        </header>
-
-        {/* Page content */}
-        <main className="p-4 sm:p-6 md:p-8">
-          {/* Desktop quick navigation */}
-          <nav
-            className="mb-5 hidden gap-1.5 overflow-x-auto md:flex"
-            aria-label="Dashboard shortcuts"
-          >
-            {links.map(({ href, label }) => (
+      <nav className="flex-1 overflow-y-auto px-2 py-3" aria-label="Dashboard navigation">
+        <p className={`px-3 pb-2 text-[11px] font-semibold uppercase tracking-wider text-slate-400 ${collapsed ? 'sr-only' : ''}`}>Workspace</p>
+        <div className="space-y-0.5">
+          {links.map(({ href, label, icon: Icon }) => {
+            const active = href === '/dashboard' ? pathname === href : pathname.startsWith(href);
+            return (
               <Link
                 key={href}
                 href={href}
-                className="whitespace-nowrap rounded-xl border border-black/[0.07] bg-white/80 px-3 py-2 text-[13px] font-medium text-slate-600 shadow-[0_1px_2px_rgba(0,0,0,0.03)] transition hover:bg-white hover:text-slate-900"
+                onClick={() => setMobileOpen(false)}
+                title={collapsed ? label : undefined}
+                className={[
+                  'flex items-center gap-3 rounded-xl px-3 py-2.5 text-[13px] font-medium transition',
+                  active ? 'bg-emerald-50 text-emerald-700' : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900',
+                  collapsed ? 'justify-center' : '',
+                ].join(' ')}
               >
-                {label}
+                <Icon size={18} strokeWidth={1.9} />
+                {!collapsed && <span className="truncate">{label}</span>}
               </Link>
-            ))}
-          </nav>
+            );
+          })}
+          {user?.role === 'ADMIN' && (
+            <Link href="/admin" onClick={() => setMobileOpen(false)} title={collapsed ? 'Admin Panel' : undefined} className={`mt-3 flex items-center gap-3 rounded-xl px-3 py-2.5 text-[13px] font-medium text-slate-600 hover:bg-slate-50 ${collapsed ? 'justify-center' : ''}`}>
+              <Settings size={18} />{!collapsed && <span>Admin Panel</span>}
+            </Link>
+          )}
+        </div>
+      </nav>
 
-          {children}
-        </main>
+      <div className="border-t border-black/[0.06] p-2">
+        <div className={`rounded-xl bg-emerald-50 p-3 text-emerald-800 ${collapsed ? 'flex justify-center' : ''}`}>
+          <Mic size={18} />
+          {!collapsed && <div className="ml-2"><p className="text-xs font-semibold">Voice ready</p><p className="mt-0.5 text-[11px] text-emerald-700">Bangla · Banglish · English</p></div>}
+        </div>
+      </div>
+    </aside>
+  );
 
-        {/* Floating voice control */}
+  return (
+    <div className="min-h-screen bg-[#f5f5f7] text-slate-900">
+      <div className="fixed inset-y-0 left-0 z-50 hidden md:block">{sidebar}</div>
+
+      {mobileOpen && (
+        <button className="fixed inset-0 z-40 bg-slate-950/30 backdrop-blur-[2px] md:hidden" onClick={() => setMobileOpen(false)} aria-label="Close dashboard navigation" />
+      )}
+      <div className={`fixed inset-y-0 left-0 z-50 transition-transform duration-200 md:hidden ${mobileOpen ? 'translate-x-0' : '-translate-x-full'}`}>
+        {sidebar}
+      </div>
+
+      <div className={`min-w-0 transition-[padding] duration-200 ${collapsed ? 'md:pl-[76px]' : 'md:pl-[258px]'}`}>
+        <header className="sticky top-0 z-30 flex h-16 items-center border-b border-black/[0.07] bg-white/90 px-3 backdrop-blur-xl sm:px-5">
+          <button type="button" onClick={() => setMobileOpen(true)} className="rounded-xl p-2 text-slate-600 hover:bg-slate-100 md:hidden" aria-label="Open dashboard navigation">
+            <Menu size={21} />
+          </button>
+          <div className="ml-2 flex items-center gap-2 md:ml-0">
+            <Home size={17} className="text-slate-400" />
+            <span className="text-sm font-medium text-slate-600">{pathname === '/dashboard' ? 'New conversation' : links.find((x) => pathname.startsWith(x.href))?.label || 'TaliKhata'}</span>
+          </div>
+          <div className="ml-auto">{status !== 'loading' && <UserMenu name={user?.name ?? ''} email={user?.email ?? ''} />}</div>
+        </header>
+
+        <main className="px-3 pb-28 pt-3 sm:px-5 md:px-8 md:pb-10">{children}</main>
         <VoiceControl />
       </div>
     </div>
