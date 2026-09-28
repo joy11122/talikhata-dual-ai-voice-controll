@@ -5,6 +5,17 @@ import { redirect } from 'next/navigation';
 import { Mic, ShieldCheck, LogIn, UserPlus } from 'lucide-react';
 import GoogleButton from '@/components/GoogleButton';
 
+function isAdminEmail(email?: string | null): boolean {
+  if (!email) return false;
+
+  const configured = (process.env.ADMIN_EMAILS || '')
+    .split(',')
+    .map((value) => value.trim().toLowerCase())
+    .filter(Boolean);
+
+  return configured.includes(email.trim().toLowerCase());
+}
+
 export const metadata: Metadata = {
   title: 'TaliKhata Voice | Sign in to your shop',
   description: 'Secure voice-first shop accounting for ledger, inventory, sales and purchases.',
@@ -13,7 +24,15 @@ export const metadata: Metadata = {
 
 export default async function Home(){
   const session=await auth();
-  if(session?.user?.id) redirect('/dashboard');
+
+  if(session?.user?.id) {
+    redirect(
+      session.user.role === 'ADMIN' || isAdminEmail(session.user.email)
+        ? '/admin'
+        : '/dashboard'
+    );
+  }
+
   return <main className="min-h-screen bg-[#f5f5f7] px-5 py-6 sm:py-10">
     <div className="mx-auto flex min-h-[calc(100vh-4rem)] max-w-5xl flex-col justify-center">
       <header className="flex items-center justify-between">
