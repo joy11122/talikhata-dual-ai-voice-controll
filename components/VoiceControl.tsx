@@ -411,11 +411,16 @@ export default function VoiceControl() {
         </div>
       )}
 
-      <div className="fixed bottom-[calc(0.75rem+env(safe-area-inset-bottom))] left-2 right-2 z-50 mx-auto max-w-3xl sm:left-3 sm:right-3 md:bottom-5">
-        <form
-          onSubmit={submit}
-          className="flex h-[58px] items-center gap-0.5 rounded-[30px] border border-slate-200 bg-white px-2 shadow-[0_10px_35px_rgba(15,23,42,0.12)] sm:h-[64px] sm:gap-1.5 sm:px-3"
-        >
+      <div className="fixed bottom-[calc(0.5rem+env(safe-area-inset-bottom))] left-2 right-2 z-50 mx-auto max-w-3xl sm:left-3 sm:right-3 md:bottom-5">
+        <div className="mb-2 flex justify-center">
+          <div className="flex items-center gap-1.5 rounded-full border border-white/80 bg-white/70 px-3 py-1 shadow-sm backdrop-blur-xl">
+            <span className={`h-2 w-2 rounded-full ${state === 'Listening' ? 'bg-red-500 animate-pulse' : state === 'Processing' ? 'bg-blue-500 animate-pulse' : state === 'Error' ? 'bg-red-500' : 'bg-emerald-500 animate-pulse'}`} />
+            <span className="text-[11px] font-semibold text-slate-700">
+              {state === 'Listening' ? 'শুনছি... আপনার কমান্ড বলুন' : state === 'Processing' ? 'কমান্ড প্রক্রিয়াভুক্ত হচ্ছে...' : state === 'Success' ? 'কাজ সফল হয়েছে' : state === 'Error' ? 'Voice input সমস্যা' : 'Voice ready • মাইক্রোফোন টিপুন'}
+            </span>
+          </div>
+        </div>
+        <form onSubmit={submit} className="flex h-[58px] items-center gap-1.5 rounded-[30px] border border-white/80 bg-white/80 px-1.5 shadow-[0_12px_40px_rgba(0,0,0,0.12)] backdrop-blur-2xl sm:h-[64px] sm:px-2">
           <button
             type="button"
             aria-label="New voice command"
@@ -427,7 +432,7 @@ export default function VoiceControl() {
               setState('Idle');
               window.setTimeout(() => inputRef.current?.focus(), 0);
             }}
-            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-[28px] font-light leading-none text-slate-900 transition hover:bg-slate-100 active:scale-95"
+            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-[28px] font-light leading-none text-slate-900 transition hover:bg-black/5 active:scale-95"
           >
             +
           </button>
@@ -449,7 +454,7 @@ export default function VoiceControl() {
             className={
               'flex h-10 w-10 shrink-0 items-center justify-center rounded-full transition active:scale-95 sm:h-11 sm:w-11 ' +
               (state === 'Listening'
-                ? 'bg-emerald-600 text-white shadow-[0_5px_18px_rgba(16,185,129,0.28)]'
+                ? 'bg-red-500 text-white shadow-[0_5px_18px_rgba(239,68,68,0.30)] animate-pulse'
                 : state === 'Error'
                   ? 'text-red-600 hover:bg-red-50'
                   : state === 'Success'
@@ -471,7 +476,7 @@ export default function VoiceControl() {
           <button
             type="submit"
             aria-label="Send command"
-            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-slate-900 text-white transition hover:bg-slate-800 active:scale-95 disabled:opacity-40 sm:h-11 sm:w-11"
+            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-slate-900 text-white shadow-md transition hover:bg-black active:scale-95 disabled:opacity-40 sm:h-11 sm:w-11"
             disabled={!text.trim() || state === 'Processing'}
           >
             <Send size={18} />
