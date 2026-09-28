@@ -140,22 +140,18 @@ function partyName(text: string): string | null {
     .trim();
 
   const patterns = [
-    /^(.+?)\s*(?:এর|র)\s*(?:কাছে\s*)?(?:কত|কতো)\s*(?:টাকা)?\s*(?:পাব|পাবে|পাও|বাকি|পাওনা)/iu,
-
-    /^(.+?)\s*(?:এর|র)\s*(?:বাকি|পাওনা)\s*(?:কত|কতো)/iu,
-
-    /^(.+?)\s*(?:কে)\s*\d[\d,]*(?:\.\d+)?\s*(?:টাকা|tk|taka)?\s*(?:দিলাম|দিল|দিয়েছি|দিয়েছি|জমা|পরিশোধ|paid|pay|dilam|dilo|dil|diyechi)/iu,
-
-    /^(.+?)\s+er\s+kache\s+\d[\d,]*(?:\.\d+)?\s*(?:taka|tk)?\s*(?:baki|due)\s*(?:dilam|dilo|dil|kore|dao)?$/i,
-
-    /^(.+?)\s+ke\s+\d[\d,]*(?:\.\d+)?\s*(?:taka|tk)?\s*(?:dilam|dilo|dil|diyechi|paid|pay)?$/i,
-
-    /^(.+?)\s*(?:কে)\s*\d[\d,]*(?:\.\d+)?\s*(?:টাকা|tk|taka)?\s*(?:বাকি|পাওনা)\s*(?:দিলাম|দাও|করো)?$/iu,
+    /^(.+?)\s*(?:এর|র)\s*(?:কাছে)?\s*(?:কত|কতো)\s*(?:টাকা)?\s*(?:পাব|পাবে|পাও|বাকি|পাওনা|দেনা)/iu,
+    /^(.+?)\s*(?:এর|র)\s*(?:কাছে)?\s*\d[\d,]*(?:\.\d+)?\s*(?:টাকা|tk|taka)?\s*(?:বাকি|পাওনা|দেনা|due|baki)/iu,
+    /^(.+?)\s*(?:কে)\s*\d[\d,]*(?:\.\d+)?\s*(?:টাকা|tk|taka)?\s*(?:দিলাম|দিল|দিয়েছি|দিয়েছি|দেব|দিব|dilam|dilo|dil|diyechi|dibo)/iu,
+    /^(.+?)\s+er\s+kache\s+\d[\d,]*(?:\.\d+)?\s*(?:taka|tk)?\s*(?:baki|due)(?:\s+.*)?$/i,
+    /^(.+?)\s+er\s+baki\s*(?:koto|how much|ache)?$/i,
+    /^(.+?)\s+ke\s+\d[\d,]*(?:\.\d+)?\s*(?:taka|tk)?\s*(?:dilam|dilo|dil|diyechi|dib|dibo|paid|pay)?$/i,
+    /^(.+?)\s*(?:কে)\s*\d[\d,]*(?:\.\d+)?\s*(?:টাকা|tk|taka)?\s*(?:বাকি|পাওনা|দেনা)\s*(?:দিলাম|দাও|করো)?$/iu,
+    /^(.+?)\s*(?:এর|র)\s*(?:খাতায়|খাতায়|অ্যাকাউন্টে|account\s*e)\s*\d[\d,]*(?:\.\d+)?/iu,
   ];
 
   for (const pattern of patterns) {
     const match = value.match(pattern);
-
     if (match?.[1]) {
       return match[1]
         .replace(/(?:এর|র|কে|ে)$/u, '')
@@ -173,14 +169,9 @@ function partyName(text: string): string | null {
 
 function localParse(text: string): VoiceV2Command | null {
   const value = norm(text);
-
   const amount = extractNumber(text);
   const name = partyName(text);
 
-  // Handle common customer/supplier creation commands without an AI call.
-  // This also supports Bangla, Banglish and mixed commands such as:
-  // "Josim name নতুন customer যোগ করো"
-  // "রহিম নামে নতুন কাস্টমার যোগ করো"
   const createParty = extractCreatePartyName(text);
   if (createParty) {
     const command = blank('CREATE_PARTY');
@@ -190,97 +181,56 @@ function localParse(text: string): VoiceV2Command | null {
     return command;
   }
 
-  const balance =
-    /(?:কত|কতো|বাকি|পাওনা|দেনা|balance|due|pabo|pabe|koto)/i.test(
-      value,
-    );
+  const list = /(?:list|তালিকা|সব|সকল|দেখাও|দেখান|show|dao|দাও)/i.test(value);
 
-  const payment =
-    /(?:জমা|পরিশোধ|পেলাম|পেয়েছি|পেয়েছি|দিয়েছে|দিয়েছে|paid|payment|received|receive|dise|diyeche|diyechi)/i.test(
-      value,
-    );
-
-  const givenToParty =
-    /(?:কে|ke)\s*\d[\d,]*(?:\.\d+)?\s*(?:টাকা|tk|taka)?\s*(?:দিলাম|দিল|দিয়েছি|দিয়েছি|dilam|dilo|diyechi)/i.test(
-      value,
-    );
-
-  const due =
-    /(?:বাকি|পাওনা|due|baki)/i.test(value);
-
-  if (name && balance) {
-    const command = blank('READ_BALANCE');
-
-    command.entityType = 'CUSTOMER';
-    command.entityName = name;
-
-    return command;
-  }
-
-  if (name && amount && givenToParty) {
-    const command = blank('CREATE_DUE');
-    command.entityType = 'CUSTOMER';
-    command.entityName = name;
-    command.amount = amount;
-    return command;
-  }
-
-  if (name && amount && payment) {
-    const command = blank('RECEIVE_PAYMENT');
-
-    command.entityType = 'CUSTOMER';
-    command.entityName = name;
-    command.amount = amount;
-
-    return command;
-  }
-
-  if (name && amount && due) {
-    const command = blank('CREATE_DUE');
-
-    command.entityType = 'CUSTOMER';
-    command.entityName = name;
-    command.amount = amount;
-
-    return command;
-  }
-
-  if (
-    /(?:customer|কাস্টমার|গ্রাহক)/i.test(value) &&
-    /(?:list|তালিকা|সব|দেখাও)/i.test(value)
-  ) {
+  if (/(?:customer|কাস্টমার|গ্রাহক|party|পার্টি)/i.test(value) && list) {
     const command = blank('LIST_PARTIES');
-
     command.entityType = 'CUSTOMER';
     command.partyType = 'CUSTOMER';
-
     return command;
   }
 
-  if (
-    /(?:supplier|সরবরাহকারী|সাপ্লায়ার)/i.test(value) &&
-    /(?:list|তালিকা|সব|দেখাও)/i.test(value)
-  ) {
+  if (/(?:supplier|সরবরাহকারী|সাপ্লায়ার)/i.test(value) && list) {
     const command = blank('LIST_PARTIES');
-
     command.entityType = 'SUPPLIER';
     command.partyType = 'SUPPLIER';
-
     return command;
   }
 
-  if (
-    /(?:product|পণ্য|item)/i.test(value) &&
-    /(?:list|তালিকা|সব|দেখাও)/i.test(value)
-  ) {
+  if (/(?:product|পণ্য|item|মাল)/i.test(value) && list) {
     return blank('LIST_PRODUCTS');
   }
 
-  if (
-    /(?:transaction|লেনদেন|হিসাব)/i.test(value) &&
-    /(?:list|তালিকা|দেখাও)/i.test(value)
-  ) {
+  if (/(?:transaction|লেনদেন|হিসাব|খাতা)/i.test(value) && list) {
     return blank('LIST_TRANSACTIONS');
+  }
+
+  const balance = /(?:কত|কতো|বাকি কত|পাওনা কত|দেনা কত|balance|due|pabo|pabe|koto|hisab|হিসাব)/i.test(value);
+  const receive = /(?:আমার কাছে|আমরা|আমি)\s*(?:পেলাম|পেয়েছি|পেয়েছি)|(?:কাছ থেকে|থেকে).*?(?:পেলাম|পেয়েছি|পেয়েছি|আদায়|পরিশোধ)|(?:জমা|পরিশোধ|paid|payment|received|receive|dise|diyeche|diyechi)/i.test(value);
+  const credit = /(?:বাকি|পাওনা|দেনা|due|baki|খাতায়|খাতায়|credit)/i.test(value);
+  const givenTo = /(?:কে|ke)\s*\d[\d,]*(?:\.\d+)?\s*(?:টাকা|tk|taka)?\s*(?:দিলাম|দিল|দিয়েছি|দিয়েছি|dilam|dilo|dil|diyechi)/i.test(value);
+
+  if (name && balance && !amount) {
+    const command = blank('READ_BALANCE');
+    command.entityType = 'CUSTOMER';
+    command.entityName = name;
+    return command;
+  }
+
+  if (name && amount && receive) {
+    const command = blank('RECEIVE_PAYMENT');
+    command.entityType = 'CUSTOMER';
+    command.entityName = name;
+    command.amount = amount;
+    return command;
+  }
+
+  if (name && amount && (givenTo || credit)) {
+    const command = blank('CREATE_DUE');
+    command.entityType = 'CUSTOMER';
+    command.entityName = name;
+    command.amount = amount;
+    return command;
   }
 
   return null;
