@@ -2478,12 +2478,6 @@ export async function executeVoiceV2(
   }
 
   return result;
-}, 'i') }).session(session);
-      if (existing) return { party: existing, created: false };
-    }
-    throw error;
-  }
-}
 
 /* -------------------------------------------------------------------------- */
 /* Confirmation                                                               */
