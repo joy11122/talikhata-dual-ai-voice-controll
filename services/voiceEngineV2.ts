@@ -196,7 +196,12 @@ function localParse(text: string): VoiceV2Command | null {
     );
 
   const payment =
-    /(?:জমা|পরিশোধ|পেলাম|দিয়েছে|দিয়েছে|paid|payment|received|receive|dilam|dilo|dise|diyeche|diyechi)/i.test(
+    /(?:জমা|পরিশোধ|পেলাম|পেয়েছি|পেয়েছি|দিয়েছে|দিয়েছে|paid|payment|received|receive|dise|diyeche|diyechi)/i.test(
+      value,
+    );
+
+  const givenToParty =
+    /(?:কে|ke)\s*\d[\d,]*(?:\.\d+)?\s*(?:টাকা|tk|taka)?\s*(?:দিলাম|দিল|দিয়েছি|দিয়েছি|dilam|dilo|diyechi)/i.test(
       value,
     );
 
@@ -209,6 +214,14 @@ function localParse(text: string): VoiceV2Command | null {
     command.entityType = 'CUSTOMER';
     command.entityName = name;
 
+    return command;
+  }
+
+  if (name && amount && givenToParty) {
+    const command = blank('CREATE_DUE');
+    command.entityType = 'CUSTOMER';
+    command.entityName = name;
+    command.amount = amount;
     return command;
   }
 
@@ -295,11 +308,13 @@ Preserve entityName exactly as spoken whenever possible.
 
 Rules:
 
-Customer credit:
+Customer credit / money given to customer:
 CREATE_DUE
 
-Customer pays shop:
+Customer pays shop / money received from customer:
 RECEIVE_PAYMENT
+
+If a customer name is not found during CREATE_DUE or RECEIVE_PAYMENT, create that customer first and then record the transaction in the same database transaction.
 
 Balance:
 READ_BALANCE
@@ -1754,13 +1769,57 @@ export async function executeVoiceV2(
             );
           }
 
-          const party =
-            await findParty(
-              userId,
-              command.entityName,
-              session,
-              'CUSTOMER',
+          // Auto-create a missing customer before recording the financial entry.
+          // Both writes run inside the same MongoDB transaction.
+          const escapedName = command.entityName.replace(
+            /[.*+?^\${}()|[\\]\\\\]/g,
+            '\\$&',
+          );
+
+          let party = await Party.findOne({
+            userId: uid,
+            partyType: 'CUSTOMER',
+            name: new RegExp('^' + escapedName + '$', 'i'),
+          }).session(session);
+
+          let customerCreated = false;
+
+          if (!party) {
+            try {
+              const created = await Party.create(
+                [{
+                  userId: uid,
+                  name: command.entityName.trim(),
+                  partyType: 'CUSTOMER',
+                  currentBalance: 0,
+                }],
+                { session },
+              );
+
+              party = created[0];
+              customerCreated = true;
+            } catch (error) {
+              if (
+                error instanceof Error &&
+                /duplicate|E11000/i.test(error.message)
+              ) {
+                party = await Party.findOne({
+                  userId: uid,
+                  partyType: 'CUSTOMER',
+                  name: new RegExp('^' + escapedName + '$', 'i'),
+                }).session(session);
+              }
+
+              if (!party) throw error;
+            }
+          }
+
+          if (!party) {
+            throw new VoiceV2Error(
+              'NOT_FOUND',
+              'Customer could not be created',
             );
+          }
 
           const transaction =
             await createTransaction(
