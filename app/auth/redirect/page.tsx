@@ -1,26 +1,27 @@
-
 import { redirect } from 'next/navigation';
 import { auth } from '@/auth';
+
+function isAdminEmail(email?: string | null): boolean {
+  if (!email) return false;
+
+  const configured = (process.env.ADMIN_EMAILS || '')
+    .split(',')
+    .map((value) => value.trim().toLowerCase())
+    .filter(Boolean);
+
+  return configured.includes(email.trim().toLowerCase());
+}
 
 export default async function AuthRedirectPage() {
   const session = await auth();
 
-  /**
-   * No authenticated session.
-   */
   if (!session?.user) {
     redirect('/signin');
   }
 
-  /**
-   * Admin users go to the admin dashboard.
-   */
-  if (session.user.role === 'ADMIN') {
-    redirect('/admin');
-  }
+  const isAdmin =
+    session.user.role === 'ADMIN' ||
+    isAdminEmail(session.user.email);
 
-  /**
-   * Normal users go to the main dashboard.
-   */
-  redirect('/dashboard');
+  redirect(isAdmin ? '/admin' : '/dashboard');
 }
