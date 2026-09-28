@@ -3,13 +3,11 @@
 import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
 import {
-  ArrowUp,
   BarChart3,
   BookOpen,
   Boxes,
   ChevronRight,
   Clock3,
-  Mic,
   Plus,
   ReceiptText,
   Sparkles,
@@ -73,14 +71,14 @@ export default function DashboardPage() {
   }
 
   return (
-    <div className="mx-auto flex min-h-[calc(100vh-9rem)] max-w-4xl flex-col">
+    <div className="mx-auto flex min-h-[calc(100vh-9rem)] max-w-4xl flex-col px-1 sm:px-0">
       <section className="flex flex-1 flex-col justify-center px-1 pb-8 pt-2 sm:pt-4">
-        <div className="mx-auto w-full max-w-3xl">
+        <div className="mx-auto w-full max-w-3xl pt-4 sm:pt-8">
           <div className="text-center">
-            <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-emerald-50 text-emerald-600">
-              <Sparkles size={26} />
+            <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-emerald-50 text-emerald-600 sm:h-14 sm:w-14">
+              <Sparkles size={24} />
             </div>
-            <h1 className="mt-6 text-[28px] font-semibold sm:text-4xl tracking-[-0.04em] text-slate-900 sm:text-4xl">
+            <h1 className="mt-5 text-[28px] font-semibold tracking-[-0.045em] text-slate-900 sm:text-4xl">
               আজ কী হিসাব করবেন?
             </h1>
             <p className="mx-auto mt-3 max-w-xl text-sm leading-6 text-slate-500 sm:text-base">
@@ -89,35 +87,16 @@ export default function DashboardPage() {
             </p>
           </div>
 
-          <div className="mt-8 grid grid-cols-2 gap-3 sm:mt-9">
+          <div className="mt-7 grid grid-cols-1 gap-2.5 sm:mt-9 sm:grid-cols-2 sm:gap-3">
             {suggestions.map((suggestion) => (
               <Suggestion key={suggestion} text={suggestion} />
             ))}
           </div>
 
-          <div className="mt-7 rounded-[28px] sm:mt-8 border border-black/[0.07] bg-white p-2 shadow-[0_8px_35px_rgba(15,23,42,0.06)]">
-            <div className="flex min-h-14 items-center gap-1.5 rounded-2xl px-2.5 sm:gap-2 sm:px-3">
-              <Mic className="shrink-0 text-emerald-600" size={20} />
-              <span className="flex-1 text-sm text-slate-400">
-                নিচের microphone চাপুন অথবা voice command লিখুন…
-              </span>
-              <div className="hidden rounded-xl bg-slate-100 px-3 py-2 text-xs text-slate-500 sm:block">
-                Voice ready
-              </div>
-              <button
-                type="button"
-                onClick={() => window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' })}
-                className="flex h-10 w-10 items-center justify-center rounded-xl bg-slate-900 text-white transition hover:bg-slate-800"
-                aria-label="Focus voice controls"
-              >
-                <ArrowUp size={18} />
-              </button>
-            </div>
-          </div>
         </div>
       </section>
 
-      <section className="pb-6 pt-1">
+      <section className="pb-6 pt-3">
         <div className="mb-3 flex items-center justify-between px-1">
           <div>
             <p className="text-sm font-semibold text-slate-900">আপনার হিসাব</p>
