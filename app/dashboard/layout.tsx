@@ -121,19 +121,27 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         {sidebar}
       </div>
 
-      <div className={`min-w-0 transition-[padding] duration-200 ${collapsed ? 'md:pl-[76px]' : 'md:pl-[258px]'}`}>
-        <header className="sticky top-0 z-30 flex h-16 items-center border-b border-black/[0.07] bg-white/90 px-3 backdrop-blur-xl sm:px-5">
-          <button type="button" onClick={() => setMobileOpen(true)} className="rounded-xl p-2 text-slate-600 hover:bg-slate-100 md:hidden" aria-label="Open dashboard navigation">
-            <Menu size={21} />
-          </button>
-          <div className="ml-2 flex items-center gap-2 md:ml-0">
+      <div className={`relative min-w-0 transition-[padding] duration-200 ${collapsed ? 'md:pl-[76px]' : 'md:pl-[258px]'}`}>
+        {/* Desktop workspace header. Mobile uses the dashboard's Apple-style app header. */}
+        <header className="sticky top-0 z-30 hidden h-16 items-center border-b border-black/[0.07] bg-white/90 px-3 backdrop-blur-xl sm:px-5 md:flex">
+          <div className="flex items-center gap-2">
             <Home size={17} className="text-slate-400" />
             <span className="text-sm font-medium text-slate-600">{currentTitle}</span>
           </div>
           <div className="ml-auto">{status !== 'loading' && <UserMenu name={user?.name ?? ''} email={user?.email ?? ''} />}</div>
         </header>
 
-        <main className="px-3 pb-28 pt-3 sm:px-5 md:px-8 md:pb-10">{children}</main>
+        {/* Mobile navigation trigger — intentionally minimal so it does not break the Apple-style dashboard composition. */}
+        <button
+          type="button"
+          onClick={() => setMobileOpen(true)}
+          className="fixed left-3 top-3 z-[45] flex h-10 w-10 items-center justify-center rounded-full border border-white/80 bg-white/75 text-slate-700 shadow-sm backdrop-blur-xl md:hidden"
+          aria-label="Open dashboard navigation"
+        >
+          <Menu size={19} />
+        </button>
+
+        <main className="min-h-screen px-0 pb-0 pt-0 sm:px-0 md:px-8 md:pb-10 md:pt-3">{children}</main>
         <VoiceControl />
       </div>
     </div>
