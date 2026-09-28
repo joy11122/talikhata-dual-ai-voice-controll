@@ -2,6 +2,71 @@ import Party from '@/models/Party';import Product from '@/models/Product';import
 function consonantKey(name:string){
   return phoneticKey(name).replace(/[aeiou]/g,'');
 }
+
+/**
+ * Compare Bengali names with common Banglish spellings.
+ *
+ * Example:
+ *   রহিম -> rhim
+ *   Rahim -> rhim
+ *
+ * Bengali speech/text frequently arrives in Banglish with an explicit
+ * "a" that is implicit in Bengali orthography. Removing that short
+ * inter-consonant "a" makes these representations resolve to the same
+ * identity without changing the stored party name.
+ */
+function banglishComparable(name:string){
+  const raw=normalizeVoiceText(name).toLowerCase().trim();
+  if(!/[a-z]/i.test(raw)) return phoneticKey(raw);
+
+  const s=raw
+    .replace(/[^a-z0-9\s]/gi,' ')
+    .replace(/\s+/g,' ')
+    .trim();
+
+  // Common Banglish suffixes used by voice/STT.
+  const stem=s.replace(/\s+(?:er|r|ke|k|der|e)$/i,'').trim();
+
+  // Normalize common alternate spellings first.
+  const normalized=stem
+    .replace(/ph/g,'f')
+    .replace(/bh/g,'b')
+    .replace(/kh/g,'k')
+    .replace(/gh/g,'g')
+    .replace(/dh/g,'d')
+    .replace(/th/g,'t')
+    .replace(/sh/g,'s')
+    .replace(/chh/g,'c')
+    .replace(/ch/g,'c')
+    .replace(/aa/g,'a')
+    .replace(/ee/g,'i')
+    .replace(/ii/g,'i')
+    .replace(/oo/g,'u')
+    .replace(/uu/g,'u')
+    .replace(/ou/g,'o')
+    .replace(/ow/g,'o')
+    .replace(/w/g,'b')
+    .replace(/v/g,'b')
+    .replace(/z/g,'j')
+    .replace(/q/g,'k')
+    .replace(/x/g,'ks');
+
+  // Bengali orthography normally does not spell the inherent "a".
+  // "Rahim", "Karim", "Jasim" therefore compare as "rhim", "krim", "jsim".
+  return normalized
+    .replace(/([bcdfghjklmnpqrstvwxyz])a(?=[bcdfghjklmnpqrstvwxyz])/g,'$1')
+    .replace(/(.)\1+/g,'$1');
+}
+
+function identityKeys(name:string){
+  const raw=normalizeVoiceText(name).toLowerCase().trim();
+  return new Set([
+    phoneticKey(raw),
+    consonantKey(raw),
+    banglishComparable(raw),
+    banglishComparable(transliterateBanglish(raw)),
+  ].filter(Boolean));
+}
 function escapeRegex(s:string){return s.replace(/[.*+?^${}()|[\]\\]/g,'\\$&');}
 function variants(name:string){
   const raw=normalizeVoiceText(name).toLowerCase().trim();
