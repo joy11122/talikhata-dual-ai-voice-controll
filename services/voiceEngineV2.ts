@@ -139,24 +139,35 @@ function partyName(text: string): string | null {
     .replace(/\s+/g, ' ')
     .trim();
 
+  const cleanName = (raw: string) =>
+    raw
+      .replace(/^(?:ভাই|স্যার|সাহেব|মিস্টার|মিসেস)\s+/iu, '')
+      .replace(/\s+(?:ভাই|স্যার|সাহেব|sir|vai|bhai)$/iu, '')
+      .replace(/(?:এর|র|কে|দের|ে)$/u, '')
+      .replace(/\s+(?:er|r|ke|der|e)$/i, '')
+      .trim();
+
   const patterns = [
     /^(.+?)\s*(?:এর|র)\s*(?:কাছে)?\s*(?:কত|কতো)\s*(?:টাকা)?\s*(?:পাব|পাবে|পাও|বাকি|পাওনা|দেনা)/iu,
-    /^(.+?)\s*(?:এর|র)\s*(?:কাছে)?\s*\d[\d,]*(?:\.\d+)?\s*(?:টাকা|tk|taka)?\s*(?:বাকি|পাওনা|দেনা|due|baki)/iu,
-    /^(.+?)\s*(?:কে)\s*\d[\d,]*(?:\.\d+)?\s*(?:টাকা|tk|taka)?\s*(?:দিলাম|দিল|দিয়েছি|দিয়েছি|দেব|দিব|dilam|dilo|dil|diyechi|dibo)/iu,
+    /^(.+?)\s*(?:এর|র)\s*(?:কাছে)?\s*\d[\d,]*(?:\.\d+)?\s*(?:টাকা|tk|taka)?\s*(?:বাকি|পাওনা|দেনা|due|baki)(?:\s*(?:আছে|রয়েছে|রয়েছে|হয়েছে|হয়েছে))?/iu,
+    /^(.+?)\s*কে\s*\d[\d,]*(?:\.\d+)?\s*(?:টাকা|tk|taka)?\s*(?:বাকি\s*)?(?:দিলাম|দিল|দিয়েছি|দিয়েছি|দেব|দিব|রাখলাম|রাখি|dilam|dilo|dil|diyechi|dibo)/iu,
+    /^(.+?)\s+\d[\d,]*(?:\.\d+)?\s*(?:টাকা|tk|taka)?\s*(?:দিল|দিলো|দিয়েছে|দিয়েছে|পাঠিয়েছে|পরিশোধ করেছে|dilo|dil|diyeche|paid)/iu,
+    /^(.+?)\s*(?:এর|র)\s*(?:কাছ থেকে|কাছথেকে|থেকে)\s*\d[\d,]*(?:\.\d+)?\s*(?:টাকা|tk|taka)?\s*(?:পেলাম|পেয়েছি|পেয়েছি|নিলাম|নিয়েছি|নিয়েছি|আদায় করলাম|আদায় করলাম|received|nilam)/iu,
     /^(.+?)\s+er\s+kache\s+\d[\d,]*(?:\.\d+)?\s*(?:taka|tk)?\s*(?:baki|due)(?:\s+.*)?$/i,
     /^(.+?)\s+er\s+baki\s*(?:koto|how much|ache)?$/i,
-    /^(.+?)\s+ke\s+\d[\d,]*(?:\.\d+)?\s*(?:taka|tk)?\s*(?:dilam|dilo|dil|diyechi|dib|dibo|paid|pay)?$/i,
-    /^(.+?)\s*(?:কে)\s*\d[\d,]*(?:\.\d+)?\s*(?:টাকা|tk|taka)?\s*(?:বাকি|পাওনা|দেনা)\s*(?:দিলাম|দাও|করো)?$/iu,
+    /^(.+?)\s+ke\s+\d[\d,]*(?:\.\d+)?\s*(?:taka|tk)?\s*(?:baki\s*)?(?:dilam|dilo|dil|diyechi|dib|dibo|rakhlam|paid)?$/i,
+    /^(.+?)\s+\d[\d,]*(?:\.\d+)?\s*(?:taka|tk)?\s*(?:dil|dilo|diyeche|paid)$/i,
+    /^(.+?)\s+er\s+kach\s+theke\s+\d[\d,]*(?:\.\d+)?\s*(?:taka|tk)?\s*(?:pelam|peyechi|nilam|received)$/i,
     /^(.+?)\s*(?:এর|র)\s*(?:খাতায়|খাতায়|অ্যাকাউন্টে|account\s*e)\s*\d[\d,]*(?:\.\d+)?/iu,
   ];
 
   for (const pattern of patterns) {
     const match = value.match(pattern);
     if (match?.[1]) {
-      return match[1]
-        .replace(/(?:এর|র|কে|ে)$/u, '')
-        .replace(/\s+(?:er|r|ke|der|e)$/i, '')
-        .trim();
+      const name = cleanName(match[1]);
+      if (name && !/^(?:কত|কতো|টাকা|taka|tk)$/iu.test(name)) {
+        return name;
+      }
     }
   }
 
@@ -181,7 +192,7 @@ function localParse(text: string): VoiceV2Command | null {
     return command;
   }
 
-  const list = /(?:list|তালিকা|সব|সকল|দেখাও|দেখান|show|dao|দাও)/i.test(value);
+  const list = /(?:list|তালিকা|সব|সকল|দেখাও|দেখান|দেখতে চাই|show|dao|দাও|লিস্ট)/i.test(value);
 
   if (/(?:customer|কাস্টমার|গ্রাহক|party|পার্টি)/i.test(value) && list) {
     const command = blank('LIST_PARTIES');
@@ -190,50 +201,122 @@ function localParse(text: string): VoiceV2Command | null {
     return command;
   }
 
-  if (/(?:supplier|সরবরাহকারী|সাপ্লায়ার)/i.test(value) && list) {
+  if (/(?:supplier|সরবরাহকারী|সাপ্লায়ার|সাপ্লাইয়ার)/i.test(value) && list) {
     const command = blank('LIST_PARTIES');
     command.entityType = 'SUPPLIER';
     command.partyType = 'SUPPLIER';
     return command;
   }
 
-  if (/(?:product|পণ্য|item|মাল)/i.test(value) && list) {
+  if (/(?:product|পণ্য|item|আইটেম|মাল)/i.test(value) && list) {
     return blank('LIST_PRODUCTS');
   }
 
-  if (/(?:transaction|লেনদেন|হিসাব|খাতা)/i.test(value) && list) {
+  if (/(?:transaction|লেনদেন|হিসাব|খাতা|ট্রানজেকশন)/i.test(value) && list) {
     return blank('LIST_TRANSACTIONS');
   }
 
-  const balance = /(?:কত|কতো|বাকি কত|পাওনা কত|দেনা কত|balance|due|pabo|pabe|koto|hisab|হিসাব)/i.test(value);
-  const receive = /(?:আমার কাছে|আমরা|আমি)\s*(?:পেলাম|পেয়েছি|পেয়েছি)|(?:কাছ থেকে|থেকে).*?(?:পেলাম|পেয়েছি|পেয়েছি|আদায়|পরিশোধ)|(?:জমা|পরিশোধ|paid|payment|received|receive|dise|diyeche|diyechi)/i.test(value);
-  const credit = /(?:বাকি|পাওনা|দেনা|due|baki|খাতায়|খাতায়|credit)/i.test(value);
-  const givenTo = /(?:কে|ke)\s*\d[\d,]*(?:\.\d+)?\s*(?:টাকা|tk|taka)?\s*(?:দিলাম|দিল|দিয়েছি|দিয়েছি|dilam|dilo|dil|diyechi)/i.test(value);
+  const customerOwes =
+    /(?:বাকি|পাওনা|দেনা|due|baki|credit|খাতায়|খাতায়|হিসাবে|বাড়াও|বাড়াও|যোগ করো|যোগ করুন|রাখলাম|রাখো)/iu.test(value);
 
-  if (name && balance && !amount) {
+  const customerPaid =
+    /(?:কাছ থেকে|কাছথেকে|থেকে).*?(?:পেলাম|পেয়েছি|পেয়েছি|নিলাম|নিয়েছি|নিয়েছি|আদায়|আদায়|পরিশোধ|জমা)|(?:পেলাম|পেয়েছি|পেয়েছি|দিল|দিয়েছে|দিয়েছে|পরিশোধ করেছে|জমা দিল|জমা দিয়েছে|জমা দিয়েছে|paid|received|payment|pelam|peyechi|nilam|diyeche)/iu.test(value);
+
+  const moneyGivenToParty =
+    /(?:কে|ke)\s*\d[\d,]*(?:\.\d+)?\s*(?:টাকা|tk|taka)?\s*(?:দিলাম|দিল|দিয়েছি|দিয়েছি|দেব|দিব|রাখলাম|রাখো|dilam|dil|dilo|diyechi|dibo)/iu.test(value);
+
+  const balanceQuery =
+    /(?:কত|কতো|বাকি কত|পাওনা কত|দেনা কত|হিসাব|খাতার হিসাব|balance|due|pabo|pabe|koto|hisab|how much|kototuku)/i.test(value);
+
+  if (name && balanceQuery && !amount) {
     const command = blank('READ_BALANCE');
     command.entityType = 'CUSTOMER';
     command.entityName = name;
+    command.partyType = 'CUSTOMER';
     return command;
   }
 
-  if (name && amount && receive) {
+  if (name && amount && customerPaid && !moneyGivenToParty) {
     const command = blank('RECEIVE_PAYMENT');
     command.entityType = 'CUSTOMER';
     command.entityName = name;
+    command.partyType = 'CUSTOMER';
     command.amount = amount;
     return command;
   }
 
-  if (name && amount && (givenTo || credit)) {
+  if (name && amount && (moneyGivenToParty || customerOwes)) {
     const command = blank('CREATE_DUE');
     command.entityType = 'CUSTOMER';
     command.entityName = name;
+    command.partyType = 'CUSTOMER';
+    command.amount = amount;
+    return command;
+  }
+
+  if (name && amount && /(?:দিলাম|দিল|দিয়েছি|দিয়েছি|dilam|dil|dilo|diyechi)/iu.test(value)) {
+    const command = blank('CREATE_DUE');
+    command.entityType = 'CUSTOMER';
+    command.entityName = name;
+    command.partyType = 'CUSTOMER';
     command.amount = amount;
     return command;
   }
 
   return null;
+}
+
+/* -------------------------------------------------------------------------- */
+/* Semantic post-normalization                                                */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * Correct only high-confidence party-payment direction after the LLM.
+ * This prevents a provider from confusing "Rahim gave me 500" with
+ * "I gave Rahim 500", which is the most expensive class of voice error.
+ */
+function normalizeLedgerSemantics(
+  command: VoiceV2Command,
+  text: string,
+): VoiceV2Command {
+  const value = norm(text);
+  const name = partyName(text);
+  const amount = extractNumber(text);
+
+  if (!name || amount === null) {
+    return command;
+  }
+
+  const outgoingToParty =
+    /(?:কে|ke)\s*\d[\d,]*(?:\.\d+)?\s*(?:টাকা|tk|taka)?\s*(?:দিলাম|দিল|দিয়েছি|দিয়েছি|দেব|দিব|রাখলাম|dilam|dil|dilo|diyechi|dibo)/iu.test(value);
+
+  const incomingFromParty =
+    /(?:কাছ থেকে|কাছথেকে|থেকে)\s*\d[\d,]*(?:\.\d+)?\s*(?:টাকা|tk|taka)?\s*(?:পেলাম|পেয়েছি|পেয়েছি|নিলাম|নিয়েছি|নিয়েছি|আদায়|আদায়|পরিশোধ|জমা)/iu.test(value) ||
+    /^(?:.+?)\s+\d[\d,]*(?:\.\d+)?\s*(?:টাকা|tk|taka)?\s*(?:দিল|দিলো|দিয়েছে|দিয়েছে|পরিশোধ করেছে|paid|received)$/iu.test(value);
+
+  if (outgoingToParty && ['RECEIVE_PAYMENT', 'CREATE_DUE'].includes(command.action)) {
+    return {
+      ...command,
+      action: 'CREATE_DUE',
+      entityType: 'CUSTOMER',
+      partyType: 'CUSTOMER',
+      entityName: command.entityName || name,
+      amount,
+    };
+  }
+
+  if (incomingFromParty && ['CREATE_DUE', 'RECEIVE_PAYMENT'].includes(command.action)) {
+    return {
+      ...command,
+      action: 'RECEIVE_PAYMENT',
+      entityType: 'CUSTOMER',
+      partyType: 'CUSTOMER',
+      entityName: command.entityName || name,
+      amount,
+    };
+  }
+
+  return command;
 }
 
 /* -------------------------------------------------------------------------- */
@@ -657,10 +740,11 @@ export async function parseVoiceV2(
   const local = localParse(normalized);
 
   if (local) {
-    return local;
+    return normalizeLedgerSemantics(local, normalized);
   }
 
-  return aiParse(normalized);
+  const ai = await aiParse(normalized);
+  return normalizeLedgerSemantics(ai, normalized);
 }
 
 /* -------------------------------------------------------------------------- */
