@@ -354,19 +354,17 @@ export default function VoiceControl() {
       <AnimatePresence>
         {state === 'Listening' && (
           <motion.div
-            initial={{ opacity: 0, y: 18 }}
+            initial={{ opacity: 0, y: 8 }}
             animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: 18 }}
-            className="fixed bottom-24 left-4 right-4 z-50 mx-auto max-w-2xl"
+            exit={{ opacity: 0, y: 8 }}
+            className="fixed bottom-24 left-4 right-4 z-50 mx-auto max-w-2xl md:bottom-24"
           >
-            <div className="rounded-2xl border bg-white/95 p-4 shadow-2xl backdrop-blur">
-              <div className="mb-2 flex items-center gap-2 text-xs font-medium text-emerald-700">
+            <div className="rounded-2xl border border-slate-200 bg-white/95 px-4 py-3 text-sm text-slate-700 shadow-lg backdrop-blur">
+              <div className="flex items-center gap-2">
                 <span className="h-2 w-2 animate-pulse rounded-full bg-emerald-500" />
-                Listening
+                <span className="font-medium text-emerald-700">Listening</span>
               </div>
-              <p className="min-h-7 text-base text-slate-800">
-                {text || 'আপনার কথা শুনছি…'}
-              </p>
+              <p className="mt-1 truncate text-slate-600">{text || 'আপনার কথা শুনছি…'}</p>
             </div>
           </motion.div>
         )}
@@ -376,7 +374,7 @@ export default function VoiceControl() {
         <motion.div
           initial={{ opacity: 0, y: 8 }}
           animate={{ opacity: 1, y: 0 }}
-          className="fixed bottom-44 left-4 right-4 z-50 mx-auto max-w-md rounded-2xl border bg-white p-5 shadow-2xl"
+          className="fixed bottom-24 left-4 right-4 z-50 mx-auto max-w-md rounded-2xl border bg-white p-5 shadow-2xl md:bottom-24"
         >
           <div className="flex items-center justify-between">
             <div>
@@ -400,58 +398,114 @@ export default function VoiceControl() {
         </motion.div>
       )}
 
-      <div className="fixed bottom-5 right-5 z-50 flex flex-col items-end gap-2">
-        <button
-          type="button"
-          onClick={start}
-          disabled={state === 'Listening' || state === 'Processing'}
-          className={'flex h-16 w-16 items-center justify-center rounded-full text-white shadow-2xl ' +
-            (state === 'Error' ? 'bg-red-600' : state === 'Success' ? 'bg-emerald-500' : 'bg-emerald-600')}
-          aria-label="Voice command"
-        >
-          {state === 'Listening' ? <Mic /> : state === 'Processing' ? <Loader2 className="animate-spin" /> : state === 'Success' ? <Check /> : state === 'Error' ? <AlertCircle /> : <Mic />}
-        </button>
-        <span className="rounded-full bg-white px-3 py-1 text-xs shadow">{state}</span>
-        {error && <div className="max-w-xs rounded-xl border border-red-100 bg-white p-3 text-xs text-red-600 shadow">{error}</div>}
-      </div>
+      {error && (
+        <div className="fixed bottom-24 left-4 right-4 z-50 mx-auto max-w-xl rounded-xl border border-red-100 bg-white p-3 text-xs text-red-600 shadow-lg">
+          {error}
+        </div>
+      )}
 
-      <div className="fixed bottom-24 left-4 right-4 z-40 md:bottom-5 md:left-1/2 md:right-auto md:w-[min(520px,calc(100%-140px))] md:-translate-x-1/2">
-        <form onSubmit={submit} className="flex gap-2 rounded-xl border bg-white p-2 shadow-lg">
+      <div className="fixed bottom-4 left-3 right-3 z-50 mx-auto max-w-3xl md:bottom-5">
+        <form
+          onSubmit={submit}
+          className="flex h-[64px] items-center gap-2 rounded-[32px] border border-slate-200 bg-white px-3 shadow-[0_8px_30px_rgba(15,23,42,0.10)]"
+        >
+          <button
+            type="button"
+            aria-label="More options"
+            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-3xl font-light text-slate-900 transition hover:bg-slate-100"
+          >
+            +
+          </button>
+
           <input
             value={text}
             onChange={(event) => setText(event.target.value)}
-            aria-label="Voice command text fallback"
-            placeholder="যেমন: করিমের কাছে কত টাকা পাব?"
-            className="min-w-0 flex-1 border-0 px-3 outline-none"
+            aria-label="Voice command or text input"
+            placeholder="আপনার হিসাবের কথা লিখুন বা বলুন..."
+            className="min-w-0 flex-1 bg-transparent px-1 text-[15px] text-slate-800 outline-none placeholder:text-slate-400"
           />
-          <button type="submit" className="rounded-xl bg-slate-900 p-3 text-white" aria-label="Submit voice command">
-            <Send size={17} />
+
+          <button
+            type="button"
+            onClick={start}
+            disabled={state === 'Listening' || state === 'Processing'}
+            aria-label={state === 'Listening' ? 'Listening' : 'Start voice input'}
+            className={
+              'flex h-11 w-11 shrink-0 items-center justify-center rounded-full transition ' +
+              (state === 'Listening'
+                ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-200'
+                : state === 'Error'
+                  ? 'text-red-600 hover:bg-red-50'
+                  : state === 'Success'
+                    ? 'text-emerald-600 hover:bg-emerald-50'
+                    : 'text-slate-700 hover:bg-slate-100')
+            }
+          >
+            {state === 'Processing' ? (
+              <Loader2 size={22} className="animate-spin" />
+            ) : state === 'Success' ? (
+              <Check size={22} />
+            ) : state === 'Error' ? (
+              <AlertCircle size={22} />
+            ) : (
+              <Mic size={22} />
+            )}
+          </button>
+
+          <button
+            type="submit"
+            aria-label="Send command"
+            className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-slate-900 text-white transition hover:bg-slate-800 disabled:opacity-50"
+            disabled={!text.trim() || state === 'Processing'}
+          >
+            <Send size={18} />
           </button>
         </form>
       </div>
 
       <AnimatePresence>
         {pending && (
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[60] grid place-items-center bg-slate-950/50 p-4">
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[60] grid place-items-center bg-slate-950/50 p-4"
+          >
             <motion.div className="w-full max-w-lg rounded-xl bg-white p-6 shadow-2xl">
               <div className="flex justify-between">
                 <h2 className="text-xl font-bold">নিশ্চিত করুন</h2>
-                <button type="button" onClick={() => setPending(null)} aria-label="Close confirmation"><X /></button>
+                <button type="button" onClick={() => setPending(null)} aria-label="Close confirmation">
+                  <X />
+                </button>
               </div>
               <p className="mt-2 text-sm text-slate-500">{pending.message}</p>
               {pending.matches?.length ? (
                 <div className="mt-4 space-y-2">
                   {pending.matches.map((match: any) => (
-                    <button type="button" key={match.id} onClick={() => choose(match)} className="flex w-full items-center justify-between rounded-xl border p-4 text-left">
-                      <span><b>{match.name}</b><small className="block text-slate-500">{match.phone || ''}</small></span>
+                    <button
+                      type="button"
+                      key={match.id}
+                      onClick={() => choose(match)}
+                      className="flex w-full items-center justify-between rounded-xl border p-4 text-left"
+                    >
+                      <span>
+                        <b>{match.name}</b>
+                        <small className="block text-slate-500">{match.phone || ''}</small>
+                      </span>
                       <ChevronRight size={18} />
                     </button>
                   ))}
                 </div>
               ) : null}
               <div className="mt-5 flex gap-3">
-                <button type="button" onClick={() => setPending(null)} className="flex-1 rounded-xl border p-3">Cancel</button>
-                {!pending.matches?.length && <button type="button" onClick={confirm} className="flex-1 rounded-xl bg-slate-900 p-3 text-white">Confirm</button>}
+                <button type="button" onClick={() => setPending(null)} className="flex-1 rounded-xl border p-3">
+                  Cancel
+                </button>
+                {!pending.matches?.length && (
+                  <button type="button" onClick={confirm} className="flex-1 rounded-xl bg-slate-900 p-3 text-white">
+                    Confirm
+                  </button>
+                )}
               </div>
             </motion.div>
           </motion.div>
