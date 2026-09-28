@@ -210,9 +210,24 @@ export default function VoiceControl() {
           return;
         }
 
-        throw new Error(
+        const providerErrors = Array.isArray(data.details?.providers)
+          ? data.details.providers
+              .map(
+                (item: any) =>
+                  `${item.provider || 'provider'} / ${item.model || 'unknown model'}: ${item.message || 'unknown error'}`,
+              )
+              .join('\\n')
+          : '';
+
+        const exactError = [
+          data.code ? `[${data.code}]` : '',
           data.error || 'Voice command failed',
-        );
+          providerErrors ? `\\nProvider diagnostics:\\n${providerErrors}` : '',
+        ]
+          .filter(Boolean)
+          .join(' ');
+
+        throw new Error(exactError);
       }
 
       setPending(null);
@@ -399,8 +414,17 @@ export default function VoiceControl() {
       )}
 
       {error && (
-        <div className="fixed bottom-24 left-4 right-4 z-50 mx-auto max-w-xl rounded-xl border border-red-100 bg-white p-3 text-xs text-red-600 shadow-lg">
-          {error}
+        <div className="fixed bottom-24 left-4 right-4 z-50 mx-auto max-w-xl rounded-xl border border-red-200 bg-white p-4 text-xs text-red-700 shadow-lg">
+          <div className="flex items-start gap-2">
+            <AlertCircle size={17} className="mt-0.5 shrink-0" />
+            <div className="min-w-0 flex-1">
+              <p className="font-semibold">Voice command error</p>
+              <pre className="mt-1 whitespace-pre-wrap break-words font-sans leading-5">{error}</pre>
+            </div>
+            <button type="button" onClick={() => setError('')} aria-label="Close error">
+              <X size={16} />
+            </button>
+          </div>
         </div>
       )}
 
