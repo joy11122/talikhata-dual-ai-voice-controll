@@ -801,15 +801,25 @@ async function findOrCreateParty(
   type: 'CUSTOMER' | 'SUPPLIER',
 ) {
   const normalizedName = name.trim();
+
   if (!normalizedName) {
     throw new VoiceV2Error(
       'MISSING_ENTITY',
-      type === 'SUPPLIER' ? 'Supplier name is required' : 'Customer name is required',
+      type === 'SUPPLIER'
+        ? 'Supplier name is required'
+        : 'Customer name is required',
     );
   }
 
-  const candidates = await resolveParty(userId, normalizedName, session);
-  const sameType = candidates.filter((party: any) => party.partyType === type);
+  const candidates = await resolveParty(
+    userId,
+    normalizedName,
+    session,
+  );
+
+  const sameType = candidates.filter(
+    (party: any) => party.partyType === type,
+  );
 
   if (sameType.length === 1) {
     return { party: sameType[0], created: false };
@@ -818,42 +828,65 @@ async function findOrCreateParty(
   if (sameType.length > 1) {
     throw new VoiceV2Error(
       'AMBIGUOUS_ENTITY',
-      'Multiple ' + (type === 'SUPPLIER' ? 'suppliers' : 'customers') + ' matched "' + normalizedName + '".',
-      { matches: sameType.slice(0, 10).map((party: any) => ({
-        id: String(party._id),
-        name: party.name,
-        phone: party.phone || null,
-        balance: party.currentBalance,
-      })) },
+      'Multiple ' +
+        (type === 'SUPPLIER' ? 'suppliers' : 'customers') +
+        ' matched "' +
+        normalizedName +
+        '".',
+      {
+        matches: sameType.slice(0, 10).map((party: any) => ({
+          id: String(party._id),
+          name: party.name,
+          phone: party.phone || null,
+          balance: party.currentBalance,
+        })),
+      },
     );
   }
 
   try {
     const [created] = await Party.create(
-      [{
-        userId: new Types.ObjectId(userId),
-        name: normalizedName,
-        partyType: type,
-        currentBalance: 0,
-      }],
+      [
+        {
+          userId: new Types.ObjectId(userId),
+          name: normalizedName,
+          partyType: type,
+          currentBalance: 0,
+        },
+      ],
       { session },
     );
+
     return { party: created, created: true };
   } catch (error) {
-    if (error instanceof Error && /E11000|duplicate/i.test(error.message)) {
-      const retry = await resolveParty(userId, normalizedName, session);
-      const retrySameType = retry.filter((party: any) => party.partyType === type);
+    if (
+      error instanceof Error &&
+      /E11000|duplicate/i.test(error.message)
+    ) {
+      const retry = await resolveParty(
+        userId,
+        normalizedName,
+        session,
+      );
+
+      const retrySameType = retry.filter(
+        (party: any) => party.partyType === type,
+      );
+
       if (retrySameType.length === 1) {
-        return { party: retrySameType[0], created: false };
+        return {
+          party: retrySameType[0],
+          created: false,
+        };
       }
     }
+
     throw error;
   }
 }
 
 /* -------------------------------------------------------------------------- */
-/* Confirmation                                                               */');
-      const existing = await Party.findOne({ userId: new Types.ObjectId(userId), partyType: type, name: new RegExp('^' + escaped + '
+/* Confirmation                                                               */
 /* -------------------------------------------------------------------------- */
 
 function confirm(
@@ -861,18 +894,42 @@ function confirm(
   confirmed: boolean,
 ) {
   const destructiveActions = new Set([
-    'DELETE_PARTY', 'DELETE_PRODUCT', 'DELETE_TRANSACTION', 'DELETE_USER',
+    'DELETE_PARTY',
+    'DELETE_PRODUCT',
+    'DELETE_TRANSACTION',
+    'DELETE_USER',
   ]);
+
   const amount = money(command.amount);
-  const highValueWrite = amount >= 10000 && [
-    'CREATE_DUE', 'RECEIVE_PAYMENT', 'CREATE_SALE', 'CREATE_PURCHASE', 'CREATE_EXPENSE',
-  ].includes(command.action);
-  const needsConfirmation = command.confirmRequired || destructiveActions.has(command.action) || highValueWrite;
+
+  const highValueWrite =
+    amount >= 10000 &&
+    [
+      'CREATE_DUE',
+      'RECEIVE_PAYMENT',
+      'CREATE_SALE',
+      'CREATE_PURCHASE',
+      'CREATE_EXPENSE',
+    ].includes(command.action);
+
+  const needsConfirmation =
+    command.confirmRequired ||
+    destructiveActions.has(command.action) ||
+    highValueWrite;
+
   if (needsConfirmation && !confirmed) {
     throw new VoiceV2Error(
       'CONFIRMATION_REQUIRED',
-      highValueWrite ? '৳১০,০০০ বা তার বেশি আর্থিক লেনদেন করার আগে confirmation প্রয়োজন।' : 'এই কাজটি করার আগে confirmation প্রয়োজন।',
-      { action: command.action, amount: amount || null, reason: highValueWrite ? 'HIGH_VALUE_FINANCIAL_WRITE' : 'DESTRUCTIVE_ACTION' },
+      highValueWrite
+        ? '৳১০,০০০ বা তার বেশি আর্থিক লেনদেন করার আগে confirmation প্রয়োজন।'
+        : 'এই কাজটি করার আগে confirmation প্রয়োজন।',
+      {
+        action: command.action,
+        amount: amount || null,
+        reason: highValueWrite
+          ? 'HIGH_VALUE_FINANCIAL_WRITE'
+          : 'DESTRUCTIVE_ACTION',
+      },
     );
   }
 }
