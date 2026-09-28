@@ -70,6 +70,23 @@ const initialForm: SaleForm = {
   notes: '',
 };
 
+function Field({
+  className = '',
+  ...props
+}: FieldProps) {
+  return (
+    <input
+      {...props}
+      className={[
+        'w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900',
+        'outline-none transition focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20',
+        'disabled:cursor-not-allowed disabled:bg-slate-100 disabled:opacity-60',
+        className,
+      ].join(' ')}
+    />
+  );
+}
+
 export default function Page() {
   const [parties, setParties] =
     useState<Party[]>([]);
