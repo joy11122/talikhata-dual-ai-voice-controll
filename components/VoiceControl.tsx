@@ -115,6 +115,7 @@ export default function VoiceControl() {
 
   const latest = useRef('');
   const recognition = useRef<any>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
 
   /*
    * Preserve the existing TaliKhata command event integration.
@@ -261,6 +262,7 @@ export default function VoiceControl() {
     setError('');
     setText('');
     latest.current = '';
+    window.setTimeout(() => inputRef.current?.focus(), 0);
 
     if (
       !(
@@ -372,9 +374,9 @@ export default function VoiceControl() {
             initial={{ opacity: 0, y: 8 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: 8 }}
-            className="fixed bottom-24 left-4 right-4 z-50 mx-auto max-w-2xl md:bottom-24"
+            className="fixed bottom-[84px] left-4 right-4 z-50 mx-auto max-w-3xl md:bottom-[88px]"
           >
-            <div className="rounded-2xl border border-slate-200 bg-white/95 px-4 py-3 text-sm text-slate-700 shadow-lg backdrop-blur">
+            <div className="rounded-2xl border border-slate-200 bg-white/95 px-4 py-2.5 text-sm text-slate-700 shadow-lg backdrop-blur">
               <div className="flex items-center gap-2">
                 <span className="h-2 w-2 animate-pulse rounded-full bg-emerald-500" />
                 <span className="font-medium text-emerald-700">Listening</span>
@@ -389,7 +391,7 @@ export default function VoiceControl() {
         <motion.div
           initial={{ opacity: 0, y: 8 }}
           animate={{ opacity: 1, y: 0 }}
-          className="fixed bottom-24 left-4 right-4 z-50 mx-auto max-w-md rounded-2xl border bg-white p-5 shadow-2xl md:bottom-24"
+          className="fixed bottom-[86px] left-4 right-4 z-50 mx-auto max-w-md rounded-2xl border bg-white p-5 shadow-2xl md:bottom-[90px]"
         >
           <div className="flex items-center justify-between">
             <div>
@@ -414,7 +416,7 @@ export default function VoiceControl() {
       )}
 
       {error && (
-        <div className="fixed bottom-24 left-4 right-4 z-50 mx-auto max-w-xl rounded-xl border border-red-200 bg-white p-4 text-xs text-red-700 shadow-lg">
+        <div className="fixed bottom-[86px] left-4 right-4 z-50 mx-auto max-w-xl rounded-xl border border-red-200 bg-white p-4 text-xs text-red-700 shadow-lg md:bottom-[90px]">
           <div className="flex items-start gap-2">
             <AlertCircle size={17} className="mt-0.5 shrink-0" />
             <div className="min-w-0 flex-1">
@@ -428,25 +430,26 @@ export default function VoiceControl() {
         </div>
       )}
 
-      <div className="fixed bottom-4 left-3 right-3 z-50 mx-auto max-w-3xl md:bottom-5">
+      <div className="fixed bottom-3 left-2 right-2 z-50 mx-auto max-w-3xl sm:left-3 sm:right-3 md:bottom-5">
         <form
           onSubmit={submit}
-          className="flex h-[64px] items-center gap-2 rounded-[32px] border border-slate-200 bg-white px-3 shadow-[0_8px_30px_rgba(15,23,42,0.10)]"
+          className="flex h-[58px] items-center gap-1 rounded-[30px] border border-slate-200 bg-white px-2.5 shadow-[0_8px_30px_rgba(15,23,42,0.10)] sm:h-[64px] sm:gap-2 sm:px-3"
         >
           <button
             type="button"
             aria-label="More options"
-            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-3xl font-light text-slate-900 transition hover:bg-slate-100"
+            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-[28px] font-light leading-none text-slate-900 transition hover:bg-slate-100"
           >
             +
           </button>
 
           <input
+            ref={inputRef}
             value={text}
             onChange={(event) => setText(event.target.value)}
             aria-label="Voice command or text input"
-            placeholder="আপনার হিসাবের কথা লিখুন বা বলুন..."
-            className="min-w-0 flex-1 bg-transparent px-1 text-[15px] text-slate-800 outline-none placeholder:text-slate-400"
+            placeholder="আপনার হিসাবের কথা লিখুন বা বলুন…"
+            className="min-w-0 flex-1 bg-transparent px-1 text-[14px] text-slate-800 outline-none placeholder:text-slate-400 sm:text-[15px]"
           />
 
           <button
@@ -455,7 +458,7 @@ export default function VoiceControl() {
             disabled={state === 'Listening' || state === 'Processing'}
             aria-label={state === 'Listening' ? 'Listening' : 'Start voice input'}
             className={
-              'flex h-11 w-11 shrink-0 items-center justify-center rounded-full transition ' +
+              'flex h-10 w-10 shrink-0 items-center justify-center rounded-full transition sm:h-11 sm:w-11 ' +
               (state === 'Listening'
                 ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-200'
                 : state === 'Error'
@@ -479,7 +482,7 @@ export default function VoiceControl() {
           <button
             type="submit"
             aria-label="Send command"
-            className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-slate-900 text-white transition hover:bg-slate-800 disabled:opacity-50"
+            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-slate-900 text-white transition hover:bg-slate-800 disabled:opacity-50 sm:h-11 sm:w-11"
             disabled={!text.trim() || state === 'Processing'}
           >
             <Send size={18} />
