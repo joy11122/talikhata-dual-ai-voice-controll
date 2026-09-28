@@ -801,17 +801,57 @@ async function findOrCreateParty(
   type: 'CUSTOMER' | 'SUPPLIER',
 ) {
   const normalizedName = name.trim();
-  if (!normalizedName) throw new VoiceV2Error('MISSING_ENTITY', type === 'SUPPLIER' ? 'Supplier name is required' : 'Customer name is required');
+  if (!normalizedName) {
+    throw new VoiceV2Error(
+      'MISSING_ENTITY',
+      type === 'SUPPLIER' ? 'Supplier name is required' : 'Customer name is required',
+    );
+  }
+
   const candidates = await resolveParty(userId, normalizedName, session);
   const sameType = candidates.filter((party: any) => party.partyType === type);
-  if (sameType.length === 1) return { party: sameType[0], created: false };
-  if (sameType.length > 1) throw new VoiceV2Error('AMBIGUOUS_ENTITY', 'Multiple ' + (type === 'SUPPLIER' ? 'suppliers' : 'customers') + ' matched "' + normalizedName + '".', { matches: sameType.slice(0, 10).map((party: any) => ({ id: String(party._id), name: party.name, phone: party.phone || null, balance: party.currentBalance })) });
+
+  if (sameType.length === 1) {
+    return { party: sameType[0], created: false };
+  }
+
+  if (sameType.length > 1) {
+    throw new VoiceV2Error(
+      'AMBIGUOUS_ENTITY',
+      'Multiple ' + (type === 'SUPPLIER' ? 'suppliers' : 'customers') + ' matched "' + normalizedName + '".',
+      { matches: sameType.slice(0, 10).map((party: any) => ({
+        id: String(party._id),
+        name: party.name,
+        phone: party.phone || null,
+        balance: party.currentBalance,
+      })) },
+    );
+  }
+
   try {
-    const [created] = await Party.create([{ userId: new Types.ObjectId(userId), name: normalizedName, partyType: type, currentBalance: 0 }], { session });
+    const [created] = await Party.create(
+      [{
+        userId: new Types.ObjectId(userId),
+        name: normalizedName,
+        partyType: type,
+        currentBalance: 0,
+      }],
+      { session },
+    );
     return { party: created, created: true };
   } catch (error) {
     if (error instanceof Error && /E11000|duplicate/i.test(error.message)) {
-      const escaped = normalizedName.replace(/[.*+?^\${}()|[\]\\]/g, '\\/* -------------------------------------------------------------------------- */
+      const retry = await resolveParty(userId, normalizedName, session);
+      const retrySameType = retry.filter((party: any) => party.partyType === type);
+      if (retrySameType.length === 1) {
+        return { party: retrySameType[0], created: false };
+      }
+    }
+    throw error;
+  }
+}
+
+/* -------------------------------------------------------------------------- */
 /* Confirmation                                                               */');
       const existing = await Party.findOne({ userId: new Types.ObjectId(userId), partyType: type, name: new RegExp('^' + escaped + '
 /* -------------------------------------------------------------------------- */
