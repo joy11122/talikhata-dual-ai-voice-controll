@@ -102,6 +102,33 @@ const blank = (
   confirmRequired: false,
 });
 
+function extractCreatePartyName(text: string): { name: string; partyType: 'CUSTOMER' | 'SUPPLIER' } | null {
+  const value = normalizeVoiceText(text)
+    .replace(/[।,!?;:]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+
+  const patterns = [
+    /^(.*?)\s+(?:name|নামে)\s+নতুন\s+(customer|কাস্টমার|গ্রাহক|supplier|সাপ্লায়ার|সরবরাহকারী)\s+(?:যোগ করো|যোগ করুন|যোগ|add|create|করো|করুন)$/iu,
+    /^(.*?)\s+(?:name|নামে)\s+(customer|কাস্টমার|গ্রাহক|supplier|সাপ্লায়ার|সরবরাহকারী)\s+(?:যোগ করো|যোগ করুন|যোগ|add|create|করো|করুন)$/iu,
+    /^(.*?)\s+নতুন\s+(customer|কাস্টমার|গ্রাহক|supplier|সাপ্লায়ার|সরবরাহকারী)\s+(?:যোগ করো|যোগ করুন|যোগ|add|create|করো|করুন)$/iu,
+  ];
+
+  for (const pattern of patterns) {
+    const match = value.match(pattern);
+    if (!match) continue;
+    const name = match[1]?.trim();
+    const type = match[2] || '';
+    if (!name) continue;
+    return {
+      name,
+      partyType: /^(supplier|সাপ্লায়ার|সরবরাহকারী)$/iu.test(type) ? 'SUPPLIER' : 'CUSTOMER',
+    };
+  }
+
+  return null;
+}
+
 /* -------------------------------------------------------------------------- */
 /* Party name extraction                                                      */
 /* -------------------------------------------------------------------------- */
@@ -149,6 +176,19 @@ function localParse(text: string): VoiceV2Command | null {
 
   const amount = extractNumber(text);
   const name = partyName(text);
+
+  // Handle common customer/supplier creation commands without an AI call.
+  // This also supports Bangla, Banglish and mixed commands such as:
+  // "Josim name নতুন customer যোগ করো"
+  // "রহিম নামে নতুন কাস্টমার যোগ করো"
+  const createParty = extractCreatePartyName(text);
+  if (createParty) {
+    const command = blank('CREATE_PARTY');
+    command.entityType = createParty.partyType;
+    command.entityName = createParty.name;
+    command.partyType = createParty.partyType;
+    return command;
+  }
 
   const balance =
     /(?:কত|কতো|বাকি|পাওনা|দেনা|balance|due|pabo|pabe|koto)/i.test(
