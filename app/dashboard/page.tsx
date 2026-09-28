@@ -82,9 +82,9 @@ export default function DashboardPage() {
   }
 
   return (
-    <div className="mx-auto min-h-[calc(100vh-7rem)] max-w-5xl px-3 pb-28 pt-2 sm:px-5 sm:pt-4">
-      <section className="space-y-5">
-        <header className="flex items-center justify-between px-1 pt-1">
+    <div className="mx-auto min-h-screen w-full max-w-md bg-[#f2f2f7] px-4 pb-36 pt-5 md:min-h-[calc(100vh-7rem)] md:max-w-5xl md:bg-transparent md:px-0 md:pb-28 md:pt-2">
+      <section className="space-y-5 md:space-y-5">
+        <header className="flex items-center justify-between px-1 pt-2">
           <div>
             <div className="flex items-center gap-1.5">
               <span className="h-2 w-2 animate-ping rounded-full bg-emerald-500" />
@@ -92,7 +92,7 @@ export default function DashboardPage() {
             </div>
             <h1 className="mt-0.5 text-[25px] font-bold tracking-[-0.04em] text-slate-900 sm:text-3xl">আজ কী হিসাব করবেন?</h1>
           </div>
-          <div className="flex h-11 w-11 items-center justify-center rounded-full border border-white/80 bg-white/70 p-0.5 shadow-sm backdrop-blur-xl" aria-hidden="true">
+          <div className="mr-0.5 flex h-11 w-11 items-center justify-center rounded-full border border-white/80 bg-white/70 p-0.5 shadow-sm backdrop-blur-xl" aria-label="Profile">
             <div className="flex h-full w-full items-center justify-center rounded-full bg-gradient-to-br from-emerald-400 to-teal-600 text-sm font-bold text-white">T</div>
           </div>
         </header>
