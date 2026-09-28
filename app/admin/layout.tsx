@@ -1,12 +1,12 @@
 import Link from 'next/link';
-import {auth} from '@/auth';
+import {getAdminSession} from '@/lib/adminAuth';
 import {redirect} from 'next/navigation';
 import {ShieldCheck,LayoutDashboard,Users,ScrollText,Store,ShieldAlert,Activity} from 'lucide-react';
 
 export default async function AdminLayout({children}:{children:React.ReactNode}){
-  const session=await auth();
+  const {session,admin}=await getAdminSession();
   if(!session?.user?.id) redirect('/signin?callbackUrl=/admin');
-  if(session.user.role!=='ADMIN') redirect('/dashboard');
+  if(!admin) redirect('/dashboard');
   return (
     <div className="min-h-screen bg-[#f5f5f7] text-[#1d1d1f]">
       <header className="sticky top-0 z-30 border-b border-black/[.07] bg-white/85 backdrop-blur-xl">
