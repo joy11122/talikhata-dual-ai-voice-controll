@@ -3498,20 +3498,54 @@ export async function executeVoiceV2(
             );
           }
 
-          // Auto-create a missing customer before recording the financial entry.
-          // Both writes run inside the same MongoDB transaction.
-          const escapedName = command.entityName.replace(
-            /[.*+?^\${}()|[\\]\\\\]/g,
-            '\\$&',
+          // Resolve by Bengali/Banglish identity before creating a new customer.
+          // Example: existing "রহিম" must match "Rahim" from speech/text.
+          const resolvedParties = await resolveParty(
+            userId,
+            command.entityName,
+            session,
           );
 
-          let party = await Party.findOne({
-            userId: uid,
-            partyType: 'CUSTOMER',
-            name: new RegExp('^' + escapedName + '$', 'i'),
-          }).session(session);
+          let party =
+            resolvedParties.find(
+              (candidate) => candidate.partyType === 'CUSTOMER',
+            ) ?? null;
 
-          let customerCreated = false;
+          if (!party) {
+            try {
+              const created = await Party.create(
+                [{
+                  userId: uid,
+                  name: command.entityName.trim(),
+                  partyType: 'CUSTOMER',
+                  currentBalance: 0,
+                }],
+                { session },
+              );
+
+              party = created[0];
+            } catch (error) {
+              // A concurrent request may have created the customer.
+              // Re-resolve using the same normalized identity matcher.
+              if (
+                error instanceof Error &&
+                /duplicate|E11000/i.test(error.message)
+              ) {
+                const retry = await resolveParty(
+                  userId,
+                  command.entityName,
+                  session,
+                );
+                party =
+                  retry.find(
+                    (candidate) =>
+                      candidate.partyType === 'CUSTOMER',
+                  ) ?? null;
+              }
+
+              if (!party) throw error;
+            }
+          }
 
           if (!party) {
             try {
