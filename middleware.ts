@@ -3,11 +3,21 @@ import authConfig from './auth.config';
 
 const { auth: withAuth } = NextAuth(authConfig);
 
+function isAdminEmail(email?: string | null): boolean {
+  if (!email) return false;
+
+  const configured = (process.env.ADMIN_EMAILS || '')
+    .split(',')
+    .map((value) => value.trim().toLowerCase())
+    .filter(Boolean);
+
+  return configured.includes(email.trim().toLowerCase());
+}
+
 export default withAuth((req) => {
   const path = req.nextUrl.pathname;
   const user = req.auth?.user;
 
-  // Protected application routes
   if (path.startsWith('/dashboard') || path.startsWith('/admin')) {
     if (!user) {
       const callbackUrl =
@@ -20,11 +30,16 @@ export default withAuth((req) => {
     }
   }
 
-  // Admin-only routes
-  if (path.startsWith('/admin') && user?.role !== 'ADMIN') {
-    return Response.redirect(
-      new URL('/dashboard', req.nextUrl.origin),
-    );
+  if (path.startsWith('/admin')) {
+    const admin =
+      user?.role === 'ADMIN' ||
+      isAdminEmail(user?.email);
+
+    if (!admin) {
+      return Response.redirect(
+        new URL('/dashboard', req.nextUrl.origin),
+      );
+    }
   }
 
   return undefined;
