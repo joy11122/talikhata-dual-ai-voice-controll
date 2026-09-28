@@ -7,7 +7,6 @@ import type {
   FormEvent,
   InputHTMLAttributes,
   ReactNode,
-  SelectHTMLAttributes,
 } from 'react';
 
 type Party = {
@@ -46,7 +45,9 @@ type Sale = {
 
 type SaleForm = {
   partyId: string;
+  partyName: string;
   productId: string;
+  productName: string;
   quantity: string;
   unitPrice: string;
   paidAmount: string;
@@ -58,37 +59,11 @@ type FieldProps =
     name?: string;
   };
 
-type SelectProps =
-  SelectHTMLAttributes<HTMLSelectElement> & {
-    children?: ReactNode;
-  };
-
-const Field = ({
-  name,
-  ...props
-}: FieldProps) => (
-  <input
-    {...props}
-    name={name}
-    className="field"
-  />
-);
-
-const Select = ({
-  children,
-  ...props
-}: SelectProps) => (
-  <select
-    {...props}
-    className="field"
-  >
-    {children}
-  </select>
-);
-
 const initialForm: SaleForm = {
   partyId: '',
+  partyName: '',
   productId: '',
+  productName: '',
   quantity: '1',
   unitPrice: '0',
   paidAmount: '0',
@@ -261,33 +236,51 @@ export default function Page() {
     }));
   }
 
-  function handlePartyChange(
-    event: ChangeEvent<HTMLSelectElement>
-  ) {
+  function handlePartyChange(value: string) {
+    const party = parties.find(
+      (item) => item.name.trim().toLowerCase() === value.trim().toLowerCase()
+    );
+
     setForm((current) => ({
       ...current,
-      partyId: event.target.value,
+      partyName: value,
+      partyId: party?._id || '',
     }));
   }
 
-  function handleProductChange(
-    event: ChangeEvent<HTMLSelectElement>
-  ) {
-    const productId =
-      event.target.value;
-
-    const product =
-      products.find(
-        (item) =>
-          item._id === productId
-      );
+  function handleProductChange(value: string) {
+    const product = products.find(
+      (item) => item.name.trim().toLowerCase() === value.trim().toLowerCase()
+    );
 
     setForm((current) => ({
       ...current,
-      productId,
-      unitPrice: String(
-        product?.sellPrice ?? 0
-      ),
+      productName: value,
+      productId: product?._id || '',
+      unitPrice:
+        product && product.sellPrice !== undefined
+          ? String(product.sellPrice)
+          : current.unitPrice,
+    }));
+  }
+
+  function selectParty(party: Party) {
+    setForm((current) => ({
+      ...current,
+      partyId: party._id,
+      partyName: party.name,
+    }));
+  }
+
+  function selectProduct(product: Product) {
+    setForm((current) => ({
+      ...current,
+      productId: product._id,
+      productName: product.name,
+      unitPrice:
+        product.sellPrice !== undefined
+          ? String(product.sellPrice)
+          : current.unitPrice,
     }));
   }
 
@@ -361,16 +354,24 @@ export default function Page() {
 
     setMessage('');
 
-    if (!form.partyId) {
+    const matchedParty = parties.find((party) => party.name.trim().toLowerCase() === form.partyName.trim().toLowerCase());
+    if (!form.partyId && matchedParty) {
+      setForm((current) => ({ ...current, partyId: matchedParty._id }));
+    }
+    if (!form.partyId && !matchedParty) {
       setMessage(
-        'Please select a customer.'
+        'Please enter a valid customer name.'
       );
       return;
     }
 
-    if (!form.productId) {
+    const matchedProduct = products.find((product) => product.name.trim().toLowerCase() === form.productName.trim().toLowerCase());
+    if (!form.productId && matchedProduct) {
+      setForm((current) => ({ ...current, productId: matchedProduct._id, unitPrice: String(matchedProduct.sellPrice ?? current.unitPrice) }));
+    }
+    if (!form.productId && !matchedProduct) {
       setMessage(
-        'Please select a product.'
+        'Please enter a valid product name.'
       );
       return;
     }
@@ -522,28 +523,39 @@ export default function Page() {
             Customer
           </label>
 
-          <Select
-            id="partyId"
-            name="partyId"
-            value={form.partyId}
-            onChange={handlePartyChange}
-            required
-          >
-            <option value="">
-              Select customer
-            </option>
-
-            {parties.map(
-              (party) => (
-                <option
-                  key={party._id}
-                  value={party._id}
-                >
-                  {party.name}
-                </option>
-              )
+          <div className="relative">
+            <Field
+              id="partyName"
+              name="partyName"
+              type="text"
+              value={form.partyName}
+              onChange={(event) =>
+                handlePartyChange(event.target.value)
+              }
+              placeholder="Enter customer name"
+              autoComplete="off"
+              required
+            />
+            {form.partyName && !form.partyId && parties.length > 0 && (
+              <div className="absolute left-0 right-0 top-full z-20 mt-1 max-h-48 overflow-auto rounded-xl border bg-white p-1 shadow-lg">
+                {parties
+                  .filter((party) =>
+                    party.name.toLowerCase().includes(form.partyName.toLowerCase())
+                  )
+                  .slice(0, 6)
+                  .map((party) => (
+                    <button
+                      key={party._id}
+                      type="button"
+                      onClick={() => selectParty(party)}
+                      className="block w-full rounded-lg px-3 py-2 text-left text-sm hover:bg-slate-100"
+                    >
+                      {party.name}
+                    </button>
+                  ))}
+              </div>
             )}
-          </Select>
+          </div>
         </div>
 
         <div>
@@ -554,30 +566,42 @@ export default function Page() {
             Product
           </label>
 
-          <Select
-            id="productId"
-            name="productId"
-            value={form.productId}
-            onChange={handleProductChange}
-            required
-          >
-            <option value="">
-              Select product
-            </option>
-
-            {products.map(
-              (product) => (
-                <option
-                  key={product._id}
-                  value={product._id}
-                >
-                  {product.name} •{' '}
-                  {product.stockQuantity}{' '}
-                  {product.unit}
-                </option>
-              )
+          <div className="relative">
+            <Field
+              id="productName"
+              name="productName"
+              type="text"
+              value={form.productName}
+              onChange={(event) =>
+                handleProductChange(event.target.value)
+              }
+              placeholder="Enter product name"
+              autoComplete="off"
+              required
+            />
+            {form.productName && !form.productId && products.length > 0 && (
+              <div className="absolute left-0 right-0 top-full z-20 mt-1 max-h-48 overflow-auto rounded-xl border bg-white p-1 shadow-lg">
+                {products
+                  .filter((product) =>
+                    product.name.toLowerCase().includes(form.productName.toLowerCase())
+                  )
+                  .slice(0, 6)
+                  .map((product) => (
+                    <button
+                      key={product._id}
+                      type="button"
+                      onClick={() => selectProduct(product)}
+                      className="block w-full rounded-lg px-3 py-2 text-left text-sm hover:bg-slate-100"
+                    >
+                      {product.name}
+                      <span className="ml-2 text-xs text-slate-400">
+                        {product.stockQuantity} {product.unit}
+                      </span>
+                    </button>
+                  ))}
+              </div>
             )}
-          </Select>
+          </div>
         </div>
 
         <div>
