@@ -30,16 +30,21 @@ export default withAuth((req) => {
     }
   }
 
-  if (path.startsWith('/admin')) {
-    const admin =
-      user?.role === 'ADMIN' ||
-      isAdminEmail(user?.email);
+  const admin =
+    user?.role === 'ADMIN' ||
+    isAdminEmail(user?.email);
 
-    if (!admin) {
-      return Response.redirect(
-        new URL('/dashboard', req.nextUrl.origin),
-      );
-    }
+  // Admins should never land in the normal shop dashboard.
+  if (path.startsWith('/dashboard') && admin) {
+    return Response.redirect(
+      new URL('/admin', req.nextUrl.origin),
+    );
+  }
+
+  if (path.startsWith('/admin') && !admin) {
+    return Response.redirect(
+      new URL('/dashboard', req.nextUrl.origin),
+    );
   }
 
   return undefined;
