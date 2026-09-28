@@ -34,13 +34,6 @@ export default withAuth((req) => {
     user?.role === 'ADMIN' ||
     isAdminEmail(user?.email);
 
-  // Admins should never land in the normal shop dashboard.
-  if (path.startsWith('/dashboard') && admin) {
-    return Response.redirect(
-      new URL('/admin', req.nextUrl.origin),
-    );
-  }
-
   if (path.startsWith('/admin') && !admin) {
     return Response.redirect(
       new URL('/dashboard', req.nextUrl.origin),
