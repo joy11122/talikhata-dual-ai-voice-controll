@@ -15,6 +15,6 @@ export async function getAdminSession() {
   const session = await auth();
   const admin =
     Boolean(session?.user?.id) &&
-    (session?.user?.role === 'ADMIN' || isAdminEmail(session.user.email));
+    (session?.user?.role === 'ADMIN' || isAdminEmail(session?.user?.email));
   return { session, admin };
 }
