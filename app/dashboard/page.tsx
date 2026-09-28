@@ -73,14 +73,14 @@ export default function DashboardPage() {
   }
 
   return (
-    <div className="mx-auto flex min-h-[calc(100vh-9rem)] max-w-5xl flex-col">
-      <section className="flex flex-1 flex-col justify-center px-1 pb-8 pt-4">
+    <div className="mx-auto flex min-h-[calc(100vh-9rem)] max-w-4xl flex-col">
+      <section className="flex flex-1 flex-col justify-center px-1 pb-8 pt-2 sm:pt-4">
         <div className="mx-auto w-full max-w-3xl">
           <div className="text-center">
             <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-emerald-50 text-emerald-600">
               <Sparkles size={26} />
             </div>
-            <h1 className="mt-6 text-3xl font-semibold tracking-[-0.04em] text-slate-900 sm:text-4xl">
+            <h1 className="mt-6 text-[28px] font-semibold sm:text-4xl tracking-[-0.04em] text-slate-900 sm:text-4xl">
               আজ কী হিসাব করবেন?
             </h1>
             <p className="mx-auto mt-3 max-w-xl text-sm leading-6 text-slate-500 sm:text-base">
@@ -89,14 +89,14 @@ export default function DashboardPage() {
             </p>
           </div>
 
-          <div className="mt-9 grid gap-3 sm:grid-cols-2">
+          <div className="mt-8 grid grid-cols-2 gap-3 sm:mt-9">
             {suggestions.map((suggestion) => (
               <Suggestion key={suggestion} text={suggestion} />
             ))}
           </div>
 
-          <div className="mt-8 rounded-3xl border border-black/[0.07] bg-white p-2 shadow-[0_8px_35px_rgba(15,23,42,0.06)]">
-            <div className="flex min-h-14 items-center gap-2 rounded-2xl px-3">
+          <div className="mt-7 rounded-[28px] sm:mt-8 border border-black/[0.07] bg-white p-2 shadow-[0_8px_35px_rgba(15,23,42,0.06)]">
+            <div className="flex min-h-14 items-center gap-1.5 rounded-2xl px-2.5 sm:gap-2 sm:px-3">
               <Mic className="shrink-0 text-emerald-600" size={20} />
               <span className="flex-1 text-sm text-slate-400">
                 নিচের microphone চাপুন অথবা voice command লিখুন…
@@ -117,7 +117,7 @@ export default function DashboardPage() {
         </div>
       </section>
 
-      <section className="pb-6">
+      <section className="pb-6 pt-1">
         <div className="mb-3 flex items-center justify-between px-1">
           <div>
             <p className="text-sm font-semibold text-slate-900">আপনার হিসাব</p>
@@ -131,7 +131,7 @@ export default function DashboardPage() {
           </Link>
         </div>
 
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-2 lg:grid-cols-4">
           <Metric icon={<WalletCards size={18} />} label="আপনি পাবেন" value={money(data?.balances?.receivable)} href="/dashboard/parties" />
           <Metric icon={<ReceiptText size={18} />} label="আপনাকে দিতে হবে" value={money(data?.balances?.payable)} href="/dashboard/parties" />
           <Metric icon={<Users size={18} />} label="কাস্টমার / পার্টি" value={data?.parties ?? 0} href="/dashboard/parties" />
@@ -139,8 +139,8 @@ export default function DashboardPage() {
         </div>
       </section>
 
-      <section className="grid gap-4 pb-6 lg:grid-cols-[1.4fr_0.8fr]">
-        <div className="rounded-2xl border border-black/[0.07] bg-white p-5">
+      <section className="grid gap-4 pb-8 lg:grid-cols-[1.4fr_0.8fr]">
+        <div className="rounded-[22px] border border-black/[0.07] bg-white p-4 sm:p-5">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <Clock3 size={17} className="text-slate-500" />
@@ -197,7 +197,7 @@ function Suggestion({ text }: { text: string }) {
   return (
     <button
       type="button"
-      className="group rounded-2xl border border-black/[0.07] bg-white p-4 text-left transition hover:-translate-y-0.5 hover:border-emerald-200 hover:shadow-[0_8px_25px_rgba(16,185,129,0.08)]"
+      className="group rounded-2xl border border-black/[0.07] bg-white p-3.5 text-left transition sm:p-4 hover:-translate-y-0.5 hover:border-emerald-200 hover:shadow-[0_8px_25px_rgba(16,185,129,0.08)]"
       onClick={() => {
         window.dispatchEvent(new CustomEvent('talikhata:command', { detail: text }));
       }}
