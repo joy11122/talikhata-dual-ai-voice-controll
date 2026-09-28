@@ -368,29 +368,6 @@ export default function VoiceControl() {
 
   return (
     <>
-      <AnimatePresence>
-        {state === 'Listening' && (
-          <motion.div
-            initial={{ opacity: 0, y: 8 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: 8 }}
-            className="fixed bottom-[76px] left-3 right-3 z-50 mx-auto max-w-3xl sm:left-4 sm:right-4 md:bottom-[84px]"
-          >
-            <div className="rounded-2xl border border-slate-200 bg-white/95 px-4 py-2.5 text-sm text-slate-700 shadow-[0_8px_30px_rgba(15,23,42,0.10)] backdrop-blur">
-              <div className="flex items-center gap-2">
-                <span className="flex gap-1" aria-hidden="true">
-                  <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-emerald-500 [animation-delay:-0.2s]" />
-                  <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-emerald-500 [animation-delay:-0.1s]" />
-                  <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-emerald-500" />
-                </span>
-                <span className="font-medium text-emerald-700">শুনছি…</span>
-              </div>
-              <p className="mt-1.5 break-words text-slate-600">{text || 'আপনার কথা শুনছি…'}</p>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
       {result?.command?.action === 'READ_BALANCE' && (
         <motion.div
           initial={{ opacity: 0, y: 8 }}
