@@ -48,6 +48,7 @@ async function readJson(response: Response): Promise<any> {
 export default function PartiesPage() {
   const [rows, setRows] = useState<Party[]>([]);
   const [toast, setToast] = useState<Toast | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<Party | null>(null);
   const [form, setForm] = useState(emptyForm);
   const [editing, setEditing] = useState<string | null>(null);
   const [q, setQ] = useState('');
@@ -166,46 +167,40 @@ export default function PartiesPage() {
   async function del(id: string) {
     const party = rows.find((row) => row._id === id);
     if (!party) return;
+    setDeleteTarget(party);
+    showToast('error', `“${party.name}” মুছে ফেলার আগে নিশ্চিত করুন`);
+  }
 
-    if (!window.confirm(`Delete "${party.name}"? This cannot be undone.`)) {
-      return;
-    }
+  async function confirmDelete() {
+    const party = deleteTarget;
+    if (!party) return;
 
+    setDeleteTarget(null);
     setBusy(true);
     setError('');
 
     try {
-      const response = await fetch(`/api/parties/${id}`, {
+      const response = await fetch(`/api/parties/${party._id}`, {
         method: 'DELETE',
         cache: 'no-store',
       });
 
       const data = await readJson(response);
-
       if (!response.ok) {
-        throw new Error(
-          data?.error || 'কাস্টমার মুছে ফেলা যায়নি',
-        );
+        throw new Error(data?.error || 'কাস্টমার মুছে ফেলা যায়নি');
       }
 
-      setRows((current) => current.filter((row) => row._id !== id));
+      setRows((current) => current.filter((row) => row._id !== party._id));
 
-      if (editing === id) {
+      if (editing === party._id) {
         setEditing(null);
         setForm(emptyForm);
       }
 
-      showToast(
-        'success',
-        `${party.name} সফলভাবে মুছে ফেলা হয়েছে`,
-      );
-
+      showToast('success', `${party.name} সফলভাবে মুছে ফেলা হয়েছে`);
       window.dispatchEvent(new Event('talikhata:refresh'));
     } catch (err) {
-      const message =
-        err instanceof Error
-          ? err.message
-          : 'কাস্টমার মুছে ফেলা যায়নি';
+      const message = err instanceof Error ? err.message : 'কাস্টমার মুছে ফেলা যায়নি';
       setError(message);
       showToast('error', message);
     } finally {
@@ -215,6 +210,25 @@ export default function PartiesPage() {
 
   return (
     <div className="mx-auto max-w-6xl">
+      {deleteTarget && (
+        <div className="fixed inset-x-4 bottom-5 z-[10000] mx-auto max-w-md sm:right-6 sm:left-auto sm:inset-x-auto">
+          <div className="rounded-2xl border border-amber-200 bg-white p-4 shadow-[0_20px_60px_rgba(15,23,42,0.18)]">
+            <div className="flex items-start gap-3">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-red-50 text-red-600"><Trash2 size={18} /></div>
+              <div className="min-w-0 flex-1">
+                <p className="font-semibold text-slate-900">কাস্টমার মুছে ফেলবেন?</p>
+                <p className="mt-1 text-sm text-slate-500">“{deleteTarget.name}” স্থায়ীভাবে মুছে যাবে। এই কাজটি পূর্বাবস্থায় ফেরানো যাবে না।</p>
+                <div className="mt-3 flex gap-2">
+                  <button type="button" onClick={() => setDeleteTarget(null)} disabled={busy} className="rounded-xl border border-slate-200 px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50">বাতিল</button>
+                  <button type="button" onClick={() => void confirmDelete()} disabled={busy} className="rounded-xl bg-red-600 px-3 py-2 text-sm font-semibold text-white hover:bg-red-700 disabled:opacity-50">{busy ? 'মুছে ফেলা হচ্ছে…' : 'মুছে ফেলুন'}</button>
+                </div>
+              </div>
+              <button type="button" aria-label="Close delete notification" onClick={() => setDeleteTarget(null)} className="rounded-full p-1 text-slate-400 hover:bg-slate-100"><X size={16} /></button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {toast && (
         <div
           className="fixed right-4 top-4 z-[9999] w-[calc(100%-2rem)] max-w-[390px] sm:right-6 sm:top-6"
@@ -315,7 +329,7 @@ export default function PartiesPage() {
                 size={16}
               />
               <input
-                className="field pl-10"
+                className="field pl-11"
                 aria-label="Phone"
                 placeholder="Phone"
                 value={form.phone}
