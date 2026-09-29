@@ -409,6 +409,8 @@ export default function Page() {
     const effectiveProductId = form.productId || matchedProduct?._id || '';
     const selectedProduct = products.find((product) => product._id === effectiveProductId) || matchedProduct;
     const effectiveVariantId = form.variantId || (selectedProduct?.variants?.length === 1 ? selectedProduct.variants[0]._id : '');
+    const selectedVariant = selectedProduct?.variants?.find((variant) => variant._id === effectiveVariantId);
+    const effectiveUnitPrice = form.unitPrice !== '0' ? Number(form.unitPrice) : Number(selectedVariant?.sellPrice ?? selectedProduct?.sellPrice ?? 0);
     if (!effectiveProductId) {
       setMessage('Please enter a valid product name.');
       return;
@@ -422,7 +424,7 @@ export default function Page() {
       Number(form.quantity);
 
     const unitPrice =
-      Number(form.unitPrice);
+      effectiveUnitPrice;
 
     const paidAmount =
       Number(form.paidAmount);
