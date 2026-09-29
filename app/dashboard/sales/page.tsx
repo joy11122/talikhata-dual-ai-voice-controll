@@ -15,12 +15,17 @@ type Party = {
   partyType?: string;
 };
 
+type ProductVariant = { _id: string; name: string; stockQuantity: number; sellPrice?: number; attributes?: Record<string, string | number | boolean> };
+
 type Product = {
   _id: string;
   name: string;
   stockQuantity: number;
   unit: string;
   sellPrice?: number;
+  category?: string;
+  brand?: string;
+  variants?: ProductVariant[];
 };
 
 type Sale = {
@@ -48,6 +53,8 @@ type SaleForm = {
   partyName: string;
   productId: string;
   productName: string;
+  variantId: string;
+  variantName: string;
   quantity: string;
   unitPrice: string;
   paidAmount: string;
@@ -64,6 +71,8 @@ const initialForm: SaleForm = {
   partyName: '',
   productId: '',
   productName: '',
+  variantId: '',
+  variantName: '',
   quantity: '1',
   unitPrice: '0',
   paidAmount: '0',
@@ -290,14 +299,19 @@ export default function Page() {
   }
 
   function selectProduct(product: Product) {
+    const firstVariant = product.variants?.length === 1 ? product.variants[0] : undefined;
     setForm((current) => ({
       ...current,
       productId: product._id,
       productName: product.name,
+      variantId: firstVariant?._id || '',
+      variantName: firstVariant?.name || '',
       unitPrice:
-        product.sellPrice !== undefined
-          ? String(product.sellPrice)
-          : current.unitPrice,
+        firstVariant?.sellPrice !== undefined
+          ? String(firstVariant.sellPrice)
+          : product.sellPrice !== undefined
+            ? String(product.sellPrice)
+            : current.unitPrice,
     }));
   }
 
@@ -393,6 +407,12 @@ export default function Page() {
       return;
     }
 
+    const selectedProduct = products.find((product) => product._id === form.productId);
+    if (selectedProduct?.variants?.length && !form.variantId) {
+      setMessage('Please select a product variant.');
+      return;
+    }
+
     const quantity =
       Number(form.quantity);
 
@@ -459,6 +479,8 @@ export default function Page() {
                 form.partyId,
               productId:
                 form.productId,
+              variantId:
+                form.variantId || null,
               quantity,
               unitPrice,
               paidAmount,
@@ -621,6 +643,38 @@ export default function Page() {
           </div>
         </div>
 
+        {(() => {
+          const selectedProduct = products.find((product) => product._id === form.productId);
+          if (!selectedProduct?.variants?.length) return null;
+          return (
+            <div>
+              <label htmlFor="variantId" className="form-label">Variant</label>
+              <select
+                id="variantId"
+                className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none transition focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20"
+                value={form.variantId}
+                onChange={(event) => {
+                  const variant = selectedProduct.variants?.find((item) => item._id === event.target.value);
+                  setForm((current) => ({
+                    ...current,
+                    variantId: event.target.value,
+                    variantName: variant?.name || '',
+                    unitPrice: variant?.sellPrice !== undefined ? String(variant.sellPrice) : current.unitPrice,
+                  }));
+                }}
+                required
+              >
+                <option value="">Select variant</option>
+                {selectedProduct.variants.map((variant) => (
+                  <option key={variant._id} value={variant._id}>
+                    {variant.name} · {variant.stockQuantity} {selectedProduct.unit}
+                  </option>
+                ))}
+              </select>
+            </div>
+          );
+        })()}
+
         <div>
           <label
             htmlFor="quantity"
@@ -759,9 +813,7 @@ export default function Page() {
                 >
                   <div>
                     <p className="font-medium">
-                      {sale.productId
-                        ?.name ||
-                        'Product'}{' '}
+                      {sale.productId?.name || 'Product'}{sale.variantId?.name ? ' · ' + sale.variantId.name : ''}{' '}
                       • ৳
                       {Number(
                         sale.amount ??
