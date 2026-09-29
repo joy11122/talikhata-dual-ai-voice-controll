@@ -209,7 +209,7 @@ export default function PartiesPage() {
   }
 
   return (
-    <div className="mx-auto max-w-6xl">
+    <div className="mx-auto min-h-screen w-full max-w-6xl px-4 pb-36 pt-5 md:min-h-[calc(100vh-7rem)] md:px-0 md:pb-28 md:pt-2">
       {deleteTarget && (
         <div className="fixed inset-x-4 bottom-5 z-[10000] mx-auto max-w-md sm:right-6 sm:left-auto sm:inset-x-auto">
           <div className="rounded-2xl border border-amber-200 bg-white p-4 shadow-[0_20px_60px_rgba(15,23,42,0.18)]">
@@ -389,7 +389,7 @@ export default function PartiesPage() {
               type="submit"
               disabled={busy}
               aria-busy={busy}
-              className="btn-primary flex-1"
+              className="btn-primary flex flex-1 items-center justify-center gap-2"
             >
               {busy ? (
                 <span className="spinner" aria-hidden="true" />
@@ -402,7 +402,7 @@ export default function PartiesPage() {
             {editing && (
               <button
                 type="button"
-                className="btn-secondary"
+                className="btn-secondary inline-flex items-center justify-center gap-2"
                 onClick={() => {
                   setEditing(null);
                   setForm(emptyForm);
