@@ -429,7 +429,7 @@ export default function PartiesPage() {
                 aria-hidden="true"
               />
               <input
-                className="field pl-10"
+                className="field pl-12"
                 placeholder="Search"
                 aria-label="Search parties"
                 value={q}
