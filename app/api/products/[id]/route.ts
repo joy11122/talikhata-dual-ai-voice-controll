@@ -50,6 +50,28 @@ export async function PATCH(req:Request,{params}:{params:{id:string}}){
     if(dup)return NextResponse.json({error:'Barcode already exists'},{status:409});
   }
   const data:any={...parsed.data};
+  if(Array.isArray(data.variants)){
+    const variantKeys=new Set<string>();
+    for(const variant of data.variants){
+      const sku=variant.sku?.trim().toLowerCase();
+      const barcode=variant.barcode?.trim();
+      if(sku){
+        if(variantKeys.has('sku:'+sku))return NextResponse.json({error:'Variant SKU must be unique within this product'},{status:409});
+        variantKeys.add('sku:'+sku);
+      }
+      if(barcode){
+        if(variantKeys.has('barcode:'+barcode))return NextResponse.json({error:'Variant barcode must be unique within this product'},{status:409});
+        variantKeys.add('barcode:'+barcode);
+      }
+    }
+    if(linked){
+      const incoming=data.variants.map((v:any)=>({id:v._id||'',stock:Number(v.stockQuantity||0)}));
+      const existingVariants=(existing.variants||[]).map((v:any)=>({id:String(v._id),stock:Number(v.stockQuantity||0)}));
+      if(incoming.length!==existingVariants.length || incoming.some((v:any)=>!existingVariants.some((e:any)=>e.id===v.id&&e.stock===v.stock))){
+        return NextResponse.json({error:'Variant stock cannot be edited directly after transaction history exists. Use stock-in or stock-out transactions.'},{status:409});
+      }
+    }
+  }
   if(Array.isArray(data.variants)&&data.variants.length){
     data.stockQuantity=data.variants.reduce((sum:number,v:any)=>sum+Number(v.stockQuantity||0),0);
     if(data.sellPrice===undefined)data.sellPrice=data.variants[0]?.sellPrice||0;
