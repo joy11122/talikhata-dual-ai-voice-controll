@@ -372,7 +372,7 @@ export default function VoiceControl() {
         <motion.div
           initial={{ opacity: 0, y: 8 }}
           animate={{ opacity: 1, y: 0 }}
-          className="fixed bottom-[86px] left-4 right-4 z-50 mx-auto max-w-md rounded-2xl border bg-white p-5 shadow-2xl md:bottom-[90px]"
+          className="fixed bottom-[calc(7.25rem+env(safe-area-inset-bottom))] left-4 right-4 z-50 mx-auto max-w-md rounded-2xl border border-black/[0.07] bg-white p-5 shadow-[0_20px_60px_rgba(15,23,42,0.16)] md:bottom-[90px]"
         >
           <div className="flex items-center justify-between">
             <div>
@@ -397,7 +397,7 @@ export default function VoiceControl() {
       )}
 
       {error && (
-        <div className="fixed bottom-[86px] left-4 right-4 z-50 mx-auto max-w-xl rounded-xl border border-red-200 bg-white p-4 text-xs text-red-700 shadow-lg md:bottom-[90px]">
+        <div className="fixed bottom-[calc(7.25rem+env(safe-area-inset-bottom))] left-4 right-4 z-[55] mx-auto max-w-xl rounded-2xl border border-red-200 bg-white p-4 text-xs text-red-700 shadow-[0_20px_60px_rgba(15,23,42,0.16)] md:bottom-[90px]">
           <div className="flex items-start gap-2">
             <AlertCircle size={17} className="mt-0.5 shrink-0" />
             <div className="min-w-0 flex-1">
@@ -412,15 +412,15 @@ export default function VoiceControl() {
       )}
 
       <div className="fixed bottom-[calc(0.5rem+env(safe-area-inset-bottom))] left-2 right-2 z-50 mx-auto max-w-3xl sm:left-3 sm:right-3 md:bottom-5">
-        <div className="mb-2 flex justify-center">
-          <div className="flex items-center gap-1.5 rounded-full border border-white/80 bg-white/70 px-3 py-1 shadow-sm backdrop-blur-xl">
+        <div className="mb-2.5 flex min-h-8 justify-center px-2">
+          <div className="flex min-h-8 items-center gap-2 rounded-full border border-white/90 bg-white/85 px-3.5 py-1 shadow-[0_6px_24px_rgba(15,23,42,0.10)] backdrop-blur-xl">
             <span className={`h-2 w-2 rounded-full ${state === 'Listening' ? 'bg-red-500 animate-pulse' : state === 'Processing' ? 'bg-blue-500 animate-pulse' : state === 'Error' ? 'bg-red-500' : 'bg-emerald-500 animate-pulse'}`} />
-            <span className="text-[11px] font-semibold text-slate-700">
+            <span className="text-[11px] font-semibold leading-4 text-slate-700">
               {state === 'Listening' ? 'শুনছি... আপনার কমান্ড বলুন' : state === 'Processing' ? 'কমান্ড প্রক্রিয়াভুক্ত হচ্ছে...' : state === 'Success' ? 'কাজ সফল হয়েছে' : state === 'Error' ? 'Voice input সমস্যা' : 'Voice ready • মাইক্রোফোন টিপুন'}
             </span>
           </div>
         </div>
-        <form onSubmit={submit} className="flex h-[58px] items-center gap-1.5 rounded-[30px] border border-white/80 bg-white/80 px-1.5 shadow-[0_12px_40px_rgba(0,0,0,0.12)] backdrop-blur-2xl sm:h-[64px] sm:px-2">
+        <form onSubmit={submit} className="flex h-[58px] items-center gap-2 rounded-[30px] border border-black/[0.06] bg-white/90 px-1.5 shadow-[0_12px_40px_rgba(0,0,0,0.12)] backdrop-blur-2xl sm:h-[64px] sm:px-2">
           <button
             type="button"
             aria-label="New voice command"
@@ -443,7 +443,7 @@ export default function VoiceControl() {
             onChange={(event) => setText(event.target.value)}
             aria-label="Voice command or text input"
             placeholder="আপনার হিসাবের কথা লিখুন বা বলুন…"
-            className="min-w-0 flex-1 bg-transparent px-1.5 text-[14px] text-slate-800 outline-none placeholder:text-slate-400 sm:px-2 sm:text-[15px]"
+            className="min-w-0 flex-1 bg-transparent px-1.5 text-[14px] leading-6 text-slate-800 outline-none placeholder:text-slate-400 sm:px-2 sm:text-[15px]"
           />
 
           <button
