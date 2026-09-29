@@ -131,17 +131,39 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           <div className="ml-auto">{status !== 'loading' && <UserMenu name={user?.name ?? ''} email={user?.email ?? ''} />}</div>
         </header>
 
-        {/* Mobile navigation trigger — intentionally minimal so it does not break the Apple-style dashboard composition. */}
-        <div className="fixed left-3 right-3 top-3 z-[45] flex items-center justify-between md:hidden">
-          <button type="button" onClick={() => setMobileOpen(true)} className="flex h-12 w-12 items-center justify-center rounded-full border border-white/90 bg-white/90 text-slate-700 shadow-[0_4px_18px_rgba(15,23,42,0.12)] backdrop-blur-xl" aria-label="Open dashboard navigation">
-            <Menu size={22} />
-          </button>
-          <button type="button" onClick={() => void signOut({ callbackUrl: '/signin' })} className="flex h-12 w-12 items-center justify-center rounded-full border border-white/90 bg-white/90 text-slate-700 shadow-[0_4px_18px_rgba(15,23,42,0.12)] backdrop-blur-xl transition hover:bg-white active:scale-95" aria-label="Sign out" title="Sign out">
-            <LogOut size={20} />
-          </button>
-        </div>
+        {/* Mobile app header: fixed controls with a dedicated title column prevent overlap on narrow screens. */}
+        <header className="fixed inset-x-0 top-0 z-[45] h-16 border-b border-black/[0.06] bg-white/90 px-3 backdrop-blur-xl md:hidden">
+          <div className="grid h-full grid-cols-[44px_minmax(0,1fr)_44px] items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setMobileOpen(true)}
+              className="flex h-11 w-11 items-center justify-center rounded-full border border-black/[0.06] bg-white text-slate-700 shadow-[0_4px_18px_rgba(15,23,42,0.10)] transition active:scale-95"
+              aria-label="Open dashboard navigation"
+            >
+              <Menu size={22} />
+            </button>
 
-        <main className="min-h-screen px-0 pb-0 pt-0 sm:px-0 md:px-8 md:pb-10 md:pt-3">{children}</main>
+            <div className="min-w-0 px-1 text-center">
+              <p className="truncate text-[15px] font-bold tracking-[-0.02em] text-slate-900">
+                {currentTitle}
+              </p>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => void signOut({ callbackUrl: '/signin' })}
+              className="ml-auto flex h-11 w-11 items-center justify-center rounded-full border border-black/[0.06] bg-white text-slate-700 shadow-[0_4px_18px_rgba(15,23,42,0.10)] transition hover:bg-slate-50 active:scale-95"
+              aria-label="Sign out"
+              title="Sign out"
+            >
+              <LogOut size={19} />
+            </button>
+          </div>
+        </header>
+
+        <main className="min-h-screen px-0 pb-36 pt-20 sm:px-0 md:px-8 md:pb-10 md:pt-3">
+          {children}
+        </main>
         <VoiceControl />
       </div>
     </div>
