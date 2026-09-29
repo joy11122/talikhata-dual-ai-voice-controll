@@ -32,6 +32,19 @@ export async function POST(req:Request){
   await connectDB();
   const uid=new Types.ObjectId(s.user.id);
   const data={...p.data};
+  const variantKeys=new Set<string>();
+  for(const variant of data.variants){
+    const sku=variant.sku?.trim().toLowerCase();
+    const barcode=variant.barcode?.trim();
+    if(sku){
+      if(variantKeys.has('sku:'+sku))return NextResponse.json({error:'Variant SKU must be unique within this product'},{status:409});
+      variantKeys.add('sku:'+sku);
+    }
+    if(barcode){
+      if(variantKeys.has('barcode:'+barcode))return NextResponse.json({error:'Variant barcode must be unique within this product'},{status:409});
+      variantKeys.add('barcode:'+barcode);
+    }
+  }
   if(data.variants.length){
     data.stockQuantity=data.variants.reduce((sum,v)=>sum+v.stockQuantity,0);
     if(!data.sellPrice)data.sellPrice=data.variants[0]?.sellPrice||0;
@@ -52,9 +65,9 @@ export async function POST(req:Request){
     let created:any;
     await session.withTransaction(async()=>{
       const [product]=await Product.create([{...data,userId:uid}],{session});
-      if(product.stockQuantity>0&&!product.variants.length){
+      if(product.trackStock&&product.stockQuantity>0&&!product.variants.length){
         await Transaction.create([{userId:uid,productId:product._id,type:'STOCK_IN',amount:product.stockQuantity*product.buyPrice,quantity:product.stockQuantity,unitPrice:product.buyPrice||undefined,notes:'Opening stock'}],{session});
-      }else if(product.stockQuantity>0&&product.variants.length){
+      }else if(product.trackStock&&product.stockQuantity>0&&product.variants.length){
         await Transaction.create([{userId:uid,productId:product._id,type:'STOCK_IN',amount:product.stockQuantity*product.buyPrice,quantity:product.stockQuantity,unitPrice:product.buyPrice||undefined,notes:'Opening stock (variants)'}],{session});
       }
       created=product.toObject();
