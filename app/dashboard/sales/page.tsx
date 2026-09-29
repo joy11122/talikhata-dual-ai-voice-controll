@@ -406,25 +406,14 @@ export default function Page() {
     }
 
     const matchedProduct = products.find((product) => product.name.trim().toLowerCase() === form.productName.trim().toLowerCase());
-    if (!form.productId && matchedProduct) {
-      const firstVariant = matchedProduct.variants?.length === 1 ? matchedProduct.variants[0] : undefined;
-      setForm((current) => ({
-        ...current,
-        productId: matchedProduct._id,
-        variantId: firstVariant?._id || '',
-        variantName: firstVariant?.name || '',
-        unitPrice: String(firstVariant?.sellPrice ?? matchedProduct.sellPrice ?? current.unitPrice),
-      }));
-    }
-    if (!form.productId && !matchedProduct) {
-      setMessage(
-        'Please enter a valid product name.'
-      );
+    const effectiveProductId = form.productId || matchedProduct?._id || '';
+    const selectedProduct = products.find((product) => product._id === effectiveProductId) || matchedProduct;
+    const effectiveVariantId = form.variantId || (selectedProduct?.variants?.length === 1 ? selectedProduct.variants[0]._id : '');
+    if (!effectiveProductId) {
+      setMessage('Please enter a valid product name.');
       return;
     }
-
-    const selectedProduct = products.find((product) => product._id === form.productId);
-    if (selectedProduct?.variants?.length && !form.variantId) {
+    if (selectedProduct?.variants?.length && !effectiveVariantId) {
       setMessage('Please select a product variant.');
       return;
     }
@@ -494,9 +483,9 @@ export default function Page() {
               partyId:
                 form.partyId,
               productId:
-                form.productId,
+                effectiveProductId,
               variantId:
-                form.variantId || null,
+                effectiveVariantId || null,
               quantity,
               unitPrice,
               paidAmount,
