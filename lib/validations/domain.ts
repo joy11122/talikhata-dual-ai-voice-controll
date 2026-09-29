@@ -1,6 +1,7 @@
 import { z } from 'zod';
 
 const ProductVariantSchema=z.object({
+  _id:z.string().optional(),
   name:z.string().trim().min(1).max(120),
   sku:z.string().trim().max(80).optional(),
   barcode:z.string().trim().max(80).optional(),
