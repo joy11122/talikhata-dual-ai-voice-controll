@@ -424,12 +424,12 @@ export default function PartiesPage() {
 
             <div className="relative w-full sm:w-64">
               <Search
-                className="absolute left-3 top-3 text-slate-400"
+                className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
                 size={16}
                 aria-hidden="true"
               />
               <input
-                className="field pl-9"
+                className="field pl-10"
                 placeholder="Search"
                 aria-label="Search parties"
                 value={q}
