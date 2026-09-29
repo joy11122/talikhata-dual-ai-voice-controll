@@ -283,14 +283,19 @@ export default function Page() {
       (item) => item.name.trim().toLowerCase() === value.trim().toLowerCase()
     );
 
+    const firstVariant = product?.variants?.length === 1 ? product.variants[0] : undefined;
     setForm((current) => ({
       ...current,
       productName: value,
       productId: product?._id || '',
+      variantId: firstVariant?._id || '',
+      variantName: firstVariant?.name || '',
       unitPrice:
-        product && product.sellPrice !== undefined
-          ? String(product.sellPrice)
-          : current.unitPrice,
+        firstVariant?.sellPrice !== undefined
+          ? String(firstVariant.sellPrice)
+          : product && product.sellPrice !== undefined
+            ? String(product.sellPrice)
+            : current.unitPrice,
     }));
   }
 
@@ -402,7 +407,14 @@ export default function Page() {
 
     const matchedProduct = products.find((product) => product.name.trim().toLowerCase() === form.productName.trim().toLowerCase());
     if (!form.productId && matchedProduct) {
-      setForm((current) => ({ ...current, productId: matchedProduct._id, unitPrice: String(matchedProduct.sellPrice ?? current.unitPrice) }));
+      const firstVariant = matchedProduct.variants?.length === 1 ? matchedProduct.variants[0] : undefined;
+      setForm((current) => ({
+        ...current,
+        productId: matchedProduct._id,
+        variantId: firstVariant?._id || '',
+        variantName: firstVariant?.name || '',
+        unitPrice: String(firstVariant?.sellPrice ?? matchedProduct.sellPrice ?? current.unitPrice),
+      }));
     }
     if (!form.productId && !matchedProduct) {
       setMessage(
