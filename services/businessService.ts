@@ -17,10 +17,10 @@ export async function createSale(userId:string,input:{partyId?:string|null;produ
         if(!input.variantId)throw new TransactionServiceError("VARIANT_REQUIRED","Please select a product variant");
         variant=p.variants.id(input.variantId);
         if(!variant)throw new TransactionServiceError("NOT_FOUND","Product variant not found");
-        if(input.quantity>variant.stockQuantity)throw new TransactionServiceError("INSUFFICIENT_STOCK",`Available: ${variant.stockQuantity}`);
+        if(p.trackStock!==false && input.quantity>variant.stockQuantity)throw new TransactionServiceError("INSUFFICIENT_STOCK",`Available: ${variant.stockQuantity}`);
       }else if(input.variantId){
         throw new TransactionServiceError("INVALID_VARIANT","This product has no variants");
-      }else if(input.quantity>p.stockQuantity){
+      }else if(p.trackStock!==false && input.quantity>p.stockQuantity){
         throw new TransactionServiceError("INSUFFICIENT_STOCK",`Available: ${p.stockQuantity}`);
       }
 
@@ -34,14 +34,18 @@ export async function createSale(userId:string,input:{partyId?:string|null;produ
 
       const total=input.quantity*input.unitPrice;
       const due=total-input.paidAmount;
-      if(variant){
-        await Product.updateOne(
-          {_id:p._id,userId:uid,"variants._id":variant._id},
-          {$inc:{stockQuantity:-input.quantity,"variants.$.stockQuantity":-input.quantity},$set:{sellPrice:input.unitPrice}},
-          {session:s},
-        );
+      if(p.trackStock!==false){
+        if(variant){
+          await Product.updateOne(
+            {_id:p._id,userId:uid,"variants._id":variant._id},
+            {$inc:{stockQuantity:-input.quantity,"variants.$.stockQuantity":-input.quantity},$set:{sellPrice:input.unitPrice}},
+            {session:s},
+          );
+        }else{
+          await Product.updateOne({_id:p._id,userId:uid},{$inc:{stockQuantity:-input.quantity},$set:{sellPrice:input.unitPrice}},{session:s});
+        }
       }else{
-        await Product.updateOne({_id:p._id,userId:uid},{$inc:{stockQuantity:-input.quantity},$set:{sellPrice:input.unitPrice}},{session:s});
+        await Product.updateOne({_id:p._id,userId:uid},{$set:{sellPrice:input.unitPrice}},{session:s});
       }
 
       const txs=await Transaction.create([{
