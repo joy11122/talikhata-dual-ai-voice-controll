@@ -34,6 +34,10 @@ type Sale = {
     _id: string;
     name: string;
   };
+  variantId?: {
+    _id: string;
+    name: string;
+  };
   partyId?: {
     _id: string;
     name: string;
