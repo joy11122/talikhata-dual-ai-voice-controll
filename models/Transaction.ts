@@ -25,6 +25,8 @@ export interface ITransaction extends mongoose.Document {
 
   productId?: Types.ObjectId;
 
+  variantId?: Types.ObjectId;
+
   type: TransactionType;
 
   amount: number;
@@ -98,6 +100,11 @@ const TransactionSchema = new Schema<ITransaction>(
     productId: {
       type: Schema.Types.ObjectId,
       ref: 'Product',
+      index: true,
+    },
+
+    variantId: {
+      type: Schema.Types.ObjectId,
       index: true,
     },
 
@@ -242,6 +249,12 @@ TransactionSchema.index({
 TransactionSchema.index({
   userId: 1,
   productId: 1,
+  timestamp: -1,
+});
+
+TransactionSchema.index({
+  userId: 1,
+  variantId: 1,
   timestamp: -1,
 });
 
