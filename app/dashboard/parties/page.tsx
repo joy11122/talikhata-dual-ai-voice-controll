@@ -345,7 +345,7 @@ export default function PartiesPage() {
                 size={16}
               />
               <input
-                className="field" style={{ paddingLeft: "3.75rem" }}
+                className="field" style={{ paddingLeft: "2.5rem" }}
                 aria-label="Phone"
                 placeholder="Phone"
                 value={form.phone}
