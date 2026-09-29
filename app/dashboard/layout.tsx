@@ -3,9 +3,9 @@
 import Link from 'next/link';
 import { useState } from 'react';
 import { usePathname } from 'next/navigation';
-import { useSession } from 'next-auth/react';
+import { signOut, useSession } from 'next-auth/react';
 import {
-  Menu, X, Home, Users, Boxes, ShoppingCart, Truck, WalletCards,
+  Menu, X, Home, Users, Boxes, ShoppingCart, Truck, WalletCards, LogOut,
   BookOpen, Sunset, BarChart3, Bot, ScrollText, Settings, Mic,
   Plus, PanelLeftClose, PanelLeftOpen, type LucideIcon,
 } from 'lucide-react';
@@ -132,14 +132,14 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         </header>
 
         {/* Mobile navigation trigger — intentionally minimal so it does not break the Apple-style dashboard composition. */}
-        <button
-          type="button"
-          onClick={() => setMobileOpen(true)}
-          className="fixed left-3 top-3 z-[45] flex h-10 w-10 items-center justify-center rounded-full border border-white/80 bg-white/75 text-slate-700 shadow-sm backdrop-blur-xl md:hidden"
-          aria-label="Open dashboard navigation"
-        >
-          <Menu size={19} />
-        </button>
+        <div className="fixed left-3 right-3 top-3 z-[45] flex items-center justify-between md:hidden">
+          <button type="button" onClick={() => setMobileOpen(true)} className="flex h-12 w-12 items-center justify-center rounded-full border border-white/90 bg-white/90 text-slate-700 shadow-[0_4px_18px_rgba(15,23,42,0.12)] backdrop-blur-xl" aria-label="Open dashboard navigation">
+            <Menu size={22} />
+          </button>
+          <button type="button" onClick={() => void signOut({ callbackUrl: '/signin' })} className="flex h-12 w-12 items-center justify-center rounded-full border border-white/90 bg-white/90 text-slate-700 shadow-[0_4px_18px_rgba(15,23,42,0.12)] backdrop-blur-xl transition hover:bg-white active:scale-95" aria-label="Sign out" title="Sign out">
+            <LogOut size={20} />
+          </button>
+        </div>
 
         <main className="min-h-screen px-0 pb-0 pt-0 sm:px-0 md:px-8 md:pb-10 md:pt-3">{children}</main>
         <VoiceControl />
