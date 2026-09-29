@@ -229,6 +229,22 @@ export default function PartiesPage() {
         </div>
       )}
 
+      {error && (
+        <div className="fixed inset-0 z-[10001] flex items-center justify-center bg-slate-950/35 px-4 backdrop-blur-[3px]" role="alertdialog" aria-modal="true" aria-labelledby="party-error-title">
+          <div className="w-full max-w-sm rounded-[24px] border border-white/80 bg-white p-5 shadow-[0_24px_80px_rgba(15,23,42,0.25)]">
+            <div className="flex items-start gap-3">
+              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-red-50 text-red-600"><AlertCircle size={22} /></div>
+              <div className="min-w-0 flex-1">
+                <h2 id="party-error-title" className="text-base font-bold text-slate-900">কাজটি সম্পন্ন করা যায়নি</h2>
+                <p className="mt-1.5 text-sm leading-6 text-slate-600">{error}</p>
+              </div>
+              <button type="button" aria-label="Close error" onClick={() => setError('')} className="rounded-full p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-700"><X size={18} /></button>
+            </div>
+            <button type="button" onClick={() => setError('')} className="mt-4 w-full rounded-xl bg-slate-900 px-4 py-3 text-sm font-semibold text-white hover:bg-slate-800">ঠিক আছে</button>
+          </div>
+        </div>
+      )}
+
       {toast && (
         <div
           className="fixed right-4 top-4 z-[9999] w-[calc(100%-2rem)] max-w-[390px] sm:right-6 sm:top-6"
@@ -329,7 +345,7 @@ export default function PartiesPage() {
                 size={16}
               />
               <input
-                className="field pl-11"
+                className="field" style={{ paddingLeft: "3.75rem" }}
                 aria-label="Phone"
                 placeholder="Phone"
                 value={form.phone}
@@ -358,11 +374,7 @@ export default function PartiesPage() {
             <option value="SUPPLIER">Supplier</option>
           </select>
 
-          {error && (
-            <p className="mt-3 text-sm text-red-600" role="alert">
-              {error}
-            </p>
-          )}
+
 
           <div className="mt-4 flex gap-2">
             <button
