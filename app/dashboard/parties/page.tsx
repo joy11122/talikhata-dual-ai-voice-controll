@@ -314,69 +314,77 @@ export default function PartiesPage() {
       <div className="mt-6 grid gap-5 lg:grid-cols-[360px_1fr]">
         <form
           onSubmit={save}
-          className="rounded-xl border bg-white p-5 shadow-sm"
+          className="rounded-[24px] border border-black/[0.07] bg-white p-5 shadow-[0_10px_35px_rgba(15,23,42,0.06)] sm:p-6"
         >
-          <div className="flex items-center gap-2 font-semibold">
-            <Users size={18} />
-            {editing ? 'Edit party' : 'Add party'}
+          <div className="flex items-center gap-2.5 text-base font-bold tracking-tight text-slate-900">
+            <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-50 text-emerald-700">
+              <Users size={18} />
+            </span>
+            <span>{editing ? 'Edit party' : 'Add party'}</span>
           </div>
 
-          <label className="form-label mt-4">নাম / Name</label>
-          <input
-            className="field"
-            aria-label="নাম / Name"
-            placeholder="নাম / Name"
-            value={form.name}
-            onChange={(event) =>
-              setForm((current) => ({
-                ...current,
-                name: event.target.value,
-              }))
-            }
-            required
-          />
-
-          <div className="mt-3">
-            <label className="form-label">Phone</label>
-            <div className="relative mt-1.5">
-              <Phone
-                aria-hidden="true"
-                className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
-                size={16}
-              />
+          <div className="mt-6 space-y-5">
+            <div>
+              <label className="form-label">নাম</label>
               <input
-                className="field" style={{ paddingLeft: "2.5rem" }}
-                aria-label="Phone"
-                placeholder="Phone"
-                value={form.phone}
+                className="field"
+                aria-label="নাম"
+                placeholder="যেমন: রহিম"
+                value={form.name}
                 onChange={(event) =>
                   setForm((current) => ({
                     ...current,
-                    phone: event.target.value,
+                    name: event.target.value,
                   }))
                 }
+                required
               />
+            </div>
+
+            <div>
+              <label className="form-label">ফোন</label>
+              <div className="relative mt-1.5">
+                <Phone
+                  aria-hidden="true"
+                  className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"
+                  size={17}
+                />
+                <input
+                  className="field pl-12"
+                  aria-label="ফোন"
+                  placeholder="01XXXXXXXXX"
+                  inputMode="tel"
+                  value={form.phone}
+                  onChange={(event) =>
+                    setForm((current) => ({
+                      ...current,
+                      phone: event.target.value,
+                    }))
+                  }
+                />
+              </div>
+            </div>
+
+            <div>
+              <label className="form-label">ধরন</label>
+              <select
+                className="field mt-1.5"
+                aria-label="Party type"
+                value={form.partyType}
+                onChange={(event) =>
+                  setForm((current) => ({
+                    ...current,
+                    partyType: event.target.value as PartyType,
+                  }))
+                }
+              >
+                <option value="CUSTOMER">Customer</option>
+                <option value="SUPPLIER">Supplier</option>
+              </select>
             </div>
           </div>
 
-          <label className="form-label mt-3">Party type</label>
-          <select
-            className="field"
-            value={form.partyType}
-            onChange={(event) =>
-              setForm((current) => ({
-                ...current,
-                partyType: event.target.value as PartyType,
-              }))
-            }
-          >
-            <option value="CUSTOMER">Customer</option>
-            <option value="SUPPLIER">Supplier</option>
-          </select>
-
-
-
-          <div className="mt-4 flex gap-2">
+          <div className="mt-6 flex gap-2">
             <button
               type="submit"
               disabled={busy}
