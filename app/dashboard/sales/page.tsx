@@ -559,7 +559,7 @@ export default function Page() {
 
       <form
         onSubmit={save}
-        className="mt-6 grid gap-4 rounded-xl border bg-transparent p-5 md:grid-cols-6"
+        className="mt-6 grid gap-4 rounded-2xl border bg-transparent p-5 md:grid-cols-6"
       >
         <div>
           <label
@@ -583,7 +583,7 @@ export default function Page() {
               required
             />
             {form.partyName && !form.partyId && parties.length > 0 && (
-              <div className="absolute left-0 right-0 top-full z-20 mt-1 max-h-48 overflow-auto rounded-xl border bg-transparent p-1 shadow-lg">
+              <div className="absolute left-0 right-0 top-full z-20 mt-1 max-h-48 overflow-auto rounded-2xl border bg-transparent p-1 shadow-lg">
                 {parties
                   .filter((party) =>
                     party.name.toLowerCase().includes(form.partyName.toLowerCase())
@@ -626,7 +626,7 @@ export default function Page() {
               required
             />
             {form.productName && !form.productId && products.length > 0 && (
-              <div className="absolute left-0 right-0 top-full z-20 mt-1 max-h-48 overflow-auto rounded-xl border bg-transparent p-1 shadow-lg">
+              <div className="absolute left-0 right-0 top-full z-20 mt-1 max-h-48 overflow-auto rounded-2xl border bg-transparent p-1 shadow-lg">
                 {products
                   .filter((product) =>
                     product.name.toLowerCase().includes(form.productName.toLowerCase())
@@ -797,7 +797,7 @@ export default function Page() {
         )}
       </form>
 
-      <div className="mt-6 rounded-xl border bg-transparent p-5">
+      <div className="mt-6 rounded-2xl border bg-transparent p-5">
         <h2 className="font-semibold">
           Recent sales
         </h2>
