@@ -174,6 +174,50 @@ function partyName(text: string): string | null {
   return null;
 }
 
+function parseSaleCommand(text: string): VoiceV2Command | null {
+  const value = normalizeVoiceText(text)
+    .replace(/[।,!?;:]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+
+  // Natural shopkeeper pattern:
+  // "রহিমকে ২ কেজি চাল ৭০ টাকা দরে বিক্রি করলাম"
+  // "Rahim ke 2 kg chal 70 taka dore bikri korlam"
+  const pattern = /^(?:আজ\s+)?(.+?)\s*(?:কে|কো|কে)\s+(\d[\d,]*(?:\.\d+)?)\s*(কেজি|kg|কিলো|কিলোগ্রাম|গ্রাম|gram|g|লিটার|liter|litre|ml|মিটার|meter|টা|টি|piece|pieces|pcs|বোতল|প্যাকেট|packet|box|unit|ইউনিট)\s+(.+?)\s+(\d[\d,]*(?:\.\d+)?)\s*(?:টাকা|tk|taka)?\s*(?:দরে|দাম(?:এ)?|rate|per)\s+(?:বিক্রি|বেচা|বেচে|sell|sold)\s*(?:করলাম|করেছি|করল|করলেন|করো|করুন|করেছে|করেছিলাম|করেছি|দিলাম|দিয়েছি|দিয়ে ফেলেছি|করছি|করলাম)?$/iu;
+
+  const match = value.match(pattern);
+  if (!match) return null;
+
+  const party = match[1]
+    .replace(/^(?:ভাই|স্যার|সাহেব|মিস্টার|মিসেস)\s+/iu, '')
+    .replace(/\s+(?:ভাই|স্যার|সাহেব|sir|vai|bhai)$/iu, '')
+    .trim();
+
+  const quantity = Number(match[2].replace(/,/g, ''));
+  const unit = match[3];
+  const product = match[4]
+    .replace(/^(?:নতুন\s+)/iu, '')
+    .replace(/\s+(?:পণ্য|product|item|মাল)$/iu, '')
+    .trim();
+  const unitPrice = Number(match[5].replace(/,/g, ''));
+
+  if (!party || !product || !Number.isFinite(quantity) || quantity <= 0 || !Number.isFinite(unitPrice) || unitPrice <= 0) {
+    return null;
+  }
+
+  const command = blank('CREATE_SALE');
+  command.entityType = 'PRODUCT';
+  command.entityName = product;
+  command.quantity = quantity;
+  command.unit = unit;
+  command.unitPrice = unitPrice;
+  command.query = party;
+  command.partyType = 'CUSTOMER';
+  command.amount = money(quantity * unitPrice);
+
+  return command;
+}
+
 function parseCreateProductCommand(text: string): VoiceV2Command | null {
   const value = normalizeVoiceText(text)
     .replace(/[।,!?;:]/g, ' ')
@@ -234,6 +278,9 @@ function parseCreateProductCommand(text: string): VoiceV2Command | null {
 function localParse(text: string): VoiceV2Command | null {
   const createProduct = parseCreateProductCommand(text);
   if (createProduct) return createProduct;
+
+  const sale = parseSaleCommand(text);
+  if (sale) return sale;
 
   const value = norm(text);
   const amount = extractNumber(text);
