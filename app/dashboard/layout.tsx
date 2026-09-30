@@ -152,6 +152,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             </div>
 
             <div className="flex items-center justify-end gap-1"><NotificationBell /><OwnerProfile name={user?.name} email={user?.email} image={user?.image} /></div>
+          </div>
         </header>
 
         <main className="min-h-screen px-0 pb-36 pt-20 sm:px-0 md:px-8 md:pb-10 md:pt-3">
