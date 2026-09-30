@@ -86,7 +86,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                 title={collapsed ? label : undefined}
                 className={[
                   'flex items-center gap-3 rounded-xl px-3 py-2.5 text-[13px] font-medium transition',
-                  active ? 'bg-emerald-50 text-emerald-700' : 'text-slate-600 hover:bg-transparent hover:text-slate-900',
+                  active ? 'bg-transparent text-emerald-400' : 'text-slate-600 hover:bg-transparent hover:text-slate-900',
                   collapsed ? 'justify-center' : '',
                 ].join(' ')}
               >
@@ -104,7 +104,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       </nav>
 
       <div className="border-t border-black/[0.06] p-2">
-        <div className={`rounded-xl bg-emerald-50 p-3 text-emerald-800 ${collapsed ? 'flex justify-center' : ''}`}>
+        <div className={`rounded-xl bg-transparent p-3 text-emerald-400 ${collapsed ? 'flex justify-center' : ''}`}>
           <Mic size={18} />
           {!collapsed && <div className="ml-2"><p className="text-xs font-semibold">Voice ready</p><p className="mt-0.5 text-[11px] text-emerald-700">Bangla · Banglish · English</p></div>}
         </div>
@@ -113,7 +113,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   );
 
   return (
-    <div className="min-h-screen bg-[#f5f5f7] text-slate-900">
+    <div className="min-h-screen bg-transparent text-slate-900">
       <div className="fixed inset-y-0 left-0 z-50 hidden md:block">{sidebar}</div>
 
       {mobileOpen && (
