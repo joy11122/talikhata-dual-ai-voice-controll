@@ -161,7 +161,7 @@ export default function Page() {
   }
 
   return (
-    <div className="mx-auto max-w-5xl">
+    <div className="mx-auto max-w-5xl px-4">
       <h1 className="text-3xl font-bold">দিন শেষ</h1>
 
       <form
