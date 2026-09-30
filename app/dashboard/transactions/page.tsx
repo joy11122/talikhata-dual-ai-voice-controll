@@ -571,7 +571,7 @@ export default function TransactionsPage() {
         </p>
       </div>
 
-      <div className="mt-6 grid gap-4 sm:grid-cols-3">
+      <div className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4">
         <div className="rounded-xl border bg-white p-5">
           <p className="text-sm text-slate-500">
             Sales
