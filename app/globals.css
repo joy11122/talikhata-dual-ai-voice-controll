@@ -251,3 +251,6 @@ button:disabled{cursor:not-allowed;opacity:.65}
 
 /* Purchase form select arrow breathing room */
 #partyId,#productId{padding-right:2.35rem;}
+
+/* Payment form select arrow breathing room */
+#direction{padding-right:2.35rem;}
