@@ -98,6 +98,31 @@ export default function DashboardPage() {
         </header>
 
         <section>
+          <Link
+            href="/dashboard/assistant"
+            className="group relative block overflow-hidden rounded-[28px] border border-white/80 bg-white/70 p-4 shadow-[0_10px_36px_rgba(31,38,135,0.08)] backdrop-blur-xl transition hover:-translate-y-0.5 active:scale-[0.99] sm:p-5"
+            aria-label="TaliKhata Assistant খুলুন"
+          >
+            <div className="absolute -right-10 -top-12 h-32 w-32 rounded-full bg-emerald-400/10 blur-2xl transition group-hover:bg-emerald-400/15" />
+            <div className="relative flex items-center gap-3.5 sm:gap-4">
+              <span className="flex h-12 w-12 flex-none items-center justify-center rounded-2xl bg-emerald-500/10 text-emerald-600 sm:h-14 sm:w-14">
+                <Sparkles size={23} strokeWidth={2.2} />
+              </span>
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center gap-2">
+                  <h2 className="text-sm font-bold tracking-tight text-slate-900 sm:text-base">TaliKhata Assistant</h2>
+                  <span className="rounded-full bg-emerald-500/10 px-2 py-0.5 text-[9px] font-bold text-emerald-700">AI</span>
+                </div>
+                <p className="mt-0.5 text-[11px] leading-5 text-slate-500 sm:text-xs">ব্যবসার হিসাব জিজ্ঞেস করুন বা ভয়েসে বলুন</p>
+              </div>
+              <span className="flex h-10 w-10 flex-none items-center justify-center rounded-full bg-slate-900 text-white shadow-sm transition group-hover:bg-emerald-600 sm:h-11 sm:w-11" aria-hidden="true">
+                <MessageCircle size={18} />
+              </span>
+            </div>
+          </Link>
+        </section>
+
+        <section>
           <div className="mb-2.5 flex items-center justify-between px-1">
             <h2 className="text-[11px] font-bold uppercase tracking-[0.12em] text-slate-500">দ্রুত ভয়েস কমান্ডসমূহ</h2>
             <span className="text-[11px] font-medium text-blue-500">স্লাইড করুন →</span>
