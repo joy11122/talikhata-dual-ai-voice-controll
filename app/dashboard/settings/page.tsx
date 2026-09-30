@@ -50,7 +50,7 @@ export default function SettingsPage(){
     finally{setBusy(false)}
   }
 
-  return <div className="mx-auto w-full max-w-4xl pb-8">
+  return <div className="mx-auto w-full max-w-4xl pb-8 px-4">
     <div className="mb-6 px-1">
       <div className="mb-2 flex items-center gap-2 text-emerald-600"><Sparkles size={17}/><span className="text-xs font-bold uppercase tracking-[0.12em]">Business setup</span></div>
       <h1 className="text-3xl font-bold tracking-tight text-slate-900">আপনার ব্যবসা সেটআপ করুন</h1>
