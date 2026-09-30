@@ -39,9 +39,24 @@ export default function DashboardPage(){
      </section>
 
      <section className="tk-insight">
-       <div className="tk-insight-heading"><div><p className="tk-eyebrow">TALIKHATA AI INSIGHT</p><h2>গত ৭ দিনের বিক্রি</h2></div><div className="tk-business-insight"><BarChart3 size={20}/><span>Business Insight</span></div></div>
-       <div className="tk-chart" aria-label="Last 7 days sales chart">
-         {chart.map((item,i)=><div key={item.date} className="tk-bar-wrap"><div className="tk-bar-value">{item.total?money(item.total):''}</div><div className="tk-bar" style={{height:`${Math.max(item.total?10:3,(item.total/max)*100)}%`}}/><span>{item.label}</span></div>)}
+       <div className="tk-insight-heading"><div><p className="tk-eyebrow">TALIKHATA AI INSIGHT</p><h2>গত ৭ দিনের বিক্রি</h2></div></div>
+       <div className="tk-insight-body">
+         <div className="tk-insight-summary">
+           <span>Business Insight</span>
+           <strong>{money(data?.todaySales?.total)}</strong>
+           <span>আজকের বিক্রি · গত ৭ দিনের ট্রেন্ড দেখুন</span>
+         </div>
+         <div className="tk-insight-chart-wrap">
+           <div className="tk-chart" aria-label="Last 7 days sales chart">
+             {chart.map(item => (
+               <div key={item.date} className="tk-bar-wrap">
+                 <div className="tk-bar-value">{item.total ? money(item.total) : ''}</div>
+                 <div className="tk-bar" style={{height: Math.max(item.total ? 10 : 3, (item.total / max) * 100) + '%'}} />
+                 <span>{item.label}</span>
+               </div>
+             ))}
+           </div>
+         </div>
        </div>
        <div className="flex flex-col gap-3 border-t border-teal-900/10 pt-3 sm:flex-row sm:items-center sm:justify-between"><p className="tk-insight-copy">গত ৭ দিনের sales এক নজরে দেখুন। আজকের হিসাবসহ দ্রুত business insight।</p><button type="button" className="tk-export" onClick={()=>window.print()}><Download size={15}/> Quick export</button></div>
      </section>
