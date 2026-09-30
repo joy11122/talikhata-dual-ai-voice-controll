@@ -264,8 +264,6 @@ export default function VoiceControl() {
     setError('');
     setText('');
     latest.current = '';
-    window.setTimeout(() => inputRef.current?.focus(), 0);
-
     if (
       !(
         'SpeechRecognition' in window ||
