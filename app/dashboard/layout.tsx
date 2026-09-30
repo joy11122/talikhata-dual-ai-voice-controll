@@ -159,6 +159,13 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           {children}
         </main>
         <VoiceControl />
+        <nav className="tk-mobile-nav md:hidden" aria-label="Primary navigation">
+          <Link href="/dashboard" onClick={() => setMobileOpen(false)} className={pathname === '/dashboard' ? 'active' : ''}><Home size={20}/><span>ড্যাশবোর্ড</span></Link>
+          <Link href="/dashboard/transactions" onClick={() => setMobileOpen(false)} className={pathname.startsWith('/dashboard/transactions') ? 'active' : ''}><BookOpen size={20}/><span>খাতা</span></Link>
+          <Link href="/dashboard/reports" onClick={() => setMobileOpen(false)} className={pathname.startsWith('/dashboard/reports') ? 'active' : ''}><BarChart3 size={20}/><span>রিপোর্ট</span></Link>
+          <Link href="/dashboard/settings" onClick={() => setMobileOpen(false)} className={pathname.startsWith('/dashboard/settings') ? 'active' : ''}><Settings size={20}/><span>সেটিংস</span></Link>
+          <button type="button" className="tk-mobile-nav-voice" aria-label="ভয়েস এআই" onClick={() => window.dispatchEvent(new CustomEvent('talikhata:voice-open'))}><span><Mic size={25}/></span><b>ভয়েস এআই</b><small>Voice AI</small></button>
+        </nav>
       </div>
     </div>
   );
