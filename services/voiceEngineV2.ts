@@ -204,6 +204,7 @@ function parseCreateProductCommand(text: string): VoiceV2Command | null {
 
     name = name
       .replace(/^নতুন\\s+/iu, '')
+      .replace(/^\\d[\\d,]*(?:\\.\\d+)?\\s*(?:কেজি|kg|কিলো|কিলোগ্রাম|টা|টি|piece|pieces|pcs|লিটার|liter|litre|মিটার|meter|গ্রাম|gram|g|ml|বোতল|প্যাকেট|packet|box|unit|ইউনিট)\\s+/iu, '')
       .replace(/\\s+(?:দরে|দাম(?:এ)?|rate|per)\\s*$/iu, '')
       .trim();
 
