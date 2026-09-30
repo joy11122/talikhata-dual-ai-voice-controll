@@ -341,7 +341,7 @@ export default function Page() {
 
       <form
         onSubmit={save}
-        className="mt-6 grid gap-4 rounded-xl border bg-transparent p-5 md:grid-cols-4"
+        className="mt-6 grid gap-4 rounded-2xl border bg-transparent p-5 md:grid-cols-4"
       >
         <div>
           <label
@@ -469,7 +469,7 @@ export default function Page() {
         )}
       </form>
 
-      <section className="mt-6 rounded-xl border bg-transparent p-5">
+      <section className="mt-6 rounded-2xl border bg-transparent p-5">
         <h2 className="font-semibold">
           Recent payments
         </h2>
