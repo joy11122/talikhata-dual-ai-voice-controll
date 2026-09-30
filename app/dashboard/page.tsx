@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import {useEffect,useMemo,useState} from 'react';
-import {Download,Search,SlidersHorizontal,ChevronRight} from 'lucide-react';
+import {Download,Mic,Search,SlidersHorizontal,ChevronRight} from 'lucide-react';
 import {apiRequest} from '@/lib/api-client';
 
 type Tx={_id:string;partyId?:{name:string};productId?:{name:string};type:string;amount?:number;timestamp:string;source?:'MANUAL'|'VOICE'|'SYSTEM'};
