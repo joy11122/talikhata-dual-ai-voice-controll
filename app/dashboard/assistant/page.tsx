@@ -1,6 +1,13 @@
 'use client';
+
 import {useRef, useState} from 'react';
-import {Mic, Send, Loader2, X} from 'lucide-react';
+import {AnimatePresence, motion} from 'framer-motion';
+import {Mic, Send, Loader2, X, Sparkles} from 'lucide-react';
+
+const wordVariants = {
+  hidden: {opacity: 0, y: 8, filter: 'blur(4px)'},
+  visible: {opacity: 1, y: 0, filter: 'blur(0px)'},
+};
 
 export default function Page(){
   const [q,setQ]=useState(''),[a,setA]=useState(''),[busy,setBusy]=useState(false),[error,setError]=useState(''),[listening,setListening]=useState(false);
@@ -39,10 +46,25 @@ export default function Page(){
     r.start();
   }
 
+  const answerWords=a.trim().split(/(\s+)/).filter(Boolean);
+
   return <div className="mx-auto max-w-3xl px-4 md:px-0">
-    <h1 className="text-3xl font-bold">Smart Shop Assistant</h1>
-    <p className="mt-2 text-slate-500">Ask about sales, profit, receivables, payables or stock.</p>
-    <form onSubmit={ask} className="mt-6">
+    <motion.div
+      initial={{opacity:0,y:12}}
+      animate={{opacity:1,y:0}}
+      transition={{duration:0.45,ease:'easeOut'}}
+    >
+      <h1 className="text-3xl font-bold">Smart Shop Assistant</h1>
+      <p className="mt-2 text-slate-500">Ask about sales, profit, receivables, payables or stock.</p>
+    </motion.div>
+
+    <motion.form
+      onSubmit={ask}
+      className="mt-6"
+      initial={{opacity:0,y:10}}
+      animate={{opacity:1,y:0}}
+      transition={{duration:0.4,delay:0.08}}
+    >
       <label className="form-label">Your question</label>
       <div className="mt-2 flex items-center gap-2 rounded-2xl border bg-white p-2 shadow-sm focus-within:ring-2 focus-within:ring-emerald-500/20">
         <input className="min-w-0 flex-1 border-0 bg-transparent px-3 py-3 outline-none" value={q} onChange={e=>setQ(e.target.value)} placeholder="আজকের বিক্রি কেমন?" aria-label="Your question" required/>
@@ -53,8 +75,95 @@ export default function Page(){
           {busy?<Loader2 className="animate-spin"/>:<Send size={18}/>}
         </button>
       </div>
-    </form>
-    {error&&<div className="mt-4 flex items-center justify-between rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700"><span>{error}</span><button onClick={()=>setError('')} aria-label="Close error"><X size={16}/></button></div>}
-    {a&&<div className="mt-5 rounded-2xl border bg-white p-5 text-lg">{a}</div>}
+    </motion.form>
+
+    <AnimatePresence mode="wait">
+      {busy&&(
+        <motion.div
+          key="thinking"
+          initial={{opacity:0,y:8,scale:0.98}}
+          animate={{opacity:1,y:0,scale:1}}
+          exit={{opacity:0,y:-5,scale:0.98}}
+          transition={{duration:0.25}}
+          className="mt-5 flex items-center gap-3 rounded-2xl border border-emerald-100 bg-emerald-50/60 px-5 py-4 text-sm text-slate-600"
+          aria-live="polite"
+        >
+          <motion.div
+            animate={{rotate:360}}
+            transition={{duration:1.4,repeat:Infinity,ease:'linear'}}
+            className="flex h-8 w-8 items-center justify-center rounded-full bg-white text-emerald-600 shadow-sm"
+          >
+            <Sparkles size={16}/>
+          </motion.div>
+          <span>Assistant is thinking</span>
+          <span className="flex gap-1" aria-hidden="true">
+            {[0,1,2].map(i=>(
+              <motion.span key={i} className="h-1.5 w-1.5 rounded-full bg-emerald-500"
+                animate={{y:[0,-4,0],opacity:[0.35,1,0.35]}}
+                transition={{duration:0.8,repeat:Infinity,delay:i*0.14}}
+              />
+            ))}
+          </span>
+        </motion.div>
+      )}
+
+      {error&&(
+        <motion.div
+          key="error"
+          initial={{opacity:0,y:8}}
+          animate={{opacity:1,y:0}}
+          exit={{opacity:0,y:-5}}
+          className="mt-4 flex items-center justify-between rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700"
+        >
+          <span>{error}</span>
+          <button onClick={()=>setError('')} aria-label="Close error"><X size={16}/></button>
+        </motion.div>
+      )}
+
+      {a&&!busy&&(
+        <motion.section
+          key={a}
+          initial={{opacity:0,y:18,scale:0.985}}
+          animate={{opacity:1,y:0,scale:1}}
+          transition={{duration:0.42,ease:[0.22,1,0.36,1]}}
+          className="relative mt-5 overflow-hidden rounded-2xl border border-slate-200 bg-white p-5 shadow-sm"
+          aria-live="polite"
+          aria-label="Assistant answer"
+        >
+          <motion.div
+            initial={{scaleX:0}}
+            animate={{scaleX:1}}
+            transition={{duration:0.55,ease:'easeOut'}}
+            className="absolute left-0 right-0 top-0 h-0.5 origin-left bg-emerald-500"
+          />
+          <div className="mb-3 flex items-center gap-2 text-sm font-medium text-emerald-700">
+            <motion.span
+              initial={{scale:0,rotate:-20}}
+              animate={{scale:1,rotate:0}}
+              transition={{type:'spring',stiffness:500,damping:25}}
+              className="flex h-7 w-7 items-center justify-center rounded-full bg-emerald-50"
+            >
+              <Sparkles size={14}/>
+            </motion.span>
+            <span>Assistant</span>
+          </div>
+
+          <p className="text-lg leading-8 text-slate-800">
+            {answerWords.map((word,index)=>(
+              /\s+/.test(word)
+                ? <span key={index}>{word}</span>
+                : <motion.span
+                    key={index}
+                    variants={wordVariants}
+                    initial="hidden"
+                    animate="visible"
+                    transition={{duration:0.24,delay:Math.min(index*0.025,0.65),ease:'easeOut'}}
+                    className="inline-block"
+                  >{word}</motion.span>
+            ))}
+          </p>
+        </motion.section>
+      )}
+    </AnimatePresence>
   </div>
 }
