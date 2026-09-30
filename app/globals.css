@@ -258,8 +258,3 @@ button:disabled{cursor:not-allowed;opacity:.65}
 /* App-wide graphite background */
 html,body{background:#0B0F17;color:#fff;}
 body{min-height:100vh;}
-
-/* Global app shell: every authenticated/public page inherits the same graphite canvas. */
-html{background:#0B0F17;}
-body{background:#0B0F17 !important;min-height:100vh;margin:0;}
-body>div{background:#0B0F17;min-height:100vh;}
