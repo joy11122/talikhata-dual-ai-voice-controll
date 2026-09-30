@@ -214,16 +214,16 @@ export default function PartiesPage() {
         <div className="fixed inset-x-4 bottom-5 z-[10000] mx-auto max-w-md sm:right-6 sm:left-auto sm:inset-x-auto">
           <div className="rounded-2xl border border-amber-200 bg-transparent p-4 shadow-[0_20px_60px_rgba(15,23,42,0.18)]">
             <div className="flex items-start gap-3">
-              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-red-50 text-red-600"><Trash2 size={18} /></div>
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-red-500/10 text-red-600"><Trash2 size={18} /></div>
               <div className="min-w-0 flex-1">
-                <p className="font-semibold text-slate-900">কাস্টমার মুছে ফেলবেন?</p>
-                <p className="mt-1 text-sm text-slate-500">“{deleteTarget.name}” স্থায়ীভাবে মুছে যাবে। এই কাজটি পূর্বাবস্থায় ফেরানো যাবে না।</p>
+                <p className="font-semibold text-white">কাস্টমার মুছে ফেলবেন?</p>
+                <p className="mt-1 text-sm text-white/50">“{deleteTarget.name}” স্থায়ীভাবে মুছে যাবে। এই কাজটি পূর্বাবস্থায় ফেরানো যাবে না।</p>
                 <div className="mt-3 flex gap-2">
-                  <button type="button" onClick={() => setDeleteTarget(null)} disabled={busy} className="rounded-xl border border-slate-200 px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-transparent">বাতিল</button>
+                  <button type="button" onClick={() => setDeleteTarget(null)} disabled={busy} className="rounded-xl border border-white/10 px-3 py-2 text-sm font-semibold text-white/80 hover:bg-transparent">বাতিল</button>
                   <button type="button" onClick={() => void confirmDelete()} disabled={busy} className="rounded-xl bg-red-600 px-3 py-2 text-sm font-semibold text-white hover:bg-red-700 disabled:opacity-50">{busy ? 'মুছে ফেলা হচ্ছে…' : 'মুছে ফেলুন'}</button>
                 </div>
               </div>
-              <button type="button" aria-label="Close delete notification" onClick={() => setDeleteTarget(null)} className="rounded-full p-1 text-slate-400 hover:bg-transparent"><X size={16} /></button>
+              <button type="button" aria-label="Close delete notification" onClick={() => setDeleteTarget(null)} className="rounded-full p-1 text-white/40 hover:bg-transparent"><X size={16} /></button>
             </div>
           </div>
         </div>
@@ -233,12 +233,12 @@ export default function PartiesPage() {
         <div className="fixed inset-0 z-[10001] flex items-center justify-center bg-slate-950/35 px-4 backdrop-blur-[3px]" role="alertdialog" aria-modal="true" aria-labelledby="party-error-title">
           <div className="w-full max-w-sm rounded-[24px] border border-white/80 bg-transparent p-5 shadow-[0_24px_80px_rgba(15,23,42,0.25)]">
             <div className="flex items-start gap-3">
-              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-red-50 text-red-600"><AlertCircle size={22} /></div>
+              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-red-500/10 text-red-600"><AlertCircle size={22} /></div>
               <div className="min-w-0 flex-1">
-                <h2 id="party-error-title" className="text-base font-bold text-slate-900">কাজটি সম্পন্ন করা যায়নি</h2>
-                <p className="mt-1.5 text-sm leading-6 text-slate-600">{error}</p>
+                <h2 id="party-error-title" className="text-base font-bold text-white">কাজটি সম্পন্ন করা যায়নি</h2>
+                <p className="mt-1.5 text-sm leading-6 text-white/65">{error}</p>
               </div>
-              <button type="button" aria-label="Close error" onClick={() => setError('')} className="rounded-full p-1.5 text-slate-400 hover:bg-transparent hover:text-slate-700"><X size={18} /></button>
+              <button type="button" aria-label="Close error" onClick={() => setError('')} className="rounded-full p-1.5 text-white/40 hover:bg-transparent hover:text-white/80"><X size={18} /></button>
             </div>
             <button type="button" onClick={() => setError('')} className="mt-4 w-full rounded-xl bg-slate-900 px-4 py-3 text-sm font-semibold text-white hover:bg-slate-800">ঠিক আছে</button>
           </div>
@@ -276,7 +276,7 @@ export default function PartiesPage() {
               )}
             </div>
 
-            <p className="min-w-0 flex-1 pt-1 text-sm font-semibold leading-5 text-slate-800">
+            <p className="min-w-0 flex-1 pt-1 text-sm font-semibold leading-5 text-white/90">
               {toast.message}
             </p>
 
@@ -284,7 +284,7 @@ export default function PartiesPage() {
               type="button"
               aria-label="Close notification"
               onClick={() => setToast(null)}
-              className="rounded-full p-1 text-slate-400 transition hover:bg-transparent hover:text-slate-700"
+              className="rounded-full p-1 text-white/40 transition hover:bg-transparent hover:text-white/80"
             >
               <X size={16} />
             </button>
@@ -294,18 +294,18 @@ export default function PartiesPage() {
 
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
-          <p className="text-sm font-semibold text-emerald-700">Ledger</p>
+          <p className="text-sm font-semibold text-emerald-300">Ledger</p>
           <h1 className="text-3xl font-bold">বাকির খাতা</h1>
-          <p className="mt-2 text-slate-500">
+          <p className="mt-2 text-white/50">
             Customers, suppliers and their running balances.
           </p>
         </div>
 
         <div className="flex gap-3 text-sm">
-          <span className="rounded-xl bg-emerald-50 px-3 py-2 text-emerald-700">
+          <span className="rounded-xl bg-emerald-500/10 px-3 py-2 text-emerald-300">
             পাবো ৳{totals.receive.toLocaleString()}
           </span>
-          <span className="rounded-xl bg-red-50 px-3 py-2 text-red-700">
+          <span className="rounded-xl bg-red-500/10 px-3 py-2 text-red-300">
             দেবো ৳{totals.pay.toLocaleString()}
           </span>
         </div>
@@ -316,8 +316,8 @@ export default function PartiesPage() {
           onSubmit={save}
           className="rounded-[24px] border border-black/[0.07] bg-transparent p-5 shadow-[0_10px_35px_rgba(15,23,42,0.06)] sm:p-6"
         >
-          <div className="flex items-center gap-2.5 text-base font-bold tracking-tight text-slate-900">
-            <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-50 text-emerald-700">
+          <div className="flex items-center gap-2.5 text-base font-bold tracking-tight text-white">
+            <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-500/10 text-emerald-300">
               <Users size={18} />
             </span>
             <span>{editing ? 'Edit party' : 'Add party'}</span>
@@ -346,7 +346,7 @@ export default function PartiesPage() {
               <div className="relative mt-1.5">
                 <Phone
                   aria-hidden="true"
-                  className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"
+                  className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-white/40"
                   size={17}
                 />
                 <input
@@ -424,7 +424,7 @@ export default function PartiesPage() {
 
             <div className="relative w-full sm:w-64">
               <Search
-                className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
+                className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-white/40"
                 size={16}
                 aria-hidden="true"
               />
@@ -452,7 +452,7 @@ export default function PartiesPage() {
                 >
                   <div>
                     <p className="font-semibold">{row.name}</p>
-                    <p className="text-sm text-slate-500">
+                    <p className="text-sm text-white/50">
                       {row.partyType === 'CUSTOMER'
                         ? 'Customer'
                         : 'Supplier'}
@@ -464,7 +464,7 @@ export default function PartiesPage() {
                     <span
                       className={
                         Number(row.currentBalance || 0) >= 0
-                          ? 'font-semibold text-emerald-700'
+                          ? 'font-semibold text-emerald-300'
                           : 'font-semibold text-red-600'
                       }
                     >
@@ -474,7 +474,7 @@ export default function PartiesPage() {
                     <button
                       type="button"
                       aria-label={`Edit ${row.name}`}
-                      className="text-slate-500 hover:text-emerald-700"
+                      className="text-white/50 hover:text-emerald-300"
                       onClick={() => {
                         setEditing(row._id);
                         setForm({
@@ -492,7 +492,7 @@ export default function PartiesPage() {
                     <button
                       type="button"
                       aria-label={`Delete ${row.name}`}
-                      className="text-red-500 hover:text-red-700 disabled:opacity-50"
+                      className="text-red-500 hover:text-red-300 disabled:opacity-50"
                       onClick={() => void del(row._id)}
                       disabled={busy}
                     >
@@ -504,7 +504,7 @@ export default function PartiesPage() {
             )}
 
             {!loading && !rows.length && (
-              <p className="py-12 text-center text-slate-400">
+              <p className="py-12 text-center text-white/40">
                 No parties found.
               </p>
             )}
