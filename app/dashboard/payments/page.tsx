@@ -475,11 +475,11 @@ export default function Page() {
         </h2>
 
         {loading ? (
-          <p className="py-8 text-center text-slate-400">
+          <p className="py-8 text-center text-white/40">
             Loading payments…
           </p>
         ) : rows.length === 0 ? (
-          <p className="py-8 text-center text-slate-400">
+          <p className="py-8 text-center text-white/40">
             No payments yet.
           </p>
         ) : (
@@ -499,7 +499,7 @@ export default function Page() {
                     ).toLocaleString('en-BD')}
                   </p>
 
-                  <p className="text-sm text-slate-500">
+                  <p className="text-sm text-white/50">
                     {payment.type ===
                     'DUE_RECEIVED'
                       ? 'Customer collection'
