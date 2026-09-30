@@ -3,11 +3,7 @@
 import {useRef, useState} from 'react';
 import {AnimatePresence, motion} from 'framer-motion';
 import {Mic, Send, Loader2, X, Sparkles} from 'lucide-react';
-
-const wordVariants = {
-  hidden: {opacity: 0, y: 8, filter: 'blur(4px)'},
-  visible: {opacity: 1, y: 0, filter: 'blur(0px)'},
-};
+import AssistantReceipt from '@/components/AssistantReceipt';
 
 export default function Page(){
   const [q,setQ]=useState(''),[a,setA]=useState(''),[busy,setBusy]=useState(false),[error,setError]=useState(''),[listening,setListening]=useState(false);
@@ -45,8 +41,6 @@ export default function Page(){
     r.onend=()=>{setListening(false)};
     r.start();
   }
-
-  const answerWords=a.trim().split(/(\s+)/).filter(Boolean);
 
   return <div className="mx-auto max-w-3xl px-4 md:px-0">
     <motion.div
@@ -121,48 +115,7 @@ export default function Page(){
       )}
 
       {a&&!busy&&(
-        <motion.section
-          key={a}
-          initial={{opacity:0,y:18,scale:0.985}}
-          animate={{opacity:1,y:0,scale:1}}
-          transition={{duration:0.42,ease:[0.22,1,0.36,1]}}
-          className="relative mt-5 overflow-hidden rounded-2xl border border-slate-200 bg-white p-5 shadow-sm"
-          aria-live="polite"
-          aria-label="Assistant answer"
-        >
-          <motion.div
-            initial={{scaleX:0}}
-            animate={{scaleX:1}}
-            transition={{duration:0.55,ease:'easeOut'}}
-            className="absolute left-0 right-0 top-0 h-0.5 origin-left bg-emerald-500"
-          />
-          <div className="mb-3 flex items-center gap-2 text-sm font-medium text-emerald-700">
-            <motion.span
-              initial={{scale:0,rotate:-20}}
-              animate={{scale:1,rotate:0}}
-              transition={{type:'spring',stiffness:500,damping:25}}
-              className="flex h-7 w-7 items-center justify-center rounded-full bg-emerald-50"
-            >
-              <Sparkles size={14}/>
-            </motion.span>
-            <span>Assistant</span>
-          </div>
-
-          <p className="text-lg leading-8 text-slate-800">
-            {answerWords.map((word,index)=>(
-              /\s+/.test(word)
-                ? <span key={index}>{word}</span>
-                : <motion.span
-                    key={index}
-                    variants={wordVariants}
-                    initial="hidden"
-                    animate="visible"
-                    transition={{duration:0.24,delay:Math.min(index*0.025,0.65),ease:'easeOut'}}
-                    className="inline-block"
-                  >{word}</motion.span>
-            ))}
-          </p>
-        </motion.section>
+        <AssistantReceipt key={a} answer={a}/>
       )}
     </AnimatePresence>
   </div>
