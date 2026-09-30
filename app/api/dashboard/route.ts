@@ -28,10 +28,10 @@ export async function GET(){
     Product.countDocuments({userId:uid}),
     Product.countDocuments({userId:uid,$expr:{$lte:['$stockQuantity','$lowStockThreshold']}}),
     Transaction.aggregate([{$match:{userId:uid}},{$group:{_id:'$type',total:{$sum:{$ifNull:['$amount',0]}},count:{$sum:1}}}]),
-    Transaction.find({userId:uid}).sort({timestamp:-1}).limit(8).populate('partyId','name').populate('productId','name').lean(),
+    Transaction.find({userId:uid,isDeleted:false}).sort({timestamp:-1}).limit(8).populate('partyId','name').populate('productId','name').lean(),
     Party.aggregate([{$match:{userId:uid}},{$group:{_id:null,receivable:{$sum:{$cond:[{$gt:['$currentBalance',0]},'$currentBalance',0]}},payable:{$sum:{$cond:[{$lt:['$currentBalance',0]},{$abs:'$currentBalance'},0]}}}}]),
     Party.countDocuments({userId:uid,currentBalance:{$gt:0}}),
-    Transaction.aggregate([{$match:{userId:uid,timestamp:{$gte:todayStart,$lt:todayEnd},type:{$regex:'SALE|DUE_SALE|CASH_SALE',$options:'i'}}},{$group:{_id:null,total:{$sum:{$ifNull:['$amount',0]}},count:{$sum:1}}}]),
+    Transaction.aggregate([{$match:{userId:uid,isDeleted:false,timestamp:{$gte:todayStart,$lt:todayEnd},type:{$regex:'SALE|DUE_SALE|CASH_SALE',$options:'i'}}},{$group:{_id:null,total:{$sum:{$ifNull:['$amount',0]}},count:{$sum:1}}}]),
     Transaction.aggregate([{$match:{userId:uid,timestamp:{$gte:sevenStart,$lt:todayEnd},type:{$regex:'SALE|DUE_SALE|CASH_SALE',$options:'i'}}},{$group:{_id:{$dateToString:{format:'%Y-%m-%d',date:'$timestamp',timezone:'+06:00'}},total:{$sum:{$ifNull:['$amount',0]}}}},{$sort:{_id:1}}])
   ]);
   const weeklyMap=new Map(weekly.map((x:{_id:string,total:number})=>[x._id,Number(x.total||0)]));
