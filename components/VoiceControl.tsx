@@ -428,8 +428,7 @@ export default function VoiceControl() {
               setResult(null);
               setPending(null);
               setState('Idle');
-              window.setTimeout(() => inputRef.current?.focus(), 0);
-            }}
+                    }}
             className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-[28px] font-light leading-none text-slate-900 transition hover:bg-black/5 active:scale-95"
           >
             +
