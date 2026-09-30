@@ -483,11 +483,11 @@ export default function Page() {
             No payments yet.
           </p>
         ) : (
-          <div className="mt-3 space-y-2">
+          <div className="mt-4 space-y-2">
             {rows.map((payment) => (
               <div
                 key={payment._id}
-                className="flex flex-wrap items-center justify-between gap-3 border-b py-3 last:border-b-0"
+                className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-white/10 bg-white/[0.02] px-4 py-3 transition hover:bg-white/[0.04]"
               >
                 <div>
                   <p className="font-medium">
@@ -517,7 +517,7 @@ export default function Page() {
                   onClick={() =>
                     void reverse(payment._id)
                   }
-                  className="text-sm text-red-600 hover:underline disabled:opacity-50"
+                  className="text-sm text-rose-300 hover:underline disabled:opacity-50"
                 >
                   Reverse
                 </button>
