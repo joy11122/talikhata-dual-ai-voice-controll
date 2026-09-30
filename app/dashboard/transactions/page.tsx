@@ -572,7 +572,7 @@ export default function TransactionsPage() {
       </div>
 
       <div className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4">
-        <div className="rounded-xl border bg-white p-5">
+        <div className="rounded-xl border bg-transparent p-5">
           <p className="text-sm text-slate-500">
             Sales
           </p>
@@ -585,7 +585,7 @@ export default function TransactionsPage() {
           </p>
         </div>
 
-        <div className="rounded-xl border bg-white p-5">
+        <div className="rounded-xl border bg-transparent p-5">
           <p className="text-sm text-slate-500">
             Expenses
           </p>
@@ -598,7 +598,7 @@ export default function TransactionsPage() {
           </p>
         </div>
 
-        <div className="rounded-xl border bg-white p-5">
+        <div className="rounded-xl border bg-transparent p-5">
           <p className="text-sm text-slate-500">
             Net due movement
           </p>
@@ -614,7 +614,7 @@ export default function TransactionsPage() {
 
       <form
         onSubmit={add}
-        className="mt-6 rounded-xl border bg-white p-5 shadow-sm"
+        className="mt-6 rounded-xl border bg-transparent p-5 shadow-sm"
       >
         <div className="flex items-center gap-2 font-semibold">
           <Plus size={18} />
@@ -792,7 +792,7 @@ export default function TransactionsPage() {
         )}
       </form>
 
-      <div className="mt-6 overflow-hidden rounded-xl border bg-white shadow-sm">
+      <div className="mt-6 overflow-hidden rounded-xl border bg-transparent shadow-sm">
         <div className="overflow-x-auto">
           <table className="min-w-full text-sm">
             <thead className="bg-slate-50 text-left">
