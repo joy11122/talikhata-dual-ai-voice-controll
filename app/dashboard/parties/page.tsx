@@ -212,7 +212,7 @@ export default function PartiesPage() {
     <div className="mx-auto min-h-screen w-full max-w-6xl px-4 pb-36 pt-5 md:min-h-[calc(100vh-7rem)] md:px-0 md:pb-28 md:pt-2">
       {deleteTarget && (
         <div className="fixed inset-x-4 bottom-5 z-[10000] mx-auto max-w-md sm:right-6 sm:left-auto sm:inset-x-auto">
-          <div className="rounded-2xl border border-amber-200 bg-white p-4 shadow-[0_20px_60px_rgba(15,23,42,0.18)]">
+          <div className="rounded-2xl border border-amber-200 bg-transparent p-4 shadow-[0_20px_60px_rgba(15,23,42,0.18)]">
             <div className="flex items-start gap-3">
               <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-red-50 text-red-600"><Trash2 size={18} /></div>
               <div className="min-w-0 flex-1">
@@ -231,7 +231,7 @@ export default function PartiesPage() {
 
       {error && (
         <div className="fixed inset-0 z-[10001] flex items-center justify-center bg-slate-950/35 px-4 backdrop-blur-[3px]" role="alertdialog" aria-modal="true" aria-labelledby="party-error-title">
-          <div className="w-full max-w-sm rounded-[24px] border border-white/80 bg-white p-5 shadow-[0_24px_80px_rgba(15,23,42,0.25)]">
+          <div className="w-full max-w-sm rounded-[24px] border border-white/80 bg-transparent p-5 shadow-[0_24px_80px_rgba(15,23,42,0.25)]">
             <div className="flex items-start gap-3">
               <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-red-50 text-red-600"><AlertCircle size={22} /></div>
               <div className="min-w-0 flex-1">
@@ -253,7 +253,7 @@ export default function PartiesPage() {
         >
           <div
             className={[
-              'flex items-start gap-3 rounded-2xl border bg-white px-4 py-3.5',
+              'flex items-start gap-3 rounded-2xl border bg-transparent px-4 py-3.5',
               'shadow-[0_18px_50px_rgba(15,23,42,0.16)]',
               'backdrop-blur-xl',
               toast.type === 'success'
@@ -314,7 +314,7 @@ export default function PartiesPage() {
       <div className="mt-6 grid gap-5 lg:grid-cols-[360px_1fr]">
         <form
           onSubmit={save}
-          className="rounded-[24px] border border-black/[0.07] bg-white p-5 shadow-[0_10px_35px_rgba(15,23,42,0.06)] sm:p-6"
+          className="rounded-[24px] border border-black/[0.07] bg-transparent p-5 shadow-[0_10px_35px_rgba(15,23,42,0.06)] sm:p-6"
         >
           <div className="flex items-center gap-2.5 text-base font-bold tracking-tight text-slate-900">
             <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-50 text-emerald-700">
@@ -416,7 +416,7 @@ export default function PartiesPage() {
           </div>
         </form>
 
-        <section className="rounded-xl border bg-white p-5 shadow-sm">
+        <section className="rounded-xl border bg-transparent p-5 shadow-sm">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <h2 className="font-semibold">
               Your parties ({rows.length})
