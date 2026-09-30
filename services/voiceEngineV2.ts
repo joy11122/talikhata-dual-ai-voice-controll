@@ -933,6 +933,54 @@ async function findProduct(
   return rows[0];
 }
 
+async function findOrCreateProduct(
+  userId: string,
+  name: string,
+  session: any,
+  input: { unit?: string | null; quantity?: number | null; unitPrice?: number | null },
+) {
+  const normalizedName = name.trim();
+  if (!normalizedName) {
+    throw new VoiceV2Error('MISSING_ENTITY', 'Product name is required');
+  }
+
+  const candidates = await resolveProduct(userId, normalizedName, session);
+
+  if (candidates.length === 1) {
+    return { product: candidates[0], created: false };
+  }
+
+  if (candidates.length > 1) {
+    throw new VoiceV2Error(
+      'AMBIGUOUS_ENTITY',
+      `Multiple products matched "${normalizedName}"`,
+      {
+        matches: candidates.slice(0, 10).map((product: any) => ({
+          id: String(product._id),
+          name: product.name,
+          stock: product.stockQuantity,
+          unit: product.unit,
+        })),
+      },
+    );
+  }
+
+  const [created] = await Product.create(
+    [{
+      userId: new Types.ObjectId(userId),
+      name: normalizedName,
+      unit: input.unit?.trim() || 'unit',
+      stockQuantity: 0,
+      buyPrice: money(input.unitPrice),
+      sellPrice: 0,
+      lowStockThreshold: 5,
+    }],
+    { session },
+  );
+
+  return { product: created, created: true };
+}
+
 /* -------------------------------------------------------------------------- */
 /* Party creation / resolution                                                 */
 /* -------------------------------------------------------------------------- */
@@ -2140,12 +2188,21 @@ export async function executeVoiceV2(
             );
           }
 
-          const product =
-            await findProduct(
-              userId,
-              command.entityName,
-              session,
-            );
+          const resolvedProduct =
+            command.action === 'STOCK_IN'
+              ? await findOrCreateProduct(
+                  userId,
+                  command.entityName,
+                  session,
+                  {
+                    unit: command.unit,
+                    quantity: command.quantity,
+                    unitPrice: command.unitPrice,
+                  },
+                )
+              : { product: await findProduct(userId, command.entityName, session), created: false };
+
+          const product = resolvedProduct.product;
 
           const transaction =
             await createTransaction(
@@ -2195,11 +2252,10 @@ export async function executeVoiceV2(
             type: command.action,
 
             product: {
-              id: String(
-                product._id,
-              ),
+              id: String(product._id),
               name: product.name,
               unit: product.unit,
+              created: resolvedProduct.created,
             },
 
             quantity:
@@ -2236,12 +2292,21 @@ export async function executeVoiceV2(
             );
           }
 
-          const product =
-            await findProduct(
-              userId,
-              command.entityName,
-              session,
-            );
+          const resolvedProduct =
+            command.action === 'CREATE_PURCHASE'
+              ? await findOrCreateProduct(
+                  userId,
+                  command.entityName,
+                  session,
+                  {
+                    unit: command.unit,
+                    quantity: command.quantity,
+                    unitPrice: command.unitPrice,
+                  },
+                )
+              : { product: await findProduct(userId, command.entityName, session), created: false };
+
+          const product = resolvedProduct.product;
 
           const total = money(
             command.quantity *
