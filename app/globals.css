@@ -262,3 +262,9 @@ body{min-height:100vh;}
 /* Unified surfaces: forms and generic cards inherit the graphite page canvas. */
 .field,.btn-secondary{background:transparent!important;}
 .field:focus{background:transparent!important;}
+
+
+/* Mobile visual rhythm */
+@media (max-width:767px){
+  .tk-mobile-content-clearance{padding-bottom:calc(104px + env(safe-area-inset-bottom));}
+}
