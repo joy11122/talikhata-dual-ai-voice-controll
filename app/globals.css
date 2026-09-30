@@ -254,3 +254,7 @@ button:disabled{cursor:not-allowed;opacity:.65}
 
 /* Payment form select arrow breathing room */
 #direction{padding-right:2.35rem;}
+
+/* App-wide graphite background */
+html,body{background:#0B0F17;color:#fff;}
+body{min-height:100vh;}
