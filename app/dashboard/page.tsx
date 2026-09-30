@@ -5,8 +5,8 @@ import {useEffect,useMemo,useState} from 'react';
 import {BarChart3,Download,Filter,Mic,Search,SlidersHorizontal,Users,WalletCards,ShoppingCart,ChevronRight} from 'lucide-react';
 import {apiRequest} from '@/lib/api-client';
 
-type Tx={_id:string;partyId?:{name:string};productId?:{name:string};type:string;amount?:number;timestamp:string};
-type DashboardData={parties:number;products:number;lowStock:number;balances?:{receivable?:number;payable?:number};recent?:Tx[];todaySales?:{total?:number;count?:number};weeklySales?:Array<{label:string;date:string;total:number}>};
+type Tx={_id:string;partyId?:{name:string};productId?:{name:string};type:string;amount?:number;timestamp:string;source?:'MANUAL'|'VOICE'|'SYSTEM'};
+type DashboardData={parties:number;products:number;lowStock:number;dueCustomers?:number;balances?:{receivable?:number;payable?:number};recent?:Tx[];todaySales?:{total?:number;count?:number};weeklySales?:Array<{label:string;date:string;total:number}>};
 
 const money=(v?:number)=>`৳ ${Number(v||0).toLocaleString('bn-BD')}`;
 const saleType=(type:string)=>/SALE|DUE_SALE|CASH_SALE/i.test(type);
@@ -20,7 +20,7 @@ export default function DashboardPage(){
  const load=async()=>{try{setData(await apiRequest<DashboardData>('/api/dashboard'))}finally{setLoading(false)}};
  useEffect(()=>{void load();const r=()=>void load();window.addEventListener('talikhata:refresh',r);return()=>window.removeEventListener('talikhata:refresh',r)},[]);
  const recent=useMemo(()=>data?.recent?.filter(x=>{const q=query.trim().toLowerCase();return !q||txTitle(x).toLowerCase().includes(q)||txStatus(x).toLowerCase().includes(q)}).slice(0,5)??[],[data,query]);
- const dueCustomers=(data as DashboardData & {dueCustomers?:number})?.dueCustomers??0;
+ const dueCustomers=data?.dueCustomers??0;
  const chart=data?.weeklySales??[];
  const max=Math.max(...chart.map(x=>x.total),1);
  const runSearch=()=>{if(query.trim())window.dispatchEvent(new CustomEvent('talikhata:command',{detail:query.trim()}))};
@@ -52,7 +52,7 @@ export default function DashboardPage(){
           <span className={`tk-status-dot ${/DUE/i.test(item.type)?'due':isPositive(item)?'paid':'sale'}`}/>
           <div className="min-w-0 flex-1"><div className="flex items-center gap-2"><h3>{txTitle(item)}</h3>{i===0&&<span className="tk-new">LATEST</span>}</div><p>{time(item.timestamp)} <span>•</span> {txStatus(item)}</p></div>
           <div className="text-right"><strong className={isPositive(item)?'positive':''}>{isPositive(item)?'+':''}{money(item.amount).replace('৳ ','৳ ')}</strong><span>{saleType(item.type)?'Sale':'Transaction'}</span></div>
-          {/VOICE/i.test(txStatus(item))&&<Mic size={14} className="tk-mic"/>}
+          {item.source==='VOICE'&&<Mic size={14} className="tk-mic" aria-label="Voice transaction"/>}
         </div>)}
         {!recent.length&&<div className="rounded-2xl border border-slate-200 bg-white p-10 text-center text-sm text-slate-400">এখনো কোনো লেনদেন নেই।</div>}
        </div>
