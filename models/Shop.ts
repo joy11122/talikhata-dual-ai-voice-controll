@@ -21,6 +21,7 @@ export interface IShop extends mongoose.Document{
   shopName:string;
   currency:string;
   businessType:BusinessType;
+  address?:string;
   createdAt:Date;
 }
 
@@ -29,6 +30,7 @@ const S=new Schema<IShop>({
   shopName:{type:String,required:true,trim:true,maxlength:160},
   currency:{type:String,default:'BDT / ৳'},
   businessType:{type:String,enum:BUSINESS_TYPES,default:'GENERAL_RETAIL',index:true},
+  address:{type:String,trim:true,maxlength:240},
 },{timestamps:true,versionKey:false});
 
 const Shop=(mongoose.models.Shop as mongoose.Model<IShop>)||mongoose.model<IShop>('Shop',S);
