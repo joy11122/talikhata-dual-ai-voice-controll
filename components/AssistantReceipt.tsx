@@ -20,7 +20,7 @@ export default function AssistantReceipt({answer}: AssistantReceiptProps){
     let active=true;
     fetch('/api/shop').then(r=>r.ok?r.json():null).then(data=>{if(active&&data)setShop(data)}).catch(()=>{});
     return()=>{active=false};
-  },[shop._id]);
+  },[]);
 
   useEffect(()=>{
     if(!barcodeRef.current)return;
@@ -34,7 +34,7 @@ export default function AssistantReceipt({answer}: AssistantReceiptProps){
       background:'#fff',
       lineColor:'#111',
     });
-  },[]);
+  },[shop._id]);
 
   const rows = useMemo(()=>{
     const parts = answer
