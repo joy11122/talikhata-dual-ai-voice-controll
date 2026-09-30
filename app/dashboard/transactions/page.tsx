@@ -590,7 +590,7 @@ export default function TransactionsPage() {
             Expenses
           </p>
 
-          <p className="mt-1 text-2xl font-bold text-red-600">
+          <p className="mt-1 text-2xl font-bold text-rose-300">
             ৳
             {summary.expense.toLocaleString(
               'en-BD'
@@ -784,7 +784,7 @@ export default function TransactionsPage() {
 
         {error && (
           <p
-            className="mt-3 text-sm text-red-600"
+            className="mt-3 text-sm text-rose-300"
             role="alert"
           >
             {error}
