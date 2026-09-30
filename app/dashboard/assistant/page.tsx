@@ -3,21 +3,23 @@
 import {useRef, useState} from 'react';
 import {AnimatePresence, motion} from 'framer-motion';
 import {Mic, Send, Loader2, X, Sparkles} from 'lucide-react';
-import AssistantReceipt from '@/components/AssistantReceipt';
+import AssistantReceipt,{ReceiptData} from '@/components/AssistantReceipt';
+import AssistantAnswer from '@/components/AssistantAnswer';
 
 export default function Page(){
-  const [q,setQ]=useState(''),[a,setA]=useState(''),[busy,setBusy]=useState(false),[error,setError]=useState(''),[listening,setListening]=useState(false);
+  const [q,setQ]=useState(''),[a,setA]=useState(''),[receipt,setReceipt]=useState<ReceiptData|null>(null),[busy,setBusy]=useState(false),[error,setError]=useState(''),[listening,setListening]=useState(false);
   const recognition=useRef<any>(null);
 
   async function ask(e?:React.FormEvent){
     e?.preventDefault();
     if(!q.trim()||busy)return;
-    setBusy(true);setError('');
+    setBusy(true);setError('');setReceipt(null);
     try{
       const r=await fetch('/api/assistant',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({question:q})});
       const d=await r.json();
       if(!r.ok)throw new Error(d.error||'Assistant request failed');
       setA(d.answer||'No answer');
+      setReceipt(d.mode==='sales_receipt'&&d.receipt?d.receipt:null);
     }catch(e){setError(e instanceof Error?e.message:'Assistant unavailable')}
     finally{setBusy(false)}
   }
@@ -114,9 +116,7 @@ export default function Page(){
         </motion.div>
       )}
 
-      {a&&!busy&&(
-        <AssistantReceipt key={a} answer={a}/>
-      )}
+      {a&&!busy&&(receipt?<AssistantReceipt key={a} receipt={receipt}/>:<AssistantAnswer key={a} answer={a}/>)}
     </AnimatePresence>
   </div>
 }
