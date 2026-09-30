@@ -555,7 +555,7 @@ export default function TransactionsPage() {
   return (
     <div className="mx-auto max-w-6xl px-4 md:px-0">
       <div>
-        <p className="text-sm font-semibold text-emerald-700">
+        <p className="text-sm font-semibold text-emerald-300">
           Cash flow
         </p>
 
@@ -563,7 +563,7 @@ export default function TransactionsPage() {
           দৈনিক হিসাব
         </h1>
 
-        <p className="mt-2 text-slate-500">
+        <p className="mt-2 text-white/50">
           Record sales, expenses, dues and
           stock movements. Deleting a
           transaction safely reverses its
@@ -573,11 +573,11 @@ export default function TransactionsPage() {
 
       <div className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4">
         <div className="rounded-xl border bg-transparent p-5">
-          <p className="text-sm text-slate-500">
+          <p className="text-sm text-white/50">
             Sales
           </p>
 
-          <p className="mt-1 text-2xl font-bold text-emerald-700">
+          <p className="mt-1 text-2xl font-bold text-emerald-300">
             ৳
             {summary.sales.toLocaleString(
               'en-BD'
@@ -586,7 +586,7 @@ export default function TransactionsPage() {
         </div>
 
         <div className="rounded-xl border bg-transparent p-5">
-          <p className="text-sm text-slate-500">
+          <p className="text-sm text-white/50">
             Expenses
           </p>
 
@@ -599,7 +599,7 @@ export default function TransactionsPage() {
         </div>
 
         <div className="rounded-xl border bg-transparent p-5">
-          <p className="text-sm text-slate-500">
+          <p className="text-sm text-white/50">
             Net due movement
           </p>
 
@@ -894,7 +894,7 @@ export default function TransactionsPage() {
                           '—'}
                       </td>
 
-                      <td className="p-4 text-slate-500">
+                      <td className="p-4 text-white/50">
                         {transaction.notes ||
                           '—'}
                       </td>
@@ -908,7 +908,7 @@ export default function TransactionsPage() {
                               transaction._id
                             )
                           }
-                          className="text-red-500 hover:text-red-700 disabled:opacity-50"
+                          className="text-red-500 hover:text-red-300 disabled:opacity-50"
                           aria-label={`Delete ${labels[transaction.type] ?? 'transaction'}`}
                         >
                           <Trash2
@@ -925,7 +925,7 @@ export default function TransactionsPage() {
         </div>
 
         {!rows.length && (
-          <p className="py-12 text-center text-slate-400">
+          <p className="py-12 text-center text-white/40">
             No transactions yet.
           </p>
         )}
