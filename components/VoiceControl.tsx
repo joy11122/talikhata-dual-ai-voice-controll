@@ -12,6 +12,7 @@ import {
   ChevronRight,
 } from 'lucide-react';
 import { AnimatePresence, motion } from 'framer-motion';
+import { useToast } from '@/components/ToastProvider';
 
 type State = 'Idle' | 'Listening' | 'Processing' | 'Success' | 'Error';
 
@@ -112,6 +113,7 @@ export default function VoiceControl() {
   const [error, setError] = useState('');
   const [result, setResult] = useState<any>(null);
   const [pending, setPending] = useState<Pending | null>(null);
+  const { toast } = useToast();
 
   const latest = useRef('');
   const recognition = useRef<any>(null);
@@ -252,9 +254,9 @@ export default function VoiceControl() {
     } catch (err: any) {
       setState('Error');
 
-      setError(
-        err?.message || 'Voice command failed',
-      );
+      const message = err?.message || 'Voice command failed';
+      setError(message);
+      toast(message, 'error');
     }
   };
 
@@ -270,9 +272,9 @@ export default function VoiceControl() {
         'webkitSpeechRecognition' in window
       )
     ) {
-      setError(
-        'Voice recognition নেই। নিচের text box ব্যবহার করুন।',
-      );
+      const message = 'Voice recognition নেই। নিচের text box ব্যবহার করুন।';
+      setError(message);
+      toast(message, 'error');
 
       setState('Error');
 
@@ -314,9 +316,9 @@ export default function VoiceControl() {
     recognitionInstance.onerror = () => {
       setState('Error');
 
-      setError(
-        'Voice input নেওয়া যায়নি। Text command চেষ্টা করুন।',
-      );
+      const message = 'Voice input নেওয়া যায়নি। Text command চেষ্টা করুন।';
+      setError(message);
+      toast(message, 'error');
     };
 
     recognitionInstance.onend = () => {
@@ -396,20 +398,7 @@ export default function VoiceControl() {
         </motion.div>
       )}
 
-      {error && (
-        <div className="fixed bottom-[calc(7.25rem+env(safe-area-inset-bottom))] left-4 right-4 z-[55] mx-auto max-w-xl rounded-2xl border border-red-200 bg-white p-4 text-xs text-red-700 shadow-[0_20px_60px_rgba(15,23,42,0.16)] md:bottom-[90px]">
-          <div className="flex items-start gap-2">
-            <AlertCircle size={17} className="mt-0.5 shrink-0" />
-            <div className="min-w-0 flex-1">
-              <p className="font-semibold">Voice command error</p>
-              <pre className="mt-1 whitespace-pre-wrap break-words font-sans leading-5">{error}</pre>
-            </div>
-            <button type="button" onClick={() => setError('')} aria-label="Close error">
-              <X size={16} />
-            </button>
-          </div>
-        </div>
-      )}
+
 
       <div className="fixed bottom-[calc(0.5rem+env(safe-area-inset-bottom))] left-2 right-2 z-50 mx-auto max-w-3xl sm:left-3 sm:right-3 md:bottom-5">
         <div className="mb-2.5 flex min-h-8 justify-center px-2">
