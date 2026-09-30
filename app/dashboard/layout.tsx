@@ -50,7 +50,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const sidebar = (
     <aside
       className={[
-        'flex h-full flex-col border-r border-black/[0.07] bg-transparent',
+        'flex h-full flex-col border-r border-white/[0.08] bg-transparent',
         collapsed ? 'w-[76px]' : 'w-[258px]',
       ].join(' ')}
     >
@@ -62,19 +62,19 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         <button
           type="button"
           onClick={() => setCollapsed((v) => !v)}
-          className="hidden rounded-lg p-2 text-slate-400 hover:bg-transparent hover:text-slate-700 md:block"
+          className="hidden rounded-lg p-2 text-white/40 hover:bg-transparent hover:text-white/80 md:block"
           aria-expanded={!collapsed}
           aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
         >
           {collapsed ? <PanelLeftOpen size={18} /> : <PanelLeftClose size={18} />}
         </button>
-        <button type="button" onClick={() => setMobileOpen(false)} className="rounded-lg p-2 text-slate-400 md:hidden" aria-label="Close menu">
+        <button type="button" onClick={() => setMobileOpen(false)} className="rounded-lg p-2 text-white/40 md:hidden" aria-label="Close menu">
           <X size={19} />
         </button>
       </div>
 
       <nav className="flex-1 overflow-y-auto px-2 py-3" aria-label="Dashboard navigation">
-        <p className={`px-3 pb-2 text-[11px] font-semibold uppercase tracking-wider text-slate-400 ${collapsed ? 'sr-only' : ''}`}>Workspace</p>
+        <p className={`px-3 pb-2 text-[11px] font-semibold uppercase tracking-wider text-white/40 ${collapsed ? 'sr-only' : ''}`}>Workspace</p>
         <div className="space-y-0.5">
           {links.map(({ href, label, icon: Icon }) => {
             const active = href === '/dashboard' ? pathname === href : pathname.startsWith(href);
@@ -86,7 +86,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                 title={collapsed ? label : undefined}
                 className={[
                   'flex items-center gap-3 rounded-xl px-3 py-2.5 text-[13px] font-medium transition',
-                  active ? 'bg-transparent text-emerald-400' : 'text-slate-600 hover:bg-transparent hover:text-slate-900',
+                  active ? 'bg-transparent text-emerald-400' : 'text-white/60 hover:bg-transparent hover:text-white',
                   collapsed ? 'justify-center' : '',
                 ].join(' ')}
               >
@@ -96,24 +96,24 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             );
           })}
           {user?.role === 'ADMIN' && (
-            <Link href="/admin" onClick={() => setMobileOpen(false)} title={collapsed ? 'Admin Panel' : undefined} className={`mt-3 flex items-center gap-3 rounded-xl px-3 py-2.5 text-[13px] font-medium text-slate-600 hover:bg-transparent ${collapsed ? 'justify-center' : ''}`}>
+            <Link href="/admin" onClick={() => setMobileOpen(false)} title={collapsed ? 'Admin Panel' : undefined} className={`mt-3 flex items-center gap-3 rounded-xl px-3 py-2.5 text-[13px] font-medium text-white/60 hover:bg-transparent ${collapsed ? 'justify-center' : ''}`}>
               <Settings size={18} />{!collapsed && <span>Admin Panel</span>}
             </Link>
           )}
         </div>
       </nav>
 
-      <div className="border-t border-black/[0.06] p-2">
+      <div className="border-t border-white/[0.08] p-2">
         <div className={`rounded-xl bg-transparent p-3 text-emerald-400 ${collapsed ? 'flex justify-center' : ''}`}>
           <Mic size={18} />
-          {!collapsed && <div className="ml-2"><p className="text-xs font-semibold">Voice ready</p><p className="mt-0.5 text-[11px] text-emerald-700">Bangla · Banglish · English</p></div>}
+          {!collapsed && <div className="ml-2"><p className="text-xs font-semibold">Voice ready</p><p className="mt-0.5 text-[11px] text-emerald-300">Bangla · Banglish · English</p></div>}
         </div>
       </div>
     </aside>
   );
 
   return (
-    <div className="min-h-screen bg-transparent text-slate-900">
+    <div className="min-h-screen bg-transparent text-white">
       <div className="fixed inset-y-0 left-0 z-50 hidden md:block">{sidebar}</div>
 
       {mobileOpen && (
@@ -125,28 +125,28 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
       <div className={`relative min-w-0 transition-[padding] duration-200 ${collapsed ? 'md:pl-[76px]' : 'md:pl-[258px]'}`}>
         {/* Desktop workspace header. Mobile uses the dashboard's Apple-style app header. */}
-        <header className="sticky top-0 z-30 hidden h-16 items-center border-b border-black/[0.07] bg-transparent px-3 backdrop-blur-xl sm:px-5 md:flex">
+        <header className="sticky top-0 z-30 hidden h-16 items-center border-b border-white/[0.08] bg-transparent px-3 backdrop-blur-xl sm:px-5 md:flex">
           <div className="flex items-center gap-2">
-            <Home size={17} className="text-slate-400" />
-            <span className="text-sm font-medium text-slate-600">{currentTitle}</span>
+            <Home size={17} className="text-white/40" />
+            <span className="text-sm font-medium text-white/60">{currentTitle}</span>
           </div>
           <div className="ml-auto flex items-center gap-2">{status !== 'loading' && <NotificationBell />} {status !== 'loading' && <OwnerProfile name={user?.name} email={user?.email} image={user?.image} />}</div>
         </header>
 
         {/* Mobile app header: fixed controls with a dedicated title column prevent overlap on narrow screens. */}
-        <header className="fixed inset-x-0 top-0 z-[45] h-16 border-b border-black/[0.06] bg-transparent px-3 backdrop-blur-xl md:hidden">
+        <header className="fixed inset-x-0 top-0 z-[45] h-16 border-b border-white/[0.08] bg-transparent px-3 backdrop-blur-xl md:hidden">
           <div className="grid h-full grid-cols-[44px_minmax(0,1fr)_auto] items-center gap-2">
             <button
               type="button"
               onClick={() => setMobileOpen(true)}
-              className="flex h-11 w-11 items-center justify-center rounded-full border border-black/[0.06] bg-transparent text-slate-700 shadow-[0_4px_18px_rgba(15,23,42,0.10)] transition active:scale-95"
+              className="flex h-11 w-11 items-center justify-center rounded-full border border-white/[0.08] bg-transparent text-white/80 shadow-[0_4px_18px_rgba(15,23,42,0.10)] transition active:scale-95"
               aria-label="Open dashboard navigation"
             >
               <Menu size={22} />
             </button>
 
             <div className="min-w-0 px-1 text-center">
-              <p className="truncate text-[15px] font-bold tracking-[-0.02em] text-slate-900">
+              <p className="truncate text-[15px] font-bold tracking-[-0.02em] text-white">
                 {currentTitle}
               </p>
             </div>
