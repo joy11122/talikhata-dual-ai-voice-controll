@@ -44,7 +44,8 @@
     "@capacitor/status-bar": "^7.0.0",
     "@capacitor/android": "^7.4.3",
     "server-only": "^0.0.1",
-    "jsbarcode": "^3.11.6"
+    "jsbarcode": "^3.11.6",
+    "nodemailer": "^7.0.6"
   },
   "devDependencies": {
     "@types/bcryptjs": "^2.4.6",
