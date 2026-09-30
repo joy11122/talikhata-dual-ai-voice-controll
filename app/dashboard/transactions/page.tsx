@@ -795,7 +795,7 @@ export default function TransactionsPage() {
       <div className="mt-6 overflow-hidden rounded-xl border bg-transparent shadow-sm">
         <div className="overflow-x-auto">
           <table className="min-w-full text-sm">
-            <thead className="bg-slate-50 text-left">
+            <thead className="bg-transparent text-left">
               <tr>
                 <th className="p-4">
                   Date
