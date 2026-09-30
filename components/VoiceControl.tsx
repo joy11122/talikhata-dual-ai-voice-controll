@@ -130,6 +130,14 @@ export default function VoiceControl() {
    * );
    */
   useEffect(() => {
+    const onVoiceOpen = () => {
+      window.setTimeout(() => inputRef.current?.focus(), 0);
+    };
+    window.addEventListener('talikhata:voice-open', onVoiceOpen);
+    return () => window.removeEventListener('talikhata:voice-open', onVoiceOpen);
+  }, []);
+
+  useEffect(() => {
     const onCommand = (event: Event) => {
       const value = (event as CustomEvent<string>).detail;
 
