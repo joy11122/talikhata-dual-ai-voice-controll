@@ -174,48 +174,141 @@ function partyName(text: string): string | null {
   return null;
 }
 
-function parseSaleCommand(text: string): VoiceV2Command | null {
-  const value = normalizeVoiceText(text)
+export function parseSaleCommand(text: string): VoiceV2Command | null {
+  let value = normalizeVoiceText(text)
     .replace(/[।,!?;:]/g, ' ')
     .replace(/\s+/g, ' ')
     .trim();
 
-  // Natural shopkeeper pattern:
-  // "রহিমকে ২ কেজি চাল ৭০ টাকা দরে বিক্রি করলাম"
-  // "Rahim ke 2 kg chal 70 taka dore bikri korlam"
-  const pattern = /^(?:আজ\s+)?(.+?)\s*(?:কে|কো|কে)\s+(\d[\d,]*(?:\.\d+)?)\s*(কেজি|kg|কিলো|কিলোগ্রাম|গ্রাম|gram|g|লিটার|liter|litre|ml|মিটার|meter|টা|টি|piece|pieces|pcs|বোতল|প্যাকেট|packet|box|unit|ইউনিট)\s+(.+?)\s+(\d[\d,]*(?:\.\d+)?)\s*(?:টাকা|tk|taka)?\s*(?:দরে|দাম(?:এ)?|rate|per)\s+(?:বিক্রি|বেচা|বেচে|sell|sold)\s*(?:করলাম|করেছি|করল|করলেন|করো|করুন|করেছে|করেছিলাম|করেছি|দিলাম|দিয়েছি|দিয়ে ফেলেছি|করছি|করলাম)?$/iu;
+  // A walk-in/anonymous sale may omit the customer entirely.
+  // Strip common phrases that explicitly say the buyer is unnamed/unknown.
+  const anonymousBuyer =
+    /(?:নাম\s*(?:জানা|জানি)\s*নেই|কাস্টমারের\s*নাম\s*(?:জানা|জানি)\s*নেই|অজানা\s*কাস্টমার|অজানা\s*ক্রেতা|একজন\s*কাস্টমার|একজন\s*ক্রেতা|walk[ -]?in\s*customer|unknown\s*customer)/iu.test(value);
 
-  const match = value.match(pattern);
-  if (!match) return null;
+  value = value
+    .replace(/^(?:আজ\s+)?(?:নাম\s*(?:জানা|জানি)\s*নেই[,.]?\s*)/iu, '')
+    .replace(/^(?:আজ\s+)?(?:কাস্টমারের\s*নাম\s*(?:জানা|জানি)\s*নেই[,.]?\s*)/iu, '')
+    .replace(/^(?:আজ\s+)?(?:একজন\s*(?:কাস্টমার|ক্রেতা)|অজানা\s*(?:কাস্টমার|ক্রেতা)|walk[ -]?in\s*customer|unknown\s*customer)\s*(?:এর|র|কে|এর কাছে|র কাছে)?\s*/iu, '');
 
-  const party = match[1]
-    .replace(/^(?:ভাই|স্যার|সাহেব|মিস্টার|মিসেস)\s+/iu, '')
-    .replace(/\s+(?:ভাই|স্যার|সাহেব|sir|vai|bhai)$/iu, '')
-    .trim();
+  const units = '(কেজি|kg|কিলো|কিলোগ্রাম|গ্রাম|gram|g|লিটার|liter|litre|ml|মিটার|meter|টা|টি|piece|pieces|pcs|বোতল|প্যাকেট|packet|box|unit|ইউনিট)';
+  const saleVerb = '(?:বিক্রি|বেচা|বেচে|sell|sold)';
+  const ending = '(?:করলাম|করেছি|করল|করলেন|করো|করুন|করেছে|করেছিলাম|দিলাম|দিয়েছি|দিয়ে ফেলেছি|করছি|করলাম)?';
+  const credit = /(?:বাকি|বাকিতে|ক্রেডিট|credit|due)/iu.test(value);
 
-  const quantity = Number(match[2].replace(/,/g, ''));
-  const unit = match[3];
-  const product = match[4]
-    .replace(/^(?:নতুন\s+)/iu, '')
-    .replace(/\s+(?:পণ্য|product|item|মাল)$/iu, '')
-    .trim();
-  const unitPrice = Number(match[5].replace(/,/g, ''));
+  // Named customer: "রহিমকে ২ কেজি চাল ৭০ টাকা দরে বিক্রি করলাম"
+  const namedPattern = new RegExp(
+    '^(?:আজ\\s+)?(.+?)\\s*(?:কে)\\s+(\\d[\\d,]*(?:\\.\\d+)?)\\s*' +
+      units +
+      '\\s+(.+?)\\s+(\\d[\\d,]*(?:\\.\\d+)?)\\s*' +
+      '(?:টাকা|tk|taka)?\\s*(?:দরে|দাম(?:এ)?|rate|per)\\s+' +
+      saleVerb + '\\s*' + ending + '$',
+    'iu',
+  );
 
-  if (!party || !product || !Number.isFinite(quantity) || quantity <= 0 || !Number.isFinite(unitPrice) || unitPrice <= 0) {
-    return null;
+  const named = value.match(namedPattern);
+  if (named) {
+    const party = named[1]
+      .replace(/^(?:ভাই|স্যার|সাহেব|মিস্টার|মিসেস)\\s+/iu, '')
+      .replace(/\\s+(?:ভাই|স্যার|সাহেব|sir|vai|bhai)$/iu, '')
+      .trim();
+
+    const quantity = Number(named[2].replace(/,/g, ''));
+    const unit = named[3];
+    const product = named[4]
+      .replace(/^(?:নতুন\\s+)/iu, '')
+      .replace(/\\s+(?:পণ্য|product|item|মাল)$/iu, '')
+      .trim();
+    const unitPrice = Number(named[5].replace(/,/g, ''));
+
+    if (party && product && Number.isFinite(quantity) && quantity > 0 && Number.isFinite(unitPrice) && unitPrice > 0) {
+      const command = blank('CREATE_SALE');
+      command.entityType = 'PRODUCT';
+      command.entityName = product;
+      command.quantity = quantity;
+      command.unit = unit;
+      command.unitPrice = unitPrice;
+      command.query = party;
+      command.partyType = 'CUSTOMER';
+      command.amount = money(quantity * unitPrice);
+      command.paidAmount = credit ? 0 : command.amount;
+      return command;
+    }
   }
 
-  const command = blank('CREATE_SALE');
-  command.entityType = 'PRODUCT';
-  command.entityName = product;
-  command.quantity = quantity;
-  command.unit = unit;
-  command.unitPrice = unitPrice;
-  command.query = party;
-  command.partyType = 'CUSTOMER';
-  command.amount = money(quantity * unitPrice);
+  // Anonymous/walk-in: "২ কেজি চাল ৭০ টাকা দরে বিক্রি করলাম"
+  // and "একজন কাস্টমারের কাছে ২ কেজি চাল ৭০ টাকা দরে বিক্রি করলাম"
+  const anonymousRatePattern = new RegExp(
+    '^(?:নগদে\\s+)?(\\d[\\d,]*(?:\\.\\d+)?)\\s*' +
+      units +
+      '\\s+(.+?)\\s+(\\d[\\d,]*(?:\\.\\d+)?)\\s*' +
+      '(?:টাকা|tk|taka)?\\s*(?:দরে|দাম(?:এ)?|rate|per)\\s+' +
+      saleVerb + '\\s*' + ending + '$',
+    'iu',
+  );
 
-  return command;
+  const anonymousRate = value.match(anonymousRatePattern);
+  if (anonymousRate) {
+    const quantity = Number(anonymousRate[1].replace(/,/g, ''));
+    const unit = anonymousRate[2 - 0] ? anonymousRate[2] : '';
+    // Regex capture order is quantity, unit, product, price.
+    const product = anonymousRate[3]
+      .replace(/^(?:নতুন\\s+)/iu, '')
+      .replace(/\\s+(?:পণ্য|product|item|মাল)$/iu, '')
+      .trim();
+    const unitPrice = Number(anonymousRate[4].replace(/,/g, ''));
+
+    if (product && Number.isFinite(quantity) && quantity > 0 && Number.isFinite(unitPrice) && unitPrice > 0) {
+      const command = blank('CREATE_SALE');
+      command.entityType = 'PRODUCT';
+      command.entityName = product;
+      command.quantity = quantity;
+      command.unit = unit;
+      command.unitPrice = unitPrice;
+      command.query = null;
+      command.partyType = null;
+      command.amount = money(quantity * unitPrice);
+      command.paidAmount = credit ? 0 : command.amount;
+      return command;
+    }
+  }
+
+  // Anonymous/walk-in with a total amount:
+  // "২ কেজি চাল ১৪০ টাকায় বিক্রি করলাম"
+  const anonymousTotalPattern = new RegExp(
+    '^(?:নগদে\\s+)?(\\d[\\d,]*(?:\\.\\d+)?)\\s*' +
+      units +
+      '\\s+(.+?)\\s+(\\d[\\d,]*(?:\\.\\d+)?)\\s*' +
+      '(?:টাকায়|টাকাতে|টাকা|tk|taka)\\s+' +
+      saleVerb + '\\s*' + ending + '$',
+    'iu',
+  );
+
+  const anonymousTotal = value.match(anonymousTotalPattern);
+  if (anonymousTotal) {
+    const quantity = Number(anonymousTotal[1].replace(/,/g, ''));
+    const unit = anonymousTotal[2];
+    const product = anonymousTotal[3]
+      .replace(/^(?:নতুন\\s+)/iu, '')
+      .replace(/\\s+(?:পণ্য|product|item|মাল)$/iu, '')
+      .trim();
+    const total = Number(anonymousTotal[4].replace(/,/g, ''));
+
+    if (product && Number.isFinite(quantity) && quantity > 0 && Number.isFinite(total) && total > 0) {
+      const command = blank('CREATE_SALE');
+      command.entityType = 'PRODUCT';
+      command.entityName = product;
+      command.quantity = quantity;
+      command.unit = unit;
+      command.unitPrice = money(total / quantity);
+      command.query = null;
+      command.partyType = null;
+      command.amount = money(total);
+      command.paidAmount = credit ? 0 : command.amount;
+      return command;
+    }
+  }
+
+  return null;
 }
 
 function parseCreateProductCommand(text: string): VoiceV2Command | null {
@@ -533,6 +626,10 @@ CREATE_SALE:
 - "cash sale 1000 taka"
 Use party/customer when a customer is named. If sale is explicitly on credit, populate the customer and amount so the execution layer can update the ledger correctly.
 - For a sale sentence containing both a customer and a product, ALWAYS put the product name in entityName and the customer name in query. Example: "রহিমকে ২ কেজি চাল ৭০ টাকা দরে বিক্রি করলাম" -> action CREATE_SALE, entityName "চাল", query "রহিম", quantity 2, unit "কেজি", unitPrice 70, partyType CUSTOMER.
+- Anonymous/walk-in sales are valid. Examples: "২ কেজি চাল ৭০ টাকা দরে বিক্রি করলাম", "একজন কাস্টমারের কাছে ২ কেজি চাল ৭০ টাকা দরে বিক্রি করলাম", "নাম জানা নেই, ২ কেজি চাল ৭০ টাকা দরে বিক্রি করলাম".
+- For an anonymous/walk-in sale, set query=null and partyType=null. Treat a normal anonymous sale as paid/cash by setting paidAmount equal to the total amount. This lets inventory decrease without creating a fake customer.
+- If an anonymous sale explicitly says "বাকি/বাকিতে/credit/due", do NOT invent a customer. Return CREATE_SALE with query=null and paidAmount=0 so execution asks for a customer.
+- "২ কেজি চাল ১৪০ টাকায় বিক্রি করলাম" is also a valid anonymous sale: quantity=2, unit="কেজি", amount=140, unitPrice=70, paidAmount=140.
 
 
 PURCHASES
@@ -2389,6 +2486,11 @@ export async function executeVoiceV2(
               const resolved = await findOrCreateParty(userId, command.query, session, 'CUSTOMER');
               partyId = String(resolved.party._id);
               customerCreated = resolved.created;
+            } else if (paid < total) {
+              throw new VoiceV2Error(
+                'PARTY_REQUIRED',
+                'A customer is required for an unpaid or credit sale. For a walk-in sale, say "নগদে" or provide the customer name.',
+              );
             }
 
             const transaction =
