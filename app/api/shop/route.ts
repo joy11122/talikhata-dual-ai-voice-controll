@@ -2,6 +2,7 @@ import {NextResponse} from 'next/server';
 import {auth} from '@/auth';
 import {connectDB} from '@/lib/db';
 import Shop from '@/models/Shop';
+import User from '@/models/User';
 import {Types} from 'mongoose';
 import {z} from 'zod';
 
@@ -10,6 +11,7 @@ const schema=z.object({
   shopName:z.string().trim().min(2).max(160),
   currency:z.string().trim().min(1).max(20),
   businessType:z.enum(BUSINESS_TYPES),
+  address:z.string().trim().max(240).optional(),
 });
 
 async function getUserId(){
@@ -21,8 +23,12 @@ export async function GET(){
   const id=await getUserId();
   if(!id)return NextResponse.json({error:'Unauthorized'},{status:401});
   await connectDB();
-  const shop=await Shop.findOne({userId:new Types.ObjectId(id)}).lean();
-  return NextResponse.json(shop);
+  const uid=new Types.ObjectId(id);
+  const [shop,user]=await Promise.all([
+    Shop.findOne({userId:uid}).lean(),
+    User.findById(uid).select('name phone').lean(),
+  ]);
+  return NextResponse.json({...shop,managerName:user?.name||'',phone:user?.phone||''});
 }
 
 export async function PATCH(req:Request){
