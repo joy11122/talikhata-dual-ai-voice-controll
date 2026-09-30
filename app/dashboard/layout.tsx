@@ -134,7 +134,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
         {/* Mobile app header: fixed controls with a dedicated title column prevent overlap on narrow screens. */}
         <header className="fixed inset-x-0 top-0 z-[45] h-16 border-b border-black/[0.06] bg-white/90 px-3 backdrop-blur-xl md:hidden">
-          <div className="grid h-full grid-cols-[44px_minmax(0,1fr)_44px] items-center gap-2">
+          <div className="grid h-full grid-cols-[44px_minmax(0,1fr)_auto] items-center gap-2">
             <button
               type="button"
               onClick={() => setMobileOpen(true)}
