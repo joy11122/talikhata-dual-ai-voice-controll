@@ -39,7 +39,7 @@ export default function Page(){
     r.start();
   }
 
-  return <div className="mx-auto max-w-3xl px-4">
+  return <div className="mx-auto max-w-3xl px-4 md:px-0">
     <h1 className="text-3xl font-bold">Smart Shop Assistant</h1>
     <p className="mt-2 text-slate-500">Ask about sales, profit, receivables, payables or stock.</p>
     <form onSubmit={ask} className="mt-6">
