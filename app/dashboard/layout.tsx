@@ -170,9 +170,3 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     </div>
   );
 }
-
-
-/* Mobile visual rhythm: keep content clear of the fixed navigation and safe-area inset. */
-@media (max-width: 767px){
-  .tk-mobile-content-clearance{padding-bottom:calc(104px + env(safe-area-inset-bottom));}
-}
