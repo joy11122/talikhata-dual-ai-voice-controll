@@ -186,9 +186,8 @@ export function parseSaleCommand(text: string): VoiceV2Command | null {
     /(?:নাম\s*(?:জানা|জানি)\s*নেই|কাস্টমারের\s*নাম\s*(?:জানা|জানি)\s*নেই|অজানা\s*কাস্টমার|অজানা\s*ক্রেতা|একজন\s*কাস্টমার|একজন\s*ক্রেতা|walk[ -]?in\s*customer|unknown\s*customer)/iu.test(value);
 
   value = value
-    .replace(/^(?:আজ\s+)?(?:নাম\s*(?:জানা|জানি)\s*নেই[,.]?\s*)/iu, '')
-    .replace(/^(?:আজ\s+)?(?:কাস্টমারের\s*নাম\s*(?:জানা|জানি)\s*নেই[,.]?\s*)/iu, '')
-    .replace(/^(?:আজ\s+)?(?:একজন\s*(?:কাস্টমার|ক্রেতা)|অজানা\s*(?:কাস্টমার|ক্রেতা)|walk[ -]?in\s*customer|unknown\s*customer)\s*(?:এর|র|কে|এর কাছে|র কাছে)?\s*/iu, '');
+    .replace(/^(?:আজ\s+)?(?:নাম\s*(?:জানা|জানি)\s*নেই|কাস্টমারের\s*নাম\s*(?:জানা|জানি)\s*নেই)[,.]?\s*/iu, '')
+    .replace(/^(?:আজ\s+)?(?:একজন\s*কাস্টমারের\s*কাছে|একজন\s*কাস্টমার\s*কে|একজন\s*ক্রেতার\s*কাছে|অজানা\s*কাস্টমারের\s*কাছে|অজানা\s*ক্রেতার\s*কাছে|walk[ -]?in\s*customer|unknown\s*customer)\s*/iu, '');
 
   const units = '(কেজি|kg|কিলো|কিলোগ্রাম|গ্রাম|gram|g|লিটার|liter|litre|ml|মিটার|meter|টা|টি|piece|pieces|pcs|বোতল|প্যাকেট|packet|box|unit|ইউনিট)';
   const saleVerb = '(?:বিক্রি|বেচা|বেচে|sell|sold)';
@@ -197,7 +196,7 @@ export function parseSaleCommand(text: string): VoiceV2Command | null {
 
   // Named customer: "রহিমকে ২ কেজি চাল ৭০ টাকা দরে বিক্রি করলাম"
   const namedPattern = new RegExp(
-    '^(?:আজ\\s+)?(.+?)\\s*(?:কে)\\s+(\\d[\\d,]*(?:\\.\\d+)?)\\s*' +
+    '^(?:আজ\\s+)?(.+?)\\s*(?:কে|ke)\\s+(\\d[\\d,]*(?:\\.\\d+)?)\\s*' +
       units +
       '\\s+(.+?)\\s+(\\d[\\d,]*(?:\\.\\d+)?)\\s*' +
       '(?:টাকা|tk|taka)?\\s*(?:দরে|দাম(?:এ)?|rate|per)\\s+' +
