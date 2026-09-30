@@ -174,6 +174,58 @@ function partyName(text: string): string | null {
   return null;
 }
 
+function parseCreateProductCommand(text: string): VoiceV2Command | null {
+  const value = normalizeVoiceText(text)
+    .replace(/[।,!?;:]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+
+  const createVerb = '(?:যোগ করো|যোগ করুন|যোগ|add|create|বানাও|তৈরি করো|করো|করুন)';
+  const productWord = '(?:পণ্য|product|item|মাল)';
+  const price = '(\\d[\\d,]*(?:\\.\\d+)?)\\s*(?:টাকা|tk|taka)?\\s*(?:দরে|দাম(?:এ)?|rate|per)?';
+  const unitPattern = '(কেজি|kg|কিলো|কিলোগ্রাম|টা|টি|piece|pieces|pcs|লিটার|liter|litre|মিটার|meter|গ্রাম|gram|g|ml|বোতল|প্যাকেট|packet|box|unit|ইউনিট)';
+
+  const patterns: RegExp[] = [
+    new RegExp('^(?:নতুন\\s+)?(.+?)\\s+' + price + '\\s+' + productWord + '(?:\\s+(?:হিসেবে|হিসাবে|as))?\\s+' + createVerb + '$', 'iu'),
+    new RegExp('^(?:নতুন\\s+)?' + productWord + '\\s+(.+?)\\s+' + price + '\\s*' + createVerb + '$', 'iu'),
+    new RegExp('^(?:নতুন\\s+)?(\\d[\\d,]*(?:\\.\\d+)?)\\s*' + unitPattern + '\\s+(.+?)\\s+' + price + '\\s+' + productWord + '(?:\\s+(?:হিসেবে|হিসাবে|as))?\\s+' + createVerb + '$', 'iu'),
+    new RegExp('^(?:নতুন\\s+)?(.+?)\\s+' + productWord + '(?:\\s+(?:হিসেবে|হিসাবে|as))?\\s+' + createVerb + '$', 'iu'),
+  ];
+
+  for (const pattern of patterns) {
+    const match = value.match(pattern);
+    if (!match) continue;
+
+    const groups = match.slice(1);
+    const numeric = groups.find((g) => /^\\d[\\d,]*(?:\\.\\d+)?$/.test(g || ''));
+    const unit = groups.find((g) => new RegExp('^' + unitPattern + '$', 'iu').test(g || '')) || null;
+    const candidates = groups.filter((g) => g && g !== numeric && g !== unit);
+    let name = candidates[0]?.trim() || '';
+
+    name = name
+      .replace(/^নতুন\\s+/iu, '')
+      .replace(/\\s+(?:দরে|দাম(?:এ)?|rate|per)\\s*$/iu, '')
+      .trim();
+
+    if (!name || /^(?:পণ্য|product|item|মাল)$/iu.test(name)) continue;
+
+    const command = blank('CREATE_PRODUCT');
+    command.entityType = 'PRODUCT';
+    command.entityName = name;
+    command.unit = unit || 'unit';
+    command.unitPrice = numeric ? Number(numeric.replace(/,/g, '')) : null;
+
+    const quantityMatch = value.match(new RegExp('^(?:নতুন\\s+)?(\\d[\\d,]*(?:\\.\\d+)?)\\s*' + unitPattern + '\\s+', 'iu'));
+    if (quantityMatch) {
+      command.quantity = Number(quantityMatch[1].replace(/,/g, ''));
+    }
+
+    return command;
+  }
+
+  return null;
+}
+
 /* -------------------------------------------------------------------------- */
 /* Local parser                                                               */
 /* -------------------------------------------------------------------------- */
