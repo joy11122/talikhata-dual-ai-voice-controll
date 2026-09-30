@@ -17,7 +17,7 @@ const businessTypes=[
 ] as const;
 
 export default function SettingsPage(){
-  const[form,setForm]=useState({shopName:'',currency:'BDT / ৳',businessType:'GENERAL_RETAIL'});
+  const[form,setForm]=useState({shopName:'',currency:'BDT / ৳',businessType:'GENERAL_RETAIL',address:''});
   const[message,setMessage]=useState('');
   const[error,setError]=useState('');
   const[busy,setBusy]=useState(false);
@@ -28,6 +28,7 @@ export default function SettingsPage(){
         shopName:x.shopName||'',
         currency:x.currency||'BDT / ৳',
         businessType:x.businessType||'GENERAL_RETAIL',
+        address:x.address||'',
       });
     }).catch(()=>setError('সেটিংস লোড করা যায়নি।'));
   },[]);
@@ -43,7 +44,7 @@ export default function SettingsPage(){
       });
       const d=await r.json().catch(()=>null);
       if(!r.ok){setError(typeof d?.error==='string'?d.error:'সেটিংস সংরক্ষণ করা যায়নি।');return}
-      setForm({shopName:d.shopName||form.shopName,currency:d.currency||form.currency,businessType:d.businessType||form.businessType});
+      setForm({shopName:d.shopName||form.shopName,currency:d.currency||form.currency,businessType:d.businessType||form.businessType,address:d.address||form.address});
       setMessage('ব্যবসার তথ্য সফলভাবে সংরক্ষণ হয়েছে।');
       window.dispatchEvent(new Event('talikhata:refresh'));
     }catch{setError('সার্ভারের সাথে যোগাযোগ করা যায়নি।')}
@@ -68,6 +69,11 @@ export default function SettingsPage(){
           <div>
             <label className="form-label">ব্যবসার নাম</label>
             <input className="field" value={form.shopName} onChange={e=>setForm({...form,shopName:e.target.value})} placeholder="যেমন: রহিম স্টোর" aria-label="ব্যবসার নাম" required/>
+          </div>
+
+          <div>
+            <label className="form-label">ঠিকানা</label>
+            <input className="field" value={form.address} onChange={e=>setForm({...form,address:e.target.value})} placeholder="যেমন: ১২৩ মার্কেট রোড, খুলনা" aria-label="ঠিকানা" maxLength={240}/>
           </div>
 
           <div>
