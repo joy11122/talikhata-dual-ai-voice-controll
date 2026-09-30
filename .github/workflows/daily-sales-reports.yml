@@ -1,0 +1,19 @@
+name: Daily Sales Reports
+
+on:
+  schedule:
+    - cron: "*/15 * * * *"
+  workflow_dispatch:
+
+jobs:
+  send-reports:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger TaliKhata report scheduler
+        env:
+          APP_URL: ${{ secrets.TALIKHATA_APP_URL }}
+          CRON_SECRET: ${{ secrets.DAILY_REPORT_CRON_SECRET }}
+        run: |
+          test -n "$APP_URL"
+          test -n "$CRON_SECRET"
+          curl --fail-with-body --retry 2 --max-time 30             -H "Authorization: Bearer $CRON_SECRET"             "$APP_URL/api/cron/daily-reports"
