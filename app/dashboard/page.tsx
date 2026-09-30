@@ -20,7 +20,7 @@ export default function DashboardPage(){
  const load=async()=>{try{setData(await apiRequest<DashboardData>('/api/dashboard'))}finally{setLoading(false)}};
  useEffect(()=>{void load();const r=()=>void load();window.addEventListener('talikhata:refresh',r);return()=>window.removeEventListener('talikhata:refresh',r)},[]);
  const recent=useMemo(()=>data?.recent?.filter(x=>{const q=query.trim().toLowerCase();return !q||txTitle(x).toLowerCase().includes(q)||txStatus(x).toLowerCase().includes(q)}).slice(0,5)??[],[data,query]);
- const dueCustomers=data?.parties??0;
+ const dueCustomers=(data as DashboardData & {dueCustomers?:number})?.dueCustomers??0;
  const chart=data?.weeklySales??[];
  const max=Math.max(...chart.map(x=>x.total),1);
  const runSearch=()=>{if(query.trim())window.dispatchEvent(new CustomEvent('talikhata:command',{detail:query.trim()}))};
