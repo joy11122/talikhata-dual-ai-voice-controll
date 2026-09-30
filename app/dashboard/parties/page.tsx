@@ -214,7 +214,7 @@ export default function PartiesPage() {
         <div className="fixed inset-x-4 bottom-5 z-[10000] mx-auto max-w-md sm:right-6 sm:left-auto sm:inset-x-auto">
           <div className="rounded-2xl border border-amber-200 bg-transparent p-4 shadow-[0_20px_60px_rgba(15,23,42,0.18)]">
             <div className="flex items-start gap-3">
-              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-red-500/10 text-red-600"><Trash2 size={18} /></div>
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-red-500/10 text-rose-300"><Trash2 size={18} /></div>
               <div className="min-w-0 flex-1">
                 <p className="font-semibold text-white">কাস্টমার মুছে ফেলবেন?</p>
                 <p className="mt-1 text-sm text-white/50">“{deleteTarget.name}” স্থায়ীভাবে মুছে যাবে। এই কাজটি পূর্বাবস্থায় ফেরানো যাবে না।</p>
@@ -233,7 +233,7 @@ export default function PartiesPage() {
         <div className="fixed inset-0 z-[10001] flex items-center justify-center bg-slate-950/35 px-4 backdrop-blur-[3px]" role="alertdialog" aria-modal="true" aria-labelledby="party-error-title">
           <div className="w-full max-w-sm rounded-[24px] border border-white/10 bg-transparent p-5 shadow-[0_24px_80px_rgba(15,23,42,0.25)]">
             <div className="flex items-start gap-3">
-              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-red-500/10 text-red-600"><AlertCircle size={22} /></div>
+              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-red-500/10 text-rose-300"><AlertCircle size={22} /></div>
               <div className="min-w-0 flex-1">
                 <h2 id="party-error-title" className="text-base font-bold text-white">কাজটি সম্পন্ন করা যায়নি</h2>
                 <p className="mt-1.5 text-sm leading-6 text-white/65">{error}</p>
@@ -266,7 +266,7 @@ export default function PartiesPage() {
                 'mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-full',
                 toast.type === 'success'
                   ? 'bg-emerald-100 text-emerald-600'
-                  : 'bg-red-100 text-red-600',
+                  : 'bg-red-100 text-rose-300',
               ].join(' ')}
             >
               {toast.type === 'success' ? (
@@ -465,7 +465,7 @@ export default function PartiesPage() {
                       className={
                         Number(row.currentBalance || 0) >= 0
                           ? 'font-semibold text-emerald-300'
-                          : 'font-semibold text-red-600'
+                          : 'font-semibold text-rose-300'
                       }
                     >
                       ৳{Number(row.currentBalance || 0).toLocaleString()}
