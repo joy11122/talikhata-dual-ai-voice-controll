@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import {useEffect,useMemo,useState} from 'react';
-import {BarChart3,Download,Filter,Mic,Search,SlidersHorizontal,Users,WalletCards,ShoppingCart,ChevronRight} from 'lucide-react';
+import {BarChart3,Download,Mic,Search,SlidersHorizontal,ChevronRight} from 'lucide-react';
 import {apiRequest} from '@/lib/api-client';
 
 type Tx={_id:string;partyId?:{name:string};productId?:{name:string};type:string;amount?:number;timestamp:string;source?:'MANUAL'|'VOICE'|'SYSTEM'};
@@ -27,6 +27,7 @@ export default function DashboardPage(){
  if(loading)return <div className="mx-auto w-full max-w-6xl px-4 py-6 md:px-8"><div className="space-y-4 animate-pulse"><div className="h-12 rounded-xl bg-white"/><div className="grid grid-cols-2 gap-3"><div className="h-32 rounded-2xl bg-white"/><div className="h-32 rounded-2xl bg-white"/></div><div className="h-80 rounded-2xl bg-white"/></div></div>;
 
  return <div className="tk-dashboard mx-auto w-full max-w-6xl px-4 pb-36 pt-2 md:px-8 md:pb-10">
+   <header className="tk-store-header"><div className="tk-store-name"><span>Jalal Store</span><span className="tk-store-bn">জালাল স্টোর</span></div><div className="tk-voice-ready"><Mic size={16} className="tk-voice-ready-icon"/><span>Voice AI Ready</span></div></header>
    <div className="space-y-5">
      <form onSubmit={e=>{e.preventDefault();runSearch()}} className="tk-search">
        <Search size={19}/><input value={query} onChange={e=>setQuery(e.target.value)} placeholder="Search (voice-capable)" aria-label="Search, voice-capable"/><button type="button" aria-label="Filter" title="Filter"><SlidersHorizontal size={19}/></button>
