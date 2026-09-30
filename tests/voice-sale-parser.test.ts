@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { parseSaleCommand } from '@/services/voiceEngineV2';
+import { parseSaleCommand } from '@/lib/voice-v2/saleParser';
 
 describe('Voice V2 sale parser', () => {
   it('parses named customer sale', () => {
