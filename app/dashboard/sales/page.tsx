@@ -91,7 +91,7 @@ function Field({
     <input
       {...props}
       className={[
-        'w-full rounded-lg border border-slate-300 bg-transparent px-3 py-2 text-sm text-slate-900',
+        'w-full rounded-lg border border-white/10 bg-transparent px-3 py-2 text-sm text-white',
         'outline-none transition focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20',
         'disabled:cursor-not-allowed disabled:bg-transparent disabled:opacity-60',
         className,
@@ -552,7 +552,7 @@ export default function Page() {
         বিক্রি / POS
       </h1>
 
-      <p className="mt-2 text-slate-500">
+      <p className="mt-2 text-white/50">
         Complete sales flow with automatic
         stock and party balance updates.
       </p>
@@ -640,7 +640,7 @@ export default function Page() {
                       className="block w-full rounded-lg px-3 py-2 text-left text-sm hover:bg-transparent"
                     >
                       {product.name}
-                      <span className="ml-2 text-xs text-slate-400">
+                      <span className="ml-2 text-xs text-white/40">
                         {product.stockQuantity} {product.unit}
                       </span>
                     </button>
@@ -658,7 +658,7 @@ export default function Page() {
               <label htmlFor="variantId" className="form-label">Variant</label>
               <select
                 id="variantId"
-                className="w-full rounded-lg border border-slate-300 bg-transparent px-3 py-2 text-sm text-slate-900 outline-none transition focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20"
+                className="w-full rounded-lg border border-white/10 bg-transparent px-3 py-2 text-sm text-white outline-none transition focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20"
                 value={form.variantId}
                 onChange={(event) => {
                   const variant = selectedProduct.variants?.find((item) => item._id === event.target.value);
@@ -803,11 +803,11 @@ export default function Page() {
         </h2>
 
         {loading ? (
-          <p className="py-8 text-center text-slate-400">
+          <p className="py-8 text-center text-white/40">
             Loading sales…
           </p>
         ) : rows.length === 0 ? (
-          <p className="py-8 text-center text-slate-400">
+          <p className="py-8 text-center text-white/40">
             No sales yet.
           </p>
         ) : (
