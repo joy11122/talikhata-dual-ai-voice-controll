@@ -463,7 +463,7 @@ export default function Page() {
   }
 
   return (
-    <div className="mx-auto max-w-6xl px-4">
+    <div className="mx-auto max-w-6xl px-4 md:px-0">
       <h1 className="text-3xl font-bold">
         ক্রয়
       </h1>
