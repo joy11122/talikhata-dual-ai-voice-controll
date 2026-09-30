@@ -2,13 +2,13 @@
 @tailwind components;
 @tailwind utilities;
 
-:root{
-  color-scheme: light;
-  --tk-bg:#f5f5f7;
-  --tk-surface:rgba(255,255,255,.92);
+ :root{
+  color-scheme: dark;
+  --tk-bg:#0B0F17;
+  --tk-surface:transparent;
   --tk-border:rgba(60,60,67,.16);
-  --tk-text:#1d1d1f;
-  --tk-muted:#6e6e73;
+  --tk-text:#fff;
+  --tk-muted:rgba(255,255,255,.62);
   --tk-accent:#0a7a55;
 }
 
@@ -33,7 +33,7 @@ input,select,textarea{min-height:44px}
   border:1px solid var(--tk-border);
   border-radius:12px;
   padding:.72rem 1rem;
-  background:rgba(255,255,255,.96);
+  background:transparent;
   color:var(--tk-text);
   outline:none;
   transition:border-color .18s ease,box-shadow .18s ease,background-color .18s ease;
@@ -43,7 +43,7 @@ input,select,textarea{min-height:44px}
 .field:focus{
   border-color:rgba(10,122,85,.7);
   box-shadow:0 0 0 4px rgba(10,122,85,.11);
-  background:#fff;
+  background:transparent;
 }
 
 .btn-primary,.btn-secondary{
@@ -73,11 +73,11 @@ input,select,textarea{min-height:44px}
 }
 .btn-secondary{
   border:1px solid var(--tk-border);
-  background:rgba(255,255,255,.88);
-  color:#2c2c2e;
+  background:transparent;
+  color:#fff;
   box-shadow:0 1px 2px rgba(0,0,0,.04);
 }
-.btn-secondary:hover{background:#fff;border-color:rgba(60,60,67,.25)}
+.btn-secondary:hover{background:transparent;border-color:rgba(60,60,67,.25)}
 
 label.form-label{
   display:block;
@@ -258,3 +258,7 @@ button:disabled{cursor:not-allowed;opacity:.65}
 /* App-wide graphite background */
 html,body{background:#0B0F17;color:#fff;}
 body{min-height:100vh;}
+
+/* Unified surfaces: forms and generic cards inherit the graphite page canvas. */
+.field,.btn-secondary{background:transparent!important;}
+.field:focus{background:transparent!important;}
