@@ -199,3 +199,22 @@ button:disabled{cursor:not-allowed;opacity:.65}
 .tk-metric-due strong{color:#fb7185;text-shadow:0 0 12px rgba(239,68,68,.18);}
 .tk-metric small{color:rgba(255,255,255,.65);}
 .tk-metric-sales::after,.tk-metric-due::after{content:"";position:absolute;inset:-45%;pointer-events:none;opacity:.3;transform:rotate(-10deg);background:radial-gradient(ellipse at 20% 15%,rgba(255,255,255,.07),transparent 38%);}
+
+/* Global dark graphite / slate-glass dashboard palette */
+:root{
+  --tk-app-bg:#0B0F17;
+  --tk-surface:#161B26;
+  --tk-surface-glass:rgba(22,27,38,.85);
+}
+.tk-dashboard{background:var(--tk-app-bg);color:#fff;}
+.tk-dashboard .tk-search{background:var(--tk-surface-glass);border-color:rgba(255,255,255,.10);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);color:rgba(255,255,255,.72);}
+.tk-dashboard .tk-search input{color:#fff;}
+.tk-dashboard .tk-search input::placeholder{color:rgba(255,255,255,.52);}
+.tk-insight{background:linear-gradient(145deg,rgba(22,27,38,.92),rgba(22,27,38,.78));border-color:rgba(16,185,129,.22);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);}
+.tk-transaction{background:var(--tk-surface-glass);border-color:rgba(255,255,255,.09);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);}
+.tk-section-title,.tk-insight h2{color:#fff;}
+.tk-insight-copy,.tk-transaction p{color:rgba(255,255,255,.62);}
+.tk-transaction h3{color:#fff;}
+.tk-transaction>div:last-of-type span{color:rgba(255,255,255,.48);}
+.tk-dashboard .tk-export{background:rgba(22,27,38,.85);border-color:rgba(16,185,129,.35);color:#6ee7b7;}
+@media(max-width:767px){.tk-dashboard{background:var(--tk-app-bg);}}
