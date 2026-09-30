@@ -27,7 +27,7 @@ export default function DashboardPage(){
  if(loading)return <div className="mx-auto w-full max-w-6xl px-4 py-6 md:px-8"><div className="space-y-4 animate-pulse"><div className="h-12 rounded-xl bg-transparent"/><div className="grid grid-cols-2 gap-3"><div className="h-32 rounded-2xl bg-transparent"/><div className="h-32 rounded-2xl bg-transparent"/></div><div className="h-80 rounded-2xl bg-transparent"/></div></div>;
 
  return <div className="tk-dashboard mx-auto w-full max-w-6xl px-4 pb-36 pt-2 md:px-8 md:pb-10">
-   <header className="tk-store-header"><div className="tk-store-name"><span>Jalal Store</span><span className="tk-store-bn">জালাল স্টোর</span></div></header>
+   <header className="tk-store-header"><div className="tk-store-name"><span>Jalal Store</span><span className="tk-store-bn">জালাল স্টোর</span></div><div className="tk-voice-ready" aria-label="Voice AI Ready"><Mic size={15} className="tk-voice-ready-icon"/><span>Voice AI Ready</span></div></header>
    <div className="space-y-5">
 
 
