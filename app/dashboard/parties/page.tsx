@@ -219,11 +219,11 @@ export default function PartiesPage() {
                 <p className="font-semibold text-slate-900">কাস্টমার মুছে ফেলবেন?</p>
                 <p className="mt-1 text-sm text-slate-500">“{deleteTarget.name}” স্থায়ীভাবে মুছে যাবে। এই কাজটি পূর্বাবস্থায় ফেরানো যাবে না।</p>
                 <div className="mt-3 flex gap-2">
-                  <button type="button" onClick={() => setDeleteTarget(null)} disabled={busy} className="rounded-xl border border-slate-200 px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50">বাতিল</button>
+                  <button type="button" onClick={() => setDeleteTarget(null)} disabled={busy} className="rounded-xl border border-slate-200 px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-transparent">বাতিল</button>
                   <button type="button" onClick={() => void confirmDelete()} disabled={busy} className="rounded-xl bg-red-600 px-3 py-2 text-sm font-semibold text-white hover:bg-red-700 disabled:opacity-50">{busy ? 'মুছে ফেলা হচ্ছে…' : 'মুছে ফেলুন'}</button>
                 </div>
               </div>
-              <button type="button" aria-label="Close delete notification" onClick={() => setDeleteTarget(null)} className="rounded-full p-1 text-slate-400 hover:bg-slate-100"><X size={16} /></button>
+              <button type="button" aria-label="Close delete notification" onClick={() => setDeleteTarget(null)} className="rounded-full p-1 text-slate-400 hover:bg-transparent"><X size={16} /></button>
             </div>
           </div>
         </div>
@@ -238,7 +238,7 @@ export default function PartiesPage() {
                 <h2 id="party-error-title" className="text-base font-bold text-slate-900">কাজটি সম্পন্ন করা যায়নি</h2>
                 <p className="mt-1.5 text-sm leading-6 text-slate-600">{error}</p>
               </div>
-              <button type="button" aria-label="Close error" onClick={() => setError('')} className="rounded-full p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-700"><X size={18} /></button>
+              <button type="button" aria-label="Close error" onClick={() => setError('')} className="rounded-full p-1.5 text-slate-400 hover:bg-transparent hover:text-slate-700"><X size={18} /></button>
             </div>
             <button type="button" onClick={() => setError('')} className="mt-4 w-full rounded-xl bg-slate-900 px-4 py-3 text-sm font-semibold text-white hover:bg-slate-800">ঠিক আছে</button>
           </div>
@@ -284,7 +284,7 @@ export default function PartiesPage() {
               type="button"
               aria-label="Close notification"
               onClick={() => setToast(null)}
-              className="rounded-full p-1 text-slate-400 transition hover:bg-slate-100 hover:text-slate-700"
+              className="rounded-full p-1 text-slate-400 transition hover:bg-transparent hover:text-slate-700"
             >
               <X size={16} />
             </button>
@@ -441,8 +441,8 @@ export default function PartiesPage() {
           <div className="mt-4 space-y-2">
             {loading ? (
               <div className="space-y-2">
-                <div className="h-16 animate-pulse rounded-xl bg-slate-100" />
-                <div className="h-16 animate-pulse rounded-xl bg-slate-100" />
+                <div className="h-16 animate-pulse rounded-xl bg-transparent" />
+                <div className="h-16 animate-pulse rounded-xl bg-transparent" />
               </div>
             ) : (
               rows.map((row) => (
