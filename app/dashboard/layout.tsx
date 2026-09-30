@@ -12,6 +12,7 @@ import {
 import UserMenu from '@/components/UserMenu';
 import VoiceControl from '@/components/VoiceControl';
 import NotificationBell from '@/components/NotificationBell';
+import OwnerProfile from '@/components/OwnerProfile';
 
 type DashboardLink = { href: string; label: string; icon: LucideIcon };
 
@@ -129,7 +130,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             <Home size={17} className="text-slate-400" />
             <span className="text-sm font-medium text-slate-600">{currentTitle}</span>
           </div>
-          <div className="ml-auto flex items-center gap-2">{status !== 'loading' && <NotificationBell />} {status !== 'loading' && <UserMenu name={user?.name ?? ''} email={user?.email ?? ''} />}</div>
+          <div className="ml-auto flex items-center gap-2">{status !== 'loading' && <NotificationBell />} {status !== 'loading' && <OwnerProfile name={user?.name} email={user?.email} image={user?.image} />}</div>
         </header>
 
         {/* Mobile app header: fixed controls with a dedicated title column prevent overlap on narrow screens. */}
@@ -150,16 +151,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               </p>
             </div>
 
-            <div className="flex items-center justify-end gap-1"><NotificationBell />
-            <button
-              type="button"
-              onClick={() => void signOut({ callbackUrl: '/signin' })}
-              className="ml-auto flex h-11 w-11 items-center justify-center rounded-full border border-black/[0.06] bg-white text-slate-700 shadow-[0_4px_18px_rgba(15,23,42,0.10)] transition hover:bg-slate-50 active:scale-95"
-              aria-label="Sign out"
-              title="Sign out"
-            >
-              <LogOut size={19} />
-            </button></div>
+            <div className="flex items-center justify-end gap-1"><NotificationBell /><OwnerProfile name={user?.name} email={user?.email} image={user?.image} /></div>
         </header>
 
         <main className="min-h-screen px-0 pb-36 pt-20 sm:px-0 md:px-8 md:pb-10 md:pt-3">
