@@ -39,7 +39,7 @@ export default function DashboardPage(){
      </section>
 
      <section className="tk-insight">
-       <div className="flex items-start justify-between gap-3"><div><p className="tk-eyebrow">TALIKHATA AI INSIGHT</p><h2>গত ৭ দিনের বিক্রি</h2></div><BarChart3 size={20} className="mt-1 text-teal-600"/></div>
+       <div className="tk-insight-heading"><div><p className="tk-eyebrow">TALIKHATA AI INSIGHT</p><h2>গত ৭ দিনের বিক্রি</h2></div><div className="tk-business-insight"><BarChart3 size={20}/><span>Business Insight</span></div></div>
        <div className="tk-chart" aria-label="Last 7 days sales chart">
          {chart.map((item,i)=><div key={item.date} className="tk-bar-wrap"><div className="tk-bar-value">{item.total?money(item.total):''}</div><div className="tk-bar" style={{height:`${Math.max(item.total?10:3,(item.total/max)*100)}%`}}/><span>{item.label}</span></div>)}
        </div>
