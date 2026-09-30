@@ -811,62 +811,25 @@ export default function Page() {
             No sales yet.
           </p>
         ) : (
-          <div className="mt-3">
-            {rows.map(
-              (sale) => (
-                <div
-                  key={sale._id}
-                  className="flex flex-wrap items-center justify-between gap-3 border-b py-3 last:border-b-0"
-                >
-                  <div>
-                    <p className="font-medium">
-                      {sale.productId?.name || 'Product'}{sale.variantId?.name ? ' · ' + sale.variantId.name : ''}{' '}
-                      • ৳
-                      {Number(
-                        sale.amount ??
-                          sale.total ??
-                          0
-                      ).toLocaleString(
-                        'en-BD'
-                      )}
-                    </p>
-
-                    <p className="text-sm text-slate-500">
-                      Qty{' '}
-                      {sale.quantity ??
-                        0}{' '}
-                      •{' '}
-                      {sale.partyId
-                        ?.name ||
-                        'Walk-in'}
-                    </p>
-
-                    {sale.timestamp && (
-                      <p className="text-xs text-slate-400">
-                        {new Date(
-                          sale.timestamp
-                        ).toLocaleString(
-                          'en-BD'
-                        )}
-                      </p>
-                    )}
+          <div className="tk-sales-grid mt-4">
+            {rows.map((sale) => (
+              <article key={sale._id} className="tk-sale-card">
+                <div className="tk-sale-card-top">
+                  <div className="tk-sale-product">
+                    <span className="tk-sale-icon" aria-hidden="true">৳</span>
+                    <div className="min-w-0">
+                      <h3>{sale.productId?.name || 'Product'}{sale.variantId?.name ? <span> · {sale.variantId.name}</span> : null}</h3>
+                      <p>{sale.partyId?.name || 'Walk-in'} · {sale.quantity ?? 0} qty</p>
+                    </div>
                   </div>
-
-                  <button
-                    type="button"
-                    disabled={busy}
-                    onClick={() =>
-                      void reverse(
-                        sale._id
-                      )
-                    }
-                    className="text-sm text-red-600 hover:underline disabled:opacity-50"
-                  >
-                    Reverse
-                  </button>
+                  <strong className="tk-sale-amount">৳{Number(sale.amount ?? sale.total ?? 0).toLocaleString('en-BD')}</strong>
                 </div>
-              )
-            )}
+                <div className="tk-sale-card-bottom">
+                  <span>{sale.timestamp ? new Date(sale.timestamp).toLocaleString('en-BD',{dateStyle:'medium',timeStyle:'short'}) : '—'}</span>
+                  <button type="button" disabled={busy} onClick={() => void reverse(sale._id)} className="tk-sale-reverse">Reverse</button>
+                </div>
+              </article>
+            ))}
           </div>
         )}
       </div>
