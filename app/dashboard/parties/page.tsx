@@ -219,8 +219,8 @@ export default function PartiesPage() {
                 <p className="font-semibold text-white">কাস্টমার মুছে ফেলবেন?</p>
                 <p className="mt-1 text-sm text-white/50">“{deleteTarget.name}” স্থায়ীভাবে মুছে যাবে। এই কাজটি পূর্বাবস্থায় ফেরানো যাবে না।</p>
                 <div className="mt-3 flex gap-2">
-                  <button type="button" onClick={() => setDeleteTarget(null)} disabled={busy} className="rounded-xl border border-white/10 px-3 py-2 text-sm font-semibold text-white/80 hover:bg-transparent">বাতিল</button>
-                  <button type="button" onClick={() => void confirmDelete()} disabled={busy} className="rounded-xl bg-red-600 px-3 py-2 text-sm font-semibold text-white hover:bg-red-700 disabled:opacity-50">{busy ? 'মুছে ফেলা হচ্ছে…' : 'মুছে ফেলুন'}</button>
+                  <button type="button" onClick={() => setDeleteTarget(null)} disabled={busy} className="rounded-2xl border border-white/10 px-3 py-2 text-sm font-semibold text-white/80 hover:bg-transparent">বাতিল</button>
+                  <button type="button" onClick={() => void confirmDelete()} disabled={busy} className="rounded-2xl bg-red-600 px-3 py-2 text-sm font-semibold text-white hover:bg-red-700 disabled:opacity-50">{busy ? 'মুছে ফেলা হচ্ছে…' : 'মুছে ফেলুন'}</button>
                 </div>
               </div>
               <button type="button" aria-label="Close delete notification" onClick={() => setDeleteTarget(null)} className="rounded-full p-1 text-white/40 hover:bg-transparent"><X size={16} /></button>
@@ -231,7 +231,7 @@ export default function PartiesPage() {
 
       {error && (
         <div className="fixed inset-0 z-[10001] flex items-center justify-center bg-slate-950/35 px-4 backdrop-blur-[3px]" role="alertdialog" aria-modal="true" aria-labelledby="party-error-title">
-          <div className="w-full max-w-sm rounded-[24px] border border-white/80 bg-transparent p-5 shadow-[0_24px_80px_rgba(15,23,42,0.25)]">
+          <div className="w-full max-w-sm rounded-[24px] border border-white/10 bg-transparent p-5 shadow-[0_24px_80px_rgba(15,23,42,0.25)]">
             <div className="flex items-start gap-3">
               <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-red-500/10 text-red-600"><AlertCircle size={22} /></div>
               <div className="min-w-0 flex-1">
@@ -240,7 +240,7 @@ export default function PartiesPage() {
               </div>
               <button type="button" aria-label="Close error" onClick={() => setError('')} className="rounded-full p-1.5 text-white/40 hover:bg-transparent hover:text-white/80"><X size={18} /></button>
             </div>
-            <button type="button" onClick={() => setError('')} className="mt-4 w-full rounded-xl bg-slate-900 px-4 py-3 text-sm font-semibold text-white hover:bg-slate-800">ঠিক আছে</button>
+            <button type="button" onClick={() => setError('')} className="mt-4 w-full rounded-2xl bg-slate-900 px-4 py-3 text-sm font-semibold text-white hover:bg-slate-800">ঠিক আছে</button>
           </div>
         </div>
       )}
@@ -302,10 +302,10 @@ export default function PartiesPage() {
         </div>
 
         <div className="flex gap-3 text-sm">
-          <span className="rounded-xl bg-emerald-500/10 px-3 py-2 text-emerald-300">
+          <span className="rounded-2xl bg-emerald-500/10 px-3 py-2 text-emerald-300">
             পাবো ৳{totals.receive.toLocaleString()}
           </span>
-          <span className="rounded-xl bg-red-500/10 px-3 py-2 text-red-300">
+          <span className="rounded-2xl bg-red-500/10 px-3 py-2 text-red-300">
             দেবো ৳{totals.pay.toLocaleString()}
           </span>
         </div>
@@ -317,7 +317,7 @@ export default function PartiesPage() {
           className="rounded-[24px] border border-black/[0.07] bg-transparent p-5 shadow-[0_10px_35px_rgba(15,23,42,0.06)] sm:p-6"
         >
           <div className="flex items-center gap-2.5 text-base font-bold tracking-tight text-white">
-            <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-500/10 text-emerald-300">
+            <span className="flex h-9 w-9 items-center justify-center rounded-2xl bg-emerald-500/10 text-emerald-300">
               <Users size={18} />
             </span>
             <span>{editing ? 'Edit party' : 'Add party'}</span>
@@ -416,7 +416,7 @@ export default function PartiesPage() {
           </div>
         </form>
 
-        <section className="rounded-xl border bg-transparent p-5 shadow-sm">
+        <section className="rounded-2xl border bg-transparent p-5 shadow-sm">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <h2 className="font-semibold">
               Your parties ({rows.length})
@@ -441,14 +441,14 @@ export default function PartiesPage() {
           <div className="mt-4 space-y-2">
             {loading ? (
               <div className="space-y-2">
-                <div className="h-16 animate-pulse rounded-xl bg-transparent" />
-                <div className="h-16 animate-pulse rounded-xl bg-transparent" />
+                <div className="h-16 animate-pulse rounded-2xl bg-transparent" />
+                <div className="h-16 animate-pulse rounded-2xl bg-transparent" />
               </div>
             ) : (
               rows.map((row) => (
                 <div
                   key={row._id}
-                  className="flex flex-wrap items-center justify-between gap-3 rounded-xl border p-4"
+                  className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border p-4"
                 >
                   <div>
                     <p className="font-semibold">{row.name}</p>
