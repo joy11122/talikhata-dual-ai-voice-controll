@@ -50,7 +50,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const sidebar = (
     <aside
       className={[
-        'flex h-full flex-col border-r border-black/[0.07] bg-white',
+        'flex h-full flex-col border-r border-black/[0.07] bg-transparent',
         collapsed ? 'w-[76px]' : 'w-[258px]',
       ].join(' ')}
     >
@@ -62,7 +62,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         <button
           type="button"
           onClick={() => setCollapsed((v) => !v)}
-          className="hidden rounded-lg p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-700 md:block"
+          className="hidden rounded-lg p-2 text-slate-400 hover:bg-transparent hover:text-slate-700 md:block"
           aria-expanded={!collapsed}
           aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
         >
@@ -86,7 +86,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                 title={collapsed ? label : undefined}
                 className={[
                   'flex items-center gap-3 rounded-xl px-3 py-2.5 text-[13px] font-medium transition',
-                  active ? 'bg-emerald-50 text-emerald-700' : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900',
+                  active ? 'bg-emerald-50 text-emerald-700' : 'text-slate-600 hover:bg-transparent hover:text-slate-900',
                   collapsed ? 'justify-center' : '',
                 ].join(' ')}
               >
@@ -96,7 +96,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             );
           })}
           {user?.role === 'ADMIN' && (
-            <Link href="/admin" onClick={() => setMobileOpen(false)} title={collapsed ? 'Admin Panel' : undefined} className={`mt-3 flex items-center gap-3 rounded-xl px-3 py-2.5 text-[13px] font-medium text-slate-600 hover:bg-slate-50 ${collapsed ? 'justify-center' : ''}`}>
+            <Link href="/admin" onClick={() => setMobileOpen(false)} title={collapsed ? 'Admin Panel' : undefined} className={`mt-3 flex items-center gap-3 rounded-xl px-3 py-2.5 text-[13px] font-medium text-slate-600 hover:bg-transparent ${collapsed ? 'justify-center' : ''}`}>
               <Settings size={18} />{!collapsed && <span>Admin Panel</span>}
             </Link>
           )}
@@ -125,7 +125,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
       <div className={`relative min-w-0 transition-[padding] duration-200 ${collapsed ? 'md:pl-[76px]' : 'md:pl-[258px]'}`}>
         {/* Desktop workspace header. Mobile uses the dashboard's Apple-style app header. */}
-        <header className="sticky top-0 z-30 hidden h-16 items-center border-b border-black/[0.07] bg-white/90 px-3 backdrop-blur-xl sm:px-5 md:flex">
+        <header className="sticky top-0 z-30 hidden h-16 items-center border-b border-black/[0.07] bg-transparent px-3 backdrop-blur-xl sm:px-5 md:flex">
           <div className="flex items-center gap-2">
             <Home size={17} className="text-slate-400" />
             <span className="text-sm font-medium text-slate-600">{currentTitle}</span>
@@ -134,12 +134,12 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         </header>
 
         {/* Mobile app header: fixed controls with a dedicated title column prevent overlap on narrow screens. */}
-        <header className="fixed inset-x-0 top-0 z-[45] h-16 border-b border-black/[0.06] bg-white/90 px-3 backdrop-blur-xl md:hidden">
+        <header className="fixed inset-x-0 top-0 z-[45] h-16 border-b border-black/[0.06] bg-transparent px-3 backdrop-blur-xl md:hidden">
           <div className="grid h-full grid-cols-[44px_minmax(0,1fr)_auto] items-center gap-2">
             <button
               type="button"
               onClick={() => setMobileOpen(true)}
-              className="flex h-11 w-11 items-center justify-center rounded-full border border-black/[0.06] bg-white text-slate-700 shadow-[0_4px_18px_rgba(15,23,42,0.10)] transition active:scale-95"
+              className="flex h-11 w-11 items-center justify-center rounded-full border border-black/[0.06] bg-transparent text-slate-700 shadow-[0_4px_18px_rgba(15,23,42,0.10)] transition active:scale-95"
               aria-label="Open dashboard navigation"
             >
               <Menu size={22} />
