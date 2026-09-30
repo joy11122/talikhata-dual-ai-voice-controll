@@ -526,11 +526,14 @@ Do not confuse a normal sale with manual stock adjustment when the utterance cle
 
 SALES
 CREATE_SALE:
+- "রহিমকে ২ কেজি চাল ৭০ টাকা দরে বিক্রি করলাম"
 - "রহিমের কাছে ৫ কেজি চাল ৭০ টাকা কেজি দরে বিক্রি করলাম"
 - "আজ করিমকে ৩টা সাবান বিক্রি করেছি, মোট ৩০০"
 - "জসিমের কাছে ৫০০ টাকার মাল বেচলাম"
 - "cash sale 1000 taka"
 Use party/customer when a customer is named. If sale is explicitly on credit, populate the customer and amount so the execution layer can update the ledger correctly.
+- For a sale sentence containing both a customer and a product, ALWAYS put the product name in entityName and the customer name in query. Example: "রহিমকে ২ কেজি চাল ৭০ টাকা দরে বিক্রি করলাম" -> action CREATE_SALE, entityName "চাল", query "রহিম", quantity 2, unit "কেজি", unitPrice 70, partyType CUSTOMER.
+
 
 PURCHASES
 CREATE_PURCHASE:
