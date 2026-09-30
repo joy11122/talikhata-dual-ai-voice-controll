@@ -1,6 +1,6 @@
 'use client';
 
-import {useEffect, useMemo, useRef} from 'react';
+import {useEffect, useMemo, useRef, useState} from 'react';
 import JsBarcode from 'jsbarcode';
 import {motion} from 'framer-motion';
 
@@ -8,14 +8,24 @@ type AssistantReceiptProps = {
   answer: string;
 };
 
+type ShopInfo = {shopName?:string; address?:string; currency?:string; managerName?:string; _id?:string};
+
 const diamonds = '◇◇◇◇◇◇◇◇◇◇◇◇◇◇◇◇◇◇◇◇◇◇◇◇';
 
 export default function AssistantReceipt({answer}: AssistantReceiptProps){
+  const [shop,setShop]=useState<ShopInfo>({});
   const barcodeRef = useRef<SVGSVGElement>(null);
 
   useEffect(()=>{
+    let active=true;
+    fetch('/api/shop').then(r=>r.ok?r.json():null).then(data=>{if(active&&data)setShop(data)}).catch(()=>{});
+    return()=>{active=false};
+  },[shop._id]);
+
+  useEffect(()=>{
     if(!barcodeRef.current)return;
-    JsBarcode(barcodeRef.current,'123456778963578021',{
+    const barcodeValue=shop._id ? shop._id.replace(/\D/g,'').slice(-18).padStart(18,'0') : '123456778963578021';
+    JsBarcode(barcodeRef.current,barcodeValue,{
       format:'CODE128',
       width:1.45,
       height:58,
@@ -89,13 +99,13 @@ export default function AssistantReceipt({answer}: AssistantReceiptProps){
         </div>
 
         <div className="mt-5 text-center font-sans text-xl font-extrabold tracking-tight text-slate-950 sm:text-2xl">
-          PREMIUM GROCERY CO.
+          {shop.shopName||'YOUR SHOP'}
         </div>
 
         <div className="mt-5 space-y-1.5 font-mono text-xs leading-5 text-slate-700 sm:text-sm">
           <div className="flex justify-between gap-4">
             <span className="font-bold">Address:</span>
-            <span className="text-right">123 Market St. 8/24</span>
+            <span className="text-right">{shop.address||'—'}</span>
           </div>
           <div className="flex justify-between gap-4">
             <span className="font-bold">Date:</span>
@@ -103,7 +113,7 @@ export default function AssistantReceipt({answer}: AssistantReceiptProps){
           </div>
           <div className="flex justify-between gap-4">
             <span className="font-bold">Manager:</span>
-            <span className="text-right">John Doe</span>
+            <span className="text-right">{shop.managerName||'—'}</span>
           </div>
         </div>
 
@@ -152,12 +162,12 @@ export default function AssistantReceipt({answer}: AssistantReceiptProps){
           <svg
             ref={barcodeRef}
             role="img"
-            aria-label="Code 128 barcode 123456778963578021"
+            aria-label="Code 128 receipt barcode"
             className="h-[58px] w-full max-w-[300px]"
           />
         </div>
         <div className="mt-2 text-center font-mono text-xs tracking-[.12em] text-slate-900">
-          123456778963578021
+          {shop._id ? shop._id.replace(/\D/g,'').slice(-18).padStart(18,'0') : '123456778963578021'}
         </div>
       </div>
 
