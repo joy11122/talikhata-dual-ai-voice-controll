@@ -231,6 +231,9 @@ function parseCreateProductCommand(text: string): VoiceV2Command | null {
 /* -------------------------------------------------------------------------- */
 
 function localParse(text: string): VoiceV2Command | null {
+  const createProduct = parseCreateProductCommand(text);
+  if (createProduct) return createProduct;
+
   const value = norm(text);
   const amount = extractNumber(text);
   const name = partyName(text);
@@ -444,6 +447,10 @@ PRODUCT COMMANDS
 CREATE_PRODUCT:
 - "চাল পণ্য হিসেবে যোগ করো"
 - "নতুন পণ্য রড ১০০ টাকা দরে যোগ করো"
+- "চাল ৭০ টাকা দরে পণ্য হিসেবে যোগ করো"
+- "১০ কেজি চাল ৭০ টাকা দরে পণ্য হিসেবে যোগ করো"
+- A CREATE_PRODUCT command does NOT require the product to already exist. If the spoken command explicitly asks to add/create a product, return CREATE_PRODUCT even when that product is absent from the database.
+- If the user omits the unit in a product-creation command, use "unit" rather than refusing the command. If a quantity/unit is explicitly spoken, preserve it (for example ১০ কেজি -> quantity 10, unit "kg").
 - "একটা নতুন item বানাও"
 READ_PRODUCT:
 - "চালের তথ্য দেখাও"
@@ -1108,8 +1115,16 @@ export async function executeVoiceV2(
   /* Validate command                                                       */
   /* ---------------------------------------------------------------------- */
 
-  const command =
+  const parsedCommand =
     VoiceV2Schema.parse(commandInput);
+
+  // Product creation is intentionally tolerant of omitted units in natural voice.
+  // Mongo still receives a valid unit so commands such as "চাল ৭০ টাকা দরে পণ্য হিসেবে যোগ করো"
+  // can create the catalog item instead of failing only because the spoken unit was omitted.
+  const command: VoiceV2Command =
+    parsedCommand.action === 'CREATE_PRODUCT'
+      ? { ...parsedCommand, unit: parsedCommand.unit || 'unit' }
+      : parsedCommand;
 
   confirm(command, confirmed);
 
