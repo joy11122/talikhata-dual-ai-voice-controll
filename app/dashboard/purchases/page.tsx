@@ -468,7 +468,7 @@ export default function Page() {
         ক্রয়
       </h1>
 
-      <p className="mt-2 text-slate-500">
+      <p className="mt-2 text-white/50">
         Complete purchase flow with automatic
         stock and supplier balance updates.
       </p>
@@ -652,11 +652,11 @@ export default function Page() {
         </h2>
 
         {loading ? (
-          <p className="py-8 text-center text-slate-400">
+          <p className="py-8 text-center text-white/40">
             Loading purchases…
           </p>
         ) : rows.length === 0 ? (
-          <p className="py-8 text-center text-slate-400">
+          <p className="py-8 text-center text-white/40">
             No purchases yet.
           </p>
         ) : (
@@ -680,7 +680,7 @@ export default function Page() {
                     )}
                   </p>
 
-                  <p className="text-sm text-slate-500">
+                  <p className="text-sm text-white/50">
                     Qty{' '}
                     {purchase.quantity ??
                       0}{' '}
@@ -690,7 +690,7 @@ export default function Page() {
                   </p>
 
                   {purchase.timestamp && (
-                    <p className="text-xs text-slate-400">
+                    <p className="text-xs text-white/40">
                       {new Date(
                         purchase.timestamp
                       ).toLocaleString(
