@@ -218,3 +218,8 @@ button:disabled{cursor:not-allowed;opacity:.65}
 .tk-transaction>div:last-of-type span{color:rgba(255,255,255,.48);}
 .tk-dashboard .tk-export{background:rgba(22,27,38,.85);border-color:rgba(16,185,129,.35);color:#6ee7b7;}
 @media(max-width:767px){.tk-dashboard{background:var(--tk-app-bg);}}
+
+.tk-insight-heading{display:flex;align-items:center;justify-content:space-between;gap:1rem;}
+.tk-business-insight{display:flex;align-items:center;justify-content:flex-end;gap:.4rem;flex:none;color:#6ee7b7;font-size:.68rem;font-weight:700;white-space:nowrap;}
+.tk-business-insight svg{width:18px;height:18px;stroke-width:2;}
+@media(max-width:420px){.tk-insight-heading{gap:.65rem}.tk-business-insight{font-size:.58rem}.tk-business-insight svg{width:16px;height:16px}}
