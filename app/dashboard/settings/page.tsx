@@ -77,7 +77,7 @@ export default function SettingsPage(){
     </div>
 
     <form onSubmit={save} className="space-y-5">
-      <section className="rounded-[28px] border border-white/75 bg-transparent p-4 shadow-[0_8px_32px_rgba(31,38,135,0.07)] backdrop-blur-xl sm:p-6">
+      <section className="rounded-[28px] border border-white/10 bg-transparent p-4 shadow-[0_8px_32px_rgba(0,0,0,0.18)] backdrop-blur-xl sm:p-6">
         <div className="mb-5 flex items-start gap-3">
           <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-emerald-500/10 text-emerald-600"><BriefcaseBusiness size={19}/></span>
           <div><h2 className="font-bold text-white">Business profile</h2><p className="mt-1 text-xs text-white/50">এই তথ্য আপনার ব্যবসার default workflow নির্ধারণের foundation।</p></div>
@@ -115,7 +115,7 @@ export default function SettingsPage(){
         {error&&<div className="mt-4 rounded-2xl border border-red-200 bg-red-500/10 px-4 py-3 text-sm font-medium text-red-300">{error}</div>}
       </section>
 
-      <section className="rounded-[28px] border border-white/75 bg-transparent p-4 shadow-[0_8px_32px_rgba(31,38,135,0.07)] backdrop-blur-xl sm:p-6">
+      <section className="rounded-[28px] border border-white/10 bg-transparent p-4 shadow-[0_8px_32px_rgba(0,0,0,0.18)] backdrop-blur-xl sm:p-6">
         <div className="mb-5 flex items-start gap-3">
           <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-emerald-500/10 text-emerald-600"><Bell size={19}/></span>
           <div><h2 className="font-bold text-white">Daily sales report</h2><p className="mt-1 text-xs leading-5 text-white/50">দোকান বন্ধ হওয়ার সময় অনুযায়ী প্রতিদিনের sales summary automatically পাঠান।</p></div>
@@ -138,7 +138,7 @@ export default function SettingsPage(){
         </form>
       </section>
 
-      <section className="rounded-[28px] border border-white/75 bg-transparent p-4 shadow-[0_8px_32px_rgba(31,38,135,0.07)] backdrop-blur-xl sm:p-5">
+      <section className="rounded-[28px] border border-white/10 bg-transparent p-4 shadow-[0_8px_32px_rgba(0,0,0,0.18)] backdrop-blur-xl sm:p-5">
         <div className="flex gap-3">
           <ShieldCheck className="shrink-0 text-emerald-600"/>
           <div><h2 className="font-semibold text-white">Privacy protection</h2><p className="mt-1 text-sm leading-6 text-white/50">আপনার business data authenticated user-এর scope-এর মধ্যেই থাকে। Voice execution-ও active session যাচাই করে তারপর data পরিবর্তন করে।</p></div>
