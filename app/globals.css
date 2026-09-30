@@ -118,3 +118,56 @@ button:disabled{cursor:not-allowed;opacity:.65}
 /* Form icon → input text spacing: applies to every form field that uses an absolute leading icon. */
 .field-with-icon{padding-left:2.625rem!important}
 .relative > svg + .field{padding-left:2.625rem!important}
+
+/* Dashboard v2 — receipt/ledger inspired visual system */
+:root{
+  --tk-dash-bg:#f7f7f4;
+  --tk-dash-surface:#fff;
+  --tk-dash-ink:#171717;
+  --tk-dash-muted:#737373;
+  --tk-dash-teal:#0f766e;
+  --tk-dash-teal-soft:#dff4f0;
+  --tk-dash-pink:#f4dfe5;
+  --tk-dash-red:#dc3f52;
+  --tk-dash-line:#dedbd5;
+  --tk-dash-serif:Georgia,"Noto Serif Bengali","Noto Serif",serif;
+  --tk-dash-sans:"Noto Sans Bengali",-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+  --tk-dash-mono:"SFMono-Regular",Consolas,"Liberation Mono","Noto Sans Bengali",monospace;
+}
+.tk-dashboard{background:var(--tk-dash-bg);font-family:var(--tk-dash-sans)}
+.tk-dashboard .tk-search{display:flex;align-items:center;gap:.75rem;height:54px;padding:0 .75rem 0 1rem;background:#fff;border:1px solid #e3e1dc;border-radius:15px;box-shadow:0 2px 10px rgba(20,20,20,.04);color:#777}
+.tk-dashboard .tk-search input{min-width:0;flex:1;border:0;outline:0;background:transparent;font-size:.9rem;color:#222}
+.tk-dashboard .tk-search input::placeholder{color:#969696}
+.tk-dashboard .tk-search button{display:flex;align-items:center;justify-content:center;width:40px;height:40px;border:0;border-left:1px solid #e5e2dd;background:transparent;color:#555;cursor:pointer}
+.tk-metric{display:flex;min-height:138px;flex-direction:column;justify-content:center;border-radius:18px;background:#fff;padding:1rem 1.05rem;text-decoration:none;box-shadow:0 2px 12px rgba(20,20,20,.035);transition:transform .16s ease,box-shadow .16s ease}
+.tk-metric:hover{transform:translateY(-2px);box-shadow:0 8px 22px rgba(20,20,20,.07)}
+.tk-metric span{font-size:.85rem;font-weight:700;color:#454545}
+.tk-metric strong{margin-top:.45rem;font-family:var(--tk-dash-mono);font-size:clamp(1.45rem,5vw,2rem);font-weight:800;letter-spacing:-.04em;color:#151515}
+.tk-metric small{margin-top:.35rem;font-size:.72rem;color:#777}
+.tk-metric-sales{border:1.5px solid var(--tk-dash-teal)}
+.tk-metric-due{border:1.5px solid var(--tk-dash-pink)}
+.tk-insight{border:1px solid #d8e8e5;border-radius:20px;background:linear-gradient(145deg,#fff 0%,#f1fbf9 100%);padding:1rem;box-shadow:0 6px 24px rgba(15,118,110,.07)}
+.tk-eyebrow{font-family:var(--tk-dash-sans);font-size:.68rem;font-weight:800;letter-spacing:.13em;color:var(--tk-dash-teal)}
+.tk-insight h2{margin-top:.25rem;font-family:var(--tk-dash-serif);font-size:1.25rem;font-weight:800;color:#191919}
+.tk-chart{display:flex;align-items:flex-end;justify-content:space-between;gap:.5rem;height:230px;margin-top:1rem;padding:1rem .4rem .2rem;border-bottom:1px solid #b9d7d2;background:repeating-linear-gradient(to top,transparent 0,transparent 48px,rgba(15,118,110,.08) 49px)}
+.tk-bar-wrap{position:relative;display:flex;height:100%;flex:1;min-width:0;align-items:flex-end;justify-content:flex-end;flex-direction:column;gap:.3rem}
+.tk-bar{width:min(38px,70%);min-height:3px;border-radius:7px 7px 2px 2px;background:linear-gradient(to top,#0f766e,#43b8aa);box-shadow:0 0 14px rgba(15,118,110,.2);transition:height .45s cubic-bezier(.2,.8,.2,1)}
+.tk-bar-value{height:17px;overflow:hidden;font-family:var(--tk-dash-mono);font-size:8px;color:#55837e;white-space:nowrap}
+.tk-bar-wrap span{margin-top:auto;font-size:.68rem;font-weight:700;color:#666}
+.tk-insight-copy{font-size:.75rem;line-height:1.5;color:#6d6d6d}
+.tk-export{display:inline-flex;align-items:center;justify-content:center;gap:.4rem;min-height:38px;padding:.5rem .75rem;border:1px solid #b9d7d2;border-radius:10px;background:#fff;color:#176b64;font-size:.72rem;font-weight:700;cursor:pointer}
+.tk-section-title{margin-top:.25rem;font-family:var(--tk-dash-serif);font-size:1.2rem;font-weight:800;color:#1b1b1b}
+.tk-transaction{position:relative;display:flex;align-items:center;gap:.75rem;min-height:78px;padding:.8rem .85rem;background:#fff;border:1px solid #e4e1dc;border-radius:14px;box-shadow:0 1px 5px rgba(20,20,20,.025)}
+.tk-transaction h3{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:.86rem;font-weight:800;color:#222}
+.tk-transaction p{margin-top:.2rem;font-size:.68rem;color:#888}
+.tk-transaction p span{padding:0 .2rem;color:#bbb}
+.tk-transaction>div:last-of-type strong{display:block;font-family:var(--tk-dash-mono);font-size:.92rem;font-weight:800;color:#242424}
+.tk-transaction>div:last-of-type strong.positive{color:#14805f}
+.tk-transaction>div:last-of-type span{display:block;margin-top:.15rem;font-size:.62rem;color:#aaa}
+.tk-status-dot{width:9px;height:9px;flex:0 0 9px;border-radius:50%;background:#aaa}
+.tk-status-dot.due{background:var(--tk-dash-red)}
+.tk-status-dot.paid{background:#15966d}
+.tk-status-dot.sale{background:#111}
+.tk-new{border-radius:999px;background:#e8f5f2;padding:.12rem .35rem;font-size:.48rem;font-weight:800;color:#0f766e}
+.tk-mic{color:#0f766e;flex:none}
+@media(min-width:768px){.tk-dashboard{min-height:calc(100vh - 5rem)}.tk-chart{height:280px}.tk-metric{min-height:150px}}
