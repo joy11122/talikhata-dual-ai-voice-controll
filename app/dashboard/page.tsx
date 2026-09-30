@@ -29,9 +29,7 @@ export default function DashboardPage(){
  return <div className="tk-dashboard mx-auto w-full max-w-6xl px-4 pb-36 pt-2 md:px-8 md:pb-10">
    <header className="tk-store-header"><div className="tk-store-name"><span>Jalal Store</span><span className="tk-store-bn">জালাল স্টোর</span></div><div className="tk-voice-ready"><Mic size={16} className="tk-voice-ready-icon"/><span>Voice AI Ready</span></div></header>
    <div className="space-y-5">
-     <form onSubmit={e=>{e.preventDefault();runSearch()}} className="tk-search">
-       <Search size={19}/><input value={query} onChange={e=>setQuery(e.target.value)} placeholder="Search (voice-capable)" aria-label="Search, voice-capable"/><button type="button" aria-label="Filter" title="Filter"><SlidersHorizontal size={19}/></button>
-     </form>
+
 
      <section className="grid grid-cols-2 gap-3 md:gap-4">
        <Link href="/dashboard/sales" className="tk-metric tk-metric-sales"><span>আজকের বিক্রি</span><strong>{money(data?.todaySales?.total)}</strong><small>{data?.todaySales?.count||0} টি sale</small></Link>
@@ -61,6 +59,10 @@ export default function DashboardPage(){
        <div className="flex flex-col gap-3 border-t border-teal-900/10 pt-3 sm:flex-row sm:items-center sm:justify-between"><p className="tk-insight-copy">গত ৭ দিনের sales এক নজরে দেখুন। আজকের হিসাবসহ দ্রুত business insight।</p><button type="button" className="tk-export" onClick={()=>window.print()}><Download size={15}/> Quick export</button></div>
      </section>
 
+
+     <form onSubmit={e=>{e.preventDefault();runSearch()}} className="tk-search">
+       <Search size={19}/><input value={query} onChange={e=>setQuery(e.target.value)} placeholder="Search (voice-capable)" aria-label="Search, voice-capable"/><button type="button" aria-label="Filter" title="Filter"><SlidersHorizontal size={19}/></button>
+     </form>
      <section>
        <div className="mb-3 flex items-end justify-between"><div><p className="tk-eyebrow">LEDGER</p><h2 className="tk-section-title">রিসেন্ট খাতা ট্রানজ্যাকশন</h2></div><Link href="/dashboard/transactions" className="flex items-center gap-1 text-xs font-semibold text-teal-700">সব দেখুন <ChevronRight size={14}/></Link></div>
        <div className="space-y-2.5">
