@@ -24,7 +24,7 @@ export default function DashboardPage(){
  const chart=data?.weeklySales??[];
  const max=Math.max(...chart.map(x=>x.total),1);
  const runSearch=()=>{if(query.trim())window.dispatchEvent(new CustomEvent('talikhata:command',{detail:query.trim()}))};
- if(loading)return <div className="mx-auto w-full max-w-6xl px-4 py-6 md:px-8"><div className="space-y-4 animate-pulse"><div className="h-12 rounded-xl bg-white"/><div className="grid grid-cols-2 gap-3"><div className="h-32 rounded-2xl bg-white"/><div className="h-32 rounded-2xl bg-white"/></div><div className="h-80 rounded-2xl bg-white"/></div></div>;
+ if(loading)return <div className="mx-auto w-full max-w-6xl px-4 py-6 md:px-8"><div className="space-y-4 animate-pulse"><div className="h-12 rounded-xl bg-transparent"/><div className="grid grid-cols-2 gap-3"><div className="h-32 rounded-2xl bg-transparent"/><div className="h-32 rounded-2xl bg-transparent"/></div><div className="h-80 rounded-2xl bg-transparent"/></div></div>;
 
  return <div className="tk-dashboard mx-auto w-full max-w-6xl px-4 pb-36 pt-2 md:px-8 md:pb-10">
    <header className="tk-store-header"><div className="tk-store-name"><span>Jalal Store</span><span className="tk-store-bn">জালাল স্টোর</span></div></header>
@@ -72,7 +72,7 @@ export default function DashboardPage(){
           <div className="text-right"><strong className={isPositive(item)?'positive':''}>{isPositive(item)?'+':''}{money(item.amount).replace('৳ ','৳ ')}</strong><span>{saleType(item.type)?'Sale':'Transaction'}</span></div>
           {item.source==='VOICE'&&<Mic size={14} className="tk-mic" aria-label="Voice transaction"/>}
         </div>)}
-        {!recent.length&&<div className="rounded-2xl border border-slate-200 bg-white p-10 text-center text-sm text-slate-400">এখনো কোনো লেনদেন নেই।</div>}
+        {!recent.length&&<div className="rounded-2xl border border-slate-200 bg-transparent p-10 text-center text-sm text-slate-400">এখনো কোনো লেনদেন নেই।</div>}
        </div>
      </section>
    </div>
