@@ -8,7 +8,7 @@ import {Types} from 'mongoose';
 import {createAIClient,getAIProviders,getModel,shouldFallback} from '@/lib/ai/provider';
 
 function isSaleQuestion(q:string){
-  return /(^|\\s)(sell|sales|sale|বিক্রি|বিক্রির|বিক্রি হয়েছে|বেচা)(\\s|$)/i.test(q)
+  return /(^|\s)(sell|sales|sale|বিক্রি|বিক্রির|বিক্রি হয়েছে|বেচা)(\s|$)/i.test(q)
     || q.includes('আজকের বিক্রি')
     || q.includes('মোট বিক্রি')
     || q.includes('কি কি বিক্রি')
@@ -26,7 +26,7 @@ function bangladeshDayStart(now=new Date()){
 function getSalesWindow(q:string,now=new Date()){
   const lower=q.toLowerCase();
   const todayStart=bangladeshDayStart(now);
-  const minutesMatch=lower.match(/(?:last|গত|শেষ)\\s*(\\d+)\\s*(?:min(?:ute)?s?|মিনিট)/i);
+  const minutesMatch=lower.match(/(?:last|গত|শেষ)\s*(\d+)\s*(?:min(?:ute)?s?|মিনিট)/i);
   if(minutesMatch)return {start:new Date(now.getTime()-Number(minutesMatch[1])*60_000),label:`গত ${minutesMatch[1]} মিনিট`};
   if(lower.includes('আজ')||lower.includes('today')||lower.includes('ajker')||lower.includes('ajke'))
     return {start:todayStart,label:'আজ'};
