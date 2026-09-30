@@ -147,29 +147,29 @@ button:disabled{cursor:not-allowed;opacity:.65}
 .tk-metric-sales{border:1.5px solid var(--tk-dash-teal)}
 .tk-metric-due{border:1.5px solid var(--tk-dash-pink)}
 .tk-insight{border:1px solid #d8e8e5;border-radius:20px;background:linear-gradient(145deg,#fff 0%,#f1fbf9 100%);padding:1rem;box-shadow:0 6px 24px rgba(15,118,110,.07)}
-.tk-eyebrow{font-family:var(--tk-dash-sans);font-size:.68rem;font-weight:800;letter-spacing:.13em;color:var(--tk-dash-teal)}
+.tk-eyebrow{font-family:var(--tk-dash-sans);font-size:.68rem;font-weight:800;letter-spacing:.13em;color:#6ee7b7}
 .tk-insight h2{margin-top:.25rem;font-family:var(--tk-dash-serif);font-size:1.25rem;font-weight:800;color:#191919}
-.tk-chart{display:flex;align-items:flex-end;justify-content:space-between;gap:.5rem;height:230px;margin-top:1rem;padding:1rem .4rem .2rem;border-bottom:1px solid #b9d7d2;background:repeating-linear-gradient(to top,transparent 0,transparent 48px,rgba(15,118,110,.08) 49px)}
+.tk-chart{display:flex;align-items:flex-end;justify-content:space-between;gap:.5rem;height:230px;margin-top:1rem;padding:1rem .4rem .2rem;border-bottom:1px solid rgba(16,185,129,.20);background:repeating-linear-gradient(to top,transparent 0,transparent 48px,rgba(16,185,129,.07) 49px)}
 .tk-bar-wrap{position:relative;display:flex;height:100%;flex:1;min-width:0;align-items:flex-end;justify-content:flex-end;flex-direction:column;gap:.3rem}
-.tk-bar{width:min(38px,70%);min-height:3px;border-radius:7px 7px 2px 2px;background:linear-gradient(to top,#0f766e,#43b8aa);box-shadow:0 0 14px rgba(15,118,110,.2);transition:height .45s cubic-bezier(.2,.8,.2,1)}
-.tk-bar-value{height:17px;overflow:hidden;font-family:var(--tk-dash-mono);font-size:8px;color:#55837e;white-space:nowrap}
-.tk-bar-wrap span{margin-top:auto;font-size:.68rem;font-weight:700;color:#666}
-.tk-insight-copy{font-size:.75rem;line-height:1.5;color:#6d6d6d}
+.tk-bar{width:min(38px,70%);min-height:3px;border-radius:7px 7px 2px 2px;background:linear-gradient(to top,#10b981,#34d399);box-shadow:0 0 14px rgba(16,185,129,.22);transition:height .45s cubic-bezier(.2,.8,.2,1)}
+.tk-bar-value{height:17px;overflow:hidden;font-family:var(--tk-dash-mono);font-size:8px;color:rgba(255,255,255,.55);white-space:nowrap}
+.tk-bar-wrap span{margin-top:auto;font-size:.68rem;font-weight:700;color:rgba(255,255,255,.55)}
+.tk-insight-copy{font-size:.75rem;line-height:1.5;color:rgba(255,255,255,.62)}
 .tk-export{display:inline-flex;align-items:center;justify-content:center;gap:.4rem;min-height:38px;padding:.5rem .75rem;border:1px solid #b9d7d2;border-radius:10px;background:#fff;color:#176b64;font-size:.72rem;font-weight:700;cursor:pointer}
-.tk-section-title{margin-top:.25rem;font-family:var(--tk-dash-serif);font-size:1.2rem;font-weight:800;color:#1b1b1b}
+.tk-section-title{margin-top:.25rem;font-family:var(--tk-dash-serif);font-size:1.2rem;font-weight:800;color:#F8FAFC}
 .tk-transaction{position:relative;display:flex;align-items:center;gap:.75rem;min-height:78px;padding:.8rem .85rem;background:#fff;border:1px solid #e4e1dc;border-radius:14px;box-shadow:0 1px 5px rgba(20,20,20,.025)}
 .tk-transaction h3{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:.86rem;font-weight:800;color:#222}
 .tk-transaction p{margin-top:.2rem;font-size:.68rem;color:#888}
 .tk-transaction p span{padding:0 .2rem;color:#bbb}
 .tk-transaction>div:last-of-type strong{display:block;font-family:var(--tk-dash-mono);font-size:.92rem;font-weight:800;color:#242424}
-.tk-transaction>div:last-of-type strong.positive{color:#14805f}
+.tk-transaction>div:last-of-type strong.positive{color:#6ee7b7}
 .tk-transaction>div:last-of-type span{display:block;margin-top:.15rem;font-size:.62rem;color:#aaa}
 .tk-status-dot{width:9px;height:9px;flex:0 0 9px;border-radius:50%;background:#aaa}
 .tk-status-dot.due{background:var(--tk-dash-red)}
-.tk-status-dot.paid{background:#15966d}
-.tk-status-dot.sale{background:#111}
-.tk-new{border-radius:999px;background:#e8f5f2;padding:.12rem .35rem;font-size:.48rem;font-weight:800;color:#0f766e}
-.tk-mic{color:#0f766e;flex:none}
+.tk-status-dot.paid{background:#10b981;box-shadow:0 0 8px rgba(16,185,129,.45)}
+.tk-status-dot.sale{background:rgba(255,255,255,.55)}
+.tk-new{border-radius:999px;background:rgba(16,185,129,.12);border:1px solid rgba(16,185,129,.18);padding:.12rem .4rem;font-size:.48rem;font-weight:800;color:#6ee7b7}
+.tk-mic{color:#6ee7b7;flex:none;filter:drop-shadow(0 0 4px rgba(16,185,129,.25))}
 @media(min-width:768px){.tk-dashboard{min-height:calc(100vh - 5rem)}.tk-chart{height:280px}.tk-metric{min-height:150px}}
 
 .tk-store-header{display:flex;align-items:center;justify-content:space-between;gap:1rem;margin-bottom:1rem;padding:.8rem 1rem;border-radius:17px;background:#123f3c;box-shadow:0 8px 22px rgba(18,63,60,.14)}
@@ -208,12 +208,12 @@ button:disabled{cursor:not-allowed;opacity:.65}
 }
 .tk-dashboard{background:var(--tk-app-bg);color:#fff;}
 .tk-dashboard .tk-search{background:var(--tk-surface-glass);border-color:rgba(255,255,255,.10);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);color:rgba(255,255,255,.72);}
-.tk-dashboard .tk-search input{color:#fff;}
+.tk-dashboard .tk-search input{color:#F8FAFC;font-family:var(--tk-dash-sans);font-size:.9rem;font-weight:500;}
 .tk-dashboard .tk-search input::placeholder{color:rgba(255,255,255,.52);}
 .tk-insight{background:linear-gradient(145deg,rgba(22,27,38,.92),rgba(22,27,38,.78));border-color:rgba(16,185,129,.22);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);}
 .tk-transaction{background:var(--tk-surface-glass);border-color:rgba(255,255,255,.09);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);}
 .tk-section-title,.tk-insight h2{color:#fff;}
-.tk-insight-copy,.tk-transaction p{color:rgba(255,255,255,.62);}
+.tk-insight-copy,.tk-transaction p{color:rgba(255,255,255,.62);}.tk-transaction p span{color:rgba(255,255,255,.28);}
 .tk-transaction h3{color:#fff;}
 .tk-transaction>div:last-of-type span{color:rgba(255,255,255,.48);}
 .tk-dashboard .tk-export{background:rgba(22,27,38,.85);border-color:rgba(16,185,129,.35);color:#6ee7b7;}
