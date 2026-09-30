@@ -553,7 +553,7 @@ export default function TransactionsPage() {
   }
 
   return (
-    <div className="mx-auto max-w-6xl">
+    <div className="mx-auto max-w-6xl px-4">
       <div>
         <p className="text-sm font-semibold text-emerald-700">
           Cash flow
