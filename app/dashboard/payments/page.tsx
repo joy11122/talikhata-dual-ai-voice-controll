@@ -334,7 +334,7 @@ export default function Page() {
   }
 
   return (
-    <div className="mx-auto max-w-5xl px-4">
+    <div className="mx-auto max-w-5xl px-4 md:px-0">
       <h1 className="text-3xl font-bold">
         পেমেন্ট
       </h1>
