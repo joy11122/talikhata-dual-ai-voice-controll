@@ -32,7 +32,7 @@ input,select,textarea{min-height:44px}
   min-height:44px;
   border:1px solid var(--tk-border);
   border-radius:12px;
-  padding:.72rem .875rem;
+  padding:.72rem 1rem;
   background:rgba(255,255,255,.96);
   color:var(--tk-text);
   outline:none;
@@ -81,7 +81,7 @@ input,select,textarea{min-height:44px}
 
 label.form-label{
   display:block;
-  margin-bottom:.4rem;
+  margin-bottom:.55rem;
   font-size:.875rem;
   line-height:1.25rem;
   font-weight:600;
@@ -112,3 +112,7 @@ button:disabled{cursor:not-allowed;opacity:.65}
 
 .text-danger{color:#b42318}
 .sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
+
+/* Consistent spacing for form controls with leading icons. Keeps icons and placeholders visually separated on every form. */
+.field-with-icon{padding-left:3.25rem!important}
+label.form-label + .relative > .field{padding-left:3.25rem}
