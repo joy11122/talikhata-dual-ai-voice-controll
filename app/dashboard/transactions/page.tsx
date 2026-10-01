@@ -585,7 +585,7 @@ export default function TransactionsPage() {
           </p>
         </div>
 
-        <div className="rounded-2xl border bg-transparent p-5">
+        <div className="tk-transactions-card rounded-2xl p-5">
           <p className="text-sm text-white/50">
             Expenses
           </p>
@@ -598,7 +598,7 @@ export default function TransactionsPage() {
           </p>
         </div>
 
-        <div className="rounded-2xl border bg-transparent p-5">
+        <div className="tk-transactions-card rounded-2xl p-5">
           <p className="text-sm text-white/50">
             Net due movement
           </p>
