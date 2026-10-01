@@ -39,5 +39,5 @@ export async function GET(){
     const p=dhakaDateParts(d);
     return {label:i===6?'আজ':['৭ম','৬ষ্ঠ','৫ম','৪র্থ','৩য়','২য়'][i]||'',date:`${p.year}-${p.month}-${p.day}`,total:weeklyMap.get(`${p.year}-${p.month}-${p.day}`)||0};
   });
-  return NextResponse.json({parties,products,lowStock,stats,recent,balances:balances[0]||{receivable:0,payable:0},dueCustomers,todaySales:todaySales[0]||{total:0,count:0},weeklySales:chart});
+  return NextResponse.json({parties,products,lowStock,recent,balances:balances[0]||{receivable:0,payable:0},dueCustomers,todaySales:todaySales[0]||{total:0,count:0},weeklySales:chart});
 }
