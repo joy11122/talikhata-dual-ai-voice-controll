@@ -211,7 +211,7 @@ export default function PartiesPage() {
   return (
     <div className="mx-auto min-h-screen w-full max-w-6xl px-4 pb-36 pt-5 md:min-h-[calc(100vh-7rem)] md:px-0 md:pb-28 md:pt-2">
       {deleteTarget && (
-        <div className="fixed inset-x-4 bottom-5 z-[10000] mx-auto max-w-md sm:right-6 sm:left-auto sm:inset-x-auto">
+        <div className="fixed inset-0 z-[10000] flex items-center justify-center bg-slate-950/35 px-4 backdrop-blur-[18px]">
           <div className="rounded-2xl border border-amber-200 bg-transparent p-4 shadow-[0_20px_60px_rgba(15,23,42,0.18)]">
             <div className="flex items-start gap-3">
               <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-red-500/10 text-rose-300"><Trash2 size={18} /></div>
