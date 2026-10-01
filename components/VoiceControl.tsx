@@ -447,13 +447,13 @@ export default function VoiceControl() {
             disabled={state === 'Listening' || state === 'Processing'}
             aria-label={state === 'Listening' ? 'Listening' : 'Start voice input'}
             className={
-              'group relative flex h-10 w-10 shrink-0 items-center justify-center rounded-full transition-all duration-200 ease-out active:scale-90 sm:h-11 sm:w-11 ' +
+              'group relative flex h-10 w-10 shrink-0 items-center justify-center rounded-full transition-all duration-200 ease-out hover:scale-[1.04] active:scale-[0.92] sm:h-11 sm:w-11 ' +
               (state === 'Listening'
-                ? 'bg-red-500 text-white shadow-[0_5px_18px_rgba(239,68,68,0.30)] animate-pulse'
+                ? 'bg-red-500 text-white shadow-[0_5px_18px_rgba(239,68,68,0.30)]'
                 : state === 'Error'
-                  ? 'text-red-600 hover:bg-red-50'
+                  ? 'text-red-600 hover:bg-red-50 tk-voice-error'
                   : state === 'Success'
-                    ? 'text-emerald-600 hover:bg-emerald-50'
+                    ? 'text-emerald-600 hover:bg-emerald-50 tk-voice-success'
                     : 'text-slate-700 hover:bg-slate-100')
             }
           >
@@ -464,7 +464,13 @@ export default function VoiceControl() {
             ) : state === 'Error' ? (
               <AlertCircle size={22} />
             ) : (
-              <Mic size={22} className="transition-transform duration-200 group-hover:scale-105 group-active:scale-90" />
+              {state === 'Listening' && (
+                <>
+                  <span aria-hidden="true" className="tk-voice-ring tk-voice-ring-one" />
+                  <span aria-hidden="true" className="tk-voice-ring tk-voice-ring-two" />
+                </>
+              )}
+              <Mic size={22} className="relative z-10 transition-transform duration-200 group-hover:scale-105 group-active:scale-90" />
             )}
           </button>
 
