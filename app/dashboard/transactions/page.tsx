@@ -572,7 +572,7 @@ export default function TransactionsPage() {
       </div>
 
       <div className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4">
-        <div className="tk-transactions-card rounded-2xl p-5">
+        <div className="tk-transactions-card rounded-[18px] p-4 sm:p-5">
           <p className="text-sm text-white/50">
             Sales
           </p>
@@ -585,7 +585,7 @@ export default function TransactionsPage() {
           </p>
         </div>
 
-        <div className="tk-transactions-card rounded-2xl p-5">
+        <div className="tk-transactions-card rounded-[18px] p-4 sm:p-5">
           <p className="text-sm text-white/50">
             Expenses
           </p>
@@ -598,7 +598,7 @@ export default function TransactionsPage() {
           </p>
         </div>
 
-        <div className="tk-transactions-card rounded-2xl p-5">
+        <div className="tk-transactions-card rounded-[18px] p-4 sm:p-5">
           <p className="text-sm text-white/50">
             Net due movement
           </p>
@@ -614,7 +614,7 @@ export default function TransactionsPage() {
 
       <form
         onSubmit={add}
-        className="tk-transactions-form tk-transactions-surface mt-6 rounded-2xl p-5"
+        className="tk-transactions-form tk-transactions-surface mt-6 rounded-[18px] p-4 sm:p-5"
       >
         <div className="flex items-center gap-2 font-semibold">
           <Plus size={18} />
