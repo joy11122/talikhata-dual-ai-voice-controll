@@ -293,3 +293,96 @@ label.form-label{color:rgba(235,244,255,.74);margin-bottom:.45rem;font-size:.812
 :where(.bg-white,.bg-slate-50,.bg-slate-100,.bg-gray-50,.bg-gray-100,.bg-zinc-50,.bg-zinc-100,.bg-neutral-50,.bg-neutral-100){background-color:transparent!important;}
 :where(input,select,textarea):not(.btn-primary):not(.btn-secondary){background-color:transparent!important;backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);}
 :where(form){background-color:transparent;}
+
+/* ---------------------------------------------------------
+   Page-wide ledger UI normalization
+   Keeps business pages visually consistent without changing
+   their data/interaction logic.
+   --------------------------------------------------------- */
+.tk-dashboard main input,
+.tk-dashboard main select,
+.tk-dashboard main textarea{
+  min-height:44px;
+  border-radius:14px;
+  border:1px solid var(--tk-border);
+  background:transparent!important;
+  color:var(--tk-ink);
+  backdrop-filter:blur(10px);
+  -webkit-backdrop-filter:blur(10px);
+}
+.tk-dashboard main input:focus,
+.tk-dashboard main select:focus,
+.tk-dashboard main textarea:focus{
+  border-color:rgba(118,146,255,.72);
+  outline:none;
+  box-shadow:0 0 0 3px rgba(118,146,255,.12);
+}
+.tk-dashboard main input::placeholder,
+.tk-dashboard main textarea::placeholder{color:rgba(235,244,255,.40);}
+
+.tk-dashboard main button:not(.tk-mobile-nav-voice){
+  border-radius:12px;
+}
+.tk-dashboard main [class*="rounded-2xl"][class*="border"],
+.tk-dashboard main [class*="rounded-[28px]"][class*="border"],
+.tk-dashboard main [class*="rounded-xl"][class*="border"]{
+  border-color:var(--tk-border);
+}
+.tk-dashboard main [class*="bg-white"],
+.tk-dashboard main [class*="bg-slate-50"],
+.tk-dashboard main [class*="bg-slate-100"]{
+  background-color:transparent!important;
+}
+.tk-dashboard main [class*="shadow-2xl"],
+.tk-dashboard main [class*="shadow-xl"]{
+  box-shadow:0 12px 32px rgba(0,0,0,.16);
+}
+.tk-dashboard main h1{
+  letter-spacing:-.035em;
+  line-height:1.15;
+}
+.tk-dashboard main h2{
+  letter-spacing:-.025em;
+}
+.tk-dashboard main .form-label{
+  color:rgba(235,244,255,.72);
+}
+.tk-dashboard main table{
+  border-collapse:separate;
+  border-spacing:0;
+  overflow:hidden;
+  border:1px solid var(--tk-border);
+  border-radius:14px;
+  background:var(--tk-surface-glass);
+}
+.tk-dashboard main th{
+  color:rgba(235,244,255,.58);
+  font-size:.72rem;
+  font-weight:700;
+  letter-spacing:.02em;
+}
+.tk-dashboard main td{
+  border-color:rgba(171,210,250,.08);
+}
+.tk-dashboard main .btn-primary{
+  border:0;
+  background:var(--tk-primary);
+  color:#fff;
+}
+.tk-dashboard main .btn-secondary{
+  border:1px solid var(--tk-border);
+  background:transparent!important;
+  color:var(--tk-ink);
+}
+.tk-dashboard main .btn-secondary:hover{
+  background:rgba(118,146,255,.08)!important;
+}
+@media(max-width:767px){
+  .tk-dashboard main{
+    padding-left:0;
+    padding-right:0;
+  }
+  .tk-dashboard main [class*="max-w-"]{
+    width:100%;
+  }
+}
