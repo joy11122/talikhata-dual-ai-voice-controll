@@ -71,7 +71,7 @@ export default function SettingsPage(){
 
   return <div className="mx-auto w-full max-w-4xl pb-8 px-4 md:px-0">
     <div className="mb-6 px-1">
-      <div className="mb-2 flex items-center gap-2 text-emerald-600"><Sparkles size={17}/><span className="text-xs font-bold uppercase tracking-[0.12em]">Business setup</span></div>
+      <div className="mb-2 flex items-center gap-2 text-[#7692FF]"><Sparkles size={17}/><span className="text-xs font-bold uppercase tracking-[0.12em]">Business setup</span></div>
       <h1 className="text-3xl font-bold tracking-tight text-white">আপনার ব্যবসা সেটআপ করুন</h1>
       <p className="mt-2 max-w-2xl text-sm leading-6 text-white/50">ব্যবসার ধরন একবার সেট করলে TaliKhata ভবিষ্যতে product, unit, inventory এবং voice command-এর context সেই অনুযায়ী সাজাতে পারবে।</p>
     </div>
@@ -79,7 +79,7 @@ export default function SettingsPage(){
     <form onSubmit={save} className="space-y-5">
       <section className="rounded-[28px] border border-white/10 bg-transparent p-4 shadow-[0_10px_30px_rgba(0,0,0,0.20)] backdrop-blur-xl sm:p-6">
         <div className="mb-5 flex items-start gap-3">
-          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-emerald-500/10 text-emerald-600"><BriefcaseBusiness size={19}/></span>
+          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#7692FF]/10 text-[#7692FF]"><BriefcaseBusiness size={19}/></span>
           <div><h2 className="font-bold text-white">Business profile</h2><p className="mt-1 text-xs text-white/50">এই তথ্য আপনার ব্যবসার default workflow নির্ধারণের foundation।</p></div>
         </div>
 
