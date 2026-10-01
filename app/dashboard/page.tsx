@@ -60,13 +60,13 @@ export default function DashboardPage(){
      </section>
 
 
-     <form onSubmit={e=>{e.preventDefault();runSearch()}} className="tk-search">
+     <form onSubmit={e=>{e.preventDefault();runSearch()}} className="tk-search !bg-transparent !backdrop-blur-[10px]">
        <Search size={19}/><input value={query} onChange={e=>setQuery(e.target.value)} placeholder="Search (voice-capable)" aria-label="Search, voice-capable"/><button type="button" aria-label="Filter" title="Filter"><SlidersHorizontal size={19}/></button>
      </form>
      <section>
        <div className="mb-3 flex items-end justify-between"><div><p className="tk-eyebrow">LEDGER</p><h2 className="tk-section-title">রিসেন্ট খাতা ট্রানজ্যাকশন</h2></div><Link href="/dashboard/transactions" className="flex items-center gap-1 text-xs font-semibold text-teal-700">সব দেখুন <ChevronRight size={14}/></Link></div>
        <div className="space-y-2.5">
-        {recent.map((item,i)=><div key={item._id} className="tk-transaction">
+        {recent.map((item,i)=><div key={item._id} className="tk-transaction !bg-transparent !backdrop-blur-[10px]">
           <span className={`tk-status-dot ${/DUE/i.test(item.type)?'due':isPositive(item)?'paid':'sale'}`}/>
           <div className="min-w-0 flex-1"><div className="flex items-center gap-2"><h3>{txTitle(item)}</h3>{i===0&&<span className="tk-new">LATEST</span>}</div><p>{time(item.timestamp)} <span>•</span> {txStatus(item)}</p></div>
           <div className="text-right"><strong className={isPositive(item)?'positive':''}>{isPositive(item)?'+':''}{money(item.amount).replace('৳ ','৳ ')}</strong><span>{saleType(item.type)?'Sale':'Transaction'}</span></div>
