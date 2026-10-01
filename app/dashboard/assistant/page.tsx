@@ -62,7 +62,7 @@ export default function Page(){
       transition={{duration:0.4,delay:0.08}}
     >
       <label className="form-label">Your question</label>
-      <div className="mt-2 flex items-center gap-2 rounded-2xl border bg-white p-2 shadow-sm focus-within:ring-2 focus-within:ring-emerald-500/20">
+      <div className="mt-2 flex items-center gap-2 tk-page-surface rounded-2xl p-2 shadow-sm focus-within:border-white/15 focus-within:ring-2 focus-within:ring-[#7692FF]/20">
         <input className="min-w-0 flex-1 border-0 bg-transparent px-3 py-3 outline-none" value={q} onChange={e=>setQ(e.target.value)} placeholder="আজকের বিক্রি কেমন?" aria-label="Your question" required/>
         <button type="button" onClick={startVoice} disabled={listening||busy} aria-label="Speak your question" title="Speak your question" className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl transition ${listening?'bg-emerald-600 text-white':'bg-slate-100 text-emerald-700 hover:bg-emerald-50'} disabled:opacity-50`}>
           {listening?<Mic className="animate-pulse"/>:<Mic/>}
@@ -87,7 +87,7 @@ export default function Page(){
           <motion.div
             animate={{rotate:360}}
             transition={{duration:1.4,repeat:Infinity,ease:'linear'}}
-            className="flex h-8 w-8 items-center justify-center rounded-full bg-white text-emerald-600 shadow-sm"
+            className="flex h-8 w-8 items-center justify-center rounded-full bg-transparent text-emerald-400 shadow-sm"
           >
             <Sparkles size={16}/>
           </motion.div>
