@@ -460,7 +460,7 @@ export default function Page() {
 
         {message && (
           <p
-            className="md:col-span-4 rounded-lg border p-3 text-sm"
+            className="md:col-span-4 rounded-[12px] border border-white/10 bg-white/[0.03] p-3 text-sm"
             role="status"
             aria-live="polite"
           >
@@ -487,7 +487,7 @@ export default function Page() {
             {rows.map((payment) => (
               <div
                 key={payment._id}
-                className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-white/10 bg-transparent backdrop-blur-[8px] px-4 py-3 transition hover:bg-white/[0.04]"
+                className="flex flex-wrap items-center justify-between gap-3 rounded-[14px] border border-white/10 bg-white/[0.02] px-4 py-3 backdrop-blur-[10px] transition hover:bg-white/[0.04]"
               >
                 <div>
                   <p className="font-medium">
