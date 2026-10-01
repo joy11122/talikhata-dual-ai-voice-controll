@@ -381,11 +381,11 @@ export default function VoiceControl() {
         <motion.div
           initial={{ opacity: 0, y: 8 }}
           animate={{ opacity: 1, y: 0 }}
-          className="fixed bottom-[calc(7.25rem+env(safe-area-inset-bottom))] left-4 right-4 z-50 mx-auto max-w-md rounded-2xl border border-black/[0.07] bg-white p-5 shadow-[0_20px_60px_rgba(15,23,42,0.16)] md:bottom-[90px]"
+          className="fixed bottom-[calc(7.25rem+env(safe-area-inset-bottom))] left-4 right-4 z-50 mx-auto max-w-md rounded-2xl border border-white/10 bg-[#091540]/95 p-5 text-white shadow-[0_20px_60px_rgba(0,0,0,0.28)] backdrop-blur-2xl md:bottom-[90px]"
         >
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-xs text-slate-500">বর্তমান হিসাব</p>
+              <p className="text-xs text-white/50">বর্তমান হিসাব</p>
               <h3 className="text-lg font-bold">{result.result?.party?.name}</h3>
             </div>
             <button type="button" onClick={() => setResult(null)} aria-label="Close balance result">
@@ -393,8 +393,8 @@ export default function VoiceControl() {
             </button>
           </div>
           <div className="mt-4 grid gap-3 sm:grid-cols-2">
-            <div className="rounded-xl bg-slate-50 p-4">
-              <p className="text-sm text-slate-500">আপনি পাবেন</p>
+            <div className="rounded-xl bg-white/[0.04] p-4">
+              <p className="text-sm text-white/50">আপনি পাবেন</p>
               <p className="text-3xl font-bold">৳ {Number(result.result?.receivable || 0).toLocaleString('bn-BD')}</p>
             </div>
             <div className="rounded-xl bg-slate-50 p-4">
@@ -411,12 +411,12 @@ export default function VoiceControl() {
         <div className="mb-2.5 flex min-h-8 justify-center px-2">
           <div className="flex min-h-8 items-center gap-2 rounded-full border border-white/90 bg-white/85 px-3.5 py-1 shadow-[0_6px_24px_rgba(15,23,42,0.10)] backdrop-blur-xl">
             <span className={`h-2 w-2 rounded-full ${state === 'Listening' ? 'bg-red-500 animate-pulse' : state === 'Processing' ? 'bg-blue-500 animate-pulse' : state === 'Error' ? 'bg-red-500' : 'bg-emerald-500 animate-pulse'}`} />
-            <span className="text-[11px] font-semibold leading-4 text-slate-700">
+            <span className="text-[11px] font-semibold leading-4 text-white/70">
               {state === 'Listening' ? 'শুনছি... আপনার কমান্ড বলুন' : state === 'Processing' ? 'কমান্ড প্রক্রিয়াভুক্ত হচ্ছে...' : state === 'Success' ? 'কাজ সফল হয়েছে' : state === 'Error' ? 'Voice input সমস্যা' : 'Voice ready • মাইক্রোফোন টিপুন'}
             </span>
           </div>
         </div>
-        <form onSubmit={submit} className="flex h-[58px] items-center gap-2 rounded-[30px] border border-black/[0.06] bg-white/90 px-1.5 shadow-[0_12px_40px_rgba(0,0,0,0.12)] backdrop-blur-2xl sm:h-[64px] sm:px-2">
+        <form onSubmit={submit} className="flex h-[58px] items-center gap-2 rounded-[30px] border border-white/10 bg-[#091540]/90 px-1.5 shadow-[0_12px_40px_rgba(0,0,0,0.12)] backdrop-blur-2xl sm:h-[64px] sm:px-2">
           <button
             type="button"
             aria-label="New voice command"
@@ -427,7 +427,7 @@ export default function VoiceControl() {
               setPending(null);
               setState('Idle');
                     }}
-            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-[28px] font-light leading-none text-slate-900 transition hover:bg-black/5 active:scale-95"
+            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-[28px] font-light leading-none text-white transition hover:bg-white/[0.06] active:scale-95"
           >
             +
           </button>
@@ -438,7 +438,7 @@ export default function VoiceControl() {
             onChange={(event) => setText(event.target.value)}
             aria-label="Voice command or text input"
             placeholder="আপনার হিসাবের কথা লিখুন বা বলুন…"
-            className="min-w-0 flex-1 bg-transparent px-1.5 text-[14px] leading-6 text-slate-800 outline-none placeholder:text-slate-400 sm:px-2 sm:text-[15px]"
+            className="min-w-0 flex-1 bg-transparent px-1.5 text-[14px] leading-6 text-white outline-none placeholder:text-white/40 sm:px-2 sm:text-[15px]"
           />
 
           <button
@@ -454,7 +454,7 @@ export default function VoiceControl() {
                   ? 'text-red-600 hover:bg-red-50 tk-voice-error'
                   : state === 'Success'
                     ? 'text-emerald-600 hover:bg-emerald-50 tk-voice-success'
-                    : 'text-slate-700 hover:bg-slate-100')
+                    : 'text-slate-700 hover:bg-white/[0.06]')
             }
           >
             {state === 'Processing' ? (
@@ -471,7 +471,7 @@ export default function VoiceControl() {
           <button
             type="submit"
             aria-label="Send command"
-            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-slate-900 text-white shadow-md transition hover:bg-black active:scale-95 disabled:opacity-40 sm:h-11 sm:w-11"
+            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#7692FF] text-white shadow-md transition hover:bg-[#6885F2] active:scale-95 disabled:opacity-40 sm:h-11 sm:w-11"
             disabled={!text.trim() || state === 'Processing'}
           >
             <Send size={18} />
@@ -485,9 +485,9 @@ export default function VoiceControl() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[60] grid place-items-center bg-slate-950/50 p-4"
+            className="fixed inset-0 z-[60] grid place-items-center bg-[#03091f]/60 p-4"
           >
-            <motion.div className="w-full max-w-lg rounded-xl bg-white p-6 shadow-2xl">
+            <motion.div className="w-full max-w-lg rounded-xl bg-[#091540] p-6 text-white shadow-2xl">
               <div className="flex justify-between">
                 <h2 className="text-xl font-bold">নিশ্চিত করুন</h2>
                 <button type="button" onClick={() => setPending(null)} aria-label="Close confirmation">
@@ -502,7 +502,7 @@ export default function VoiceControl() {
                       type="button"
                       key={match.id}
                       onClick={() => choose(match)}
-                      className="flex w-full items-center justify-between rounded-xl border p-4 text-left"
+                      className="flex w-full items-center justify-between rounded-xl border border-white/10 bg-white/[0.03] p-4 text-left"
                     >
                       <span>
                         <b>{match.name}</b>
@@ -514,11 +514,11 @@ export default function VoiceControl() {
                 </div>
               ) : null}
               <div className="mt-5 flex gap-3">
-                <button type="button" onClick={() => setPending(null)} className="flex-1 rounded-xl border p-3">
+                <button type="button" onClick={() => setPending(null)} className="flex-1 rounded-xl border border-white/10 p-3">
                   Cancel
                 </button>
                 {!pending.matches?.length && (
-                  <button type="button" onClick={confirm} className="flex-1 rounded-xl bg-slate-900 p-3 text-white">
+                  <button type="button" onClick={confirm} className="flex-1 rounded-xl bg-[#7692FF] p-3 text-white">
                     Confirm
                   </button>
                 )}
