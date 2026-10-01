@@ -166,7 +166,7 @@ export default function Page() {
 
       <form
         onSubmit={save}
-        className="mt-6 grid gap-4 rounded-xl border bg-white p-5 md:grid-cols-4"
+        className="tk-page-surface mt-6 grid gap-4 rounded-xl p-5 md:grid-cols-4"
       >
         <div>
           <label htmlFor="closing-date" className="form-label">
@@ -257,7 +257,7 @@ export default function Page() {
         )}
       </form>
 
-      <div className="mt-6 rounded-xl border bg-white p-5">
+      <div className="tk-page-surface mt-6 rounded-xl p-5">
         <h2 className="text-xl font-semibold">
           Closing history
         </h2>
