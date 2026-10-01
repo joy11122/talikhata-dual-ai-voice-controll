@@ -240,7 +240,7 @@ export default function PartiesPage() {
               </div>
               <button type="button" aria-label="Close error" onClick={() => setError('')} className="rounded-full p-1.5 text-white/40 hover:bg-transparent hover:text-white/80"><X size={18} /></button>
             </div>
-            <button type="button" onClick={() => setError('')} className="mt-4 w-full rounded-2xl bg-slate-900 px-4 py-3 text-sm font-semibold text-white hover:bg-slate-800">ঠিক আছে</button>
+            <button type="button" onClick={() => setError('')} className="mt-4 w-full rounded-2xl bg-[#7692FF] px-4 py-3 text-sm font-semibold text-white hover:bg-[#6885F2]">ঠিক আছে</button>
           </div>
         </div>
       )}
@@ -257,16 +257,16 @@ export default function PartiesPage() {
               'shadow-[0_18px_50px_rgba(15,23,42,0.16)]',
               'backdrop-blur-xl',
               toast.type === 'success'
-                ? 'border-emerald-200'
-                : 'border-red-200',
+                ? 'border-emerald-400/20'
+                : 'border-rose-400/20',
             ].join(' ')}
           >
             <div
               className={[
                 'mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-full',
                 toast.type === 'success'
-                  ? 'bg-emerald-100 text-emerald-600'
-                  : 'bg-red-100 text-rose-300',
+                  ? 'bg-emerald-500/10 text-emerald-300'
+                  : 'bg-rose-500/10 text-rose-200',
               ].join(' ')}
             >
               {toast.type === 'success' ? (
@@ -294,7 +294,7 @@ export default function PartiesPage() {
 
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
-          <p className="text-sm font-semibold text-emerald-300">Ledger</p>
+          <p className="text-sm font-semibold text-[#7692FF]">Ledger</p>
           <h1 className="text-3xl font-bold">বাকির খাতা</h1>
           <p className="mt-2 text-white/50">
             Customers, suppliers and their running balances.
@@ -302,7 +302,7 @@ export default function PartiesPage() {
         </div>
 
         <div className="flex gap-3 text-sm">
-          <span className="rounded-2xl bg-emerald-500/10 px-3 py-2 text-emerald-300">
+          <span className="rounded-2xl bg-emerald-500/10 px-3 py-2 text-[#7692FF]">
             পাবো ৳{totals.receive.toLocaleString()}
           </span>
           <span className="rounded-2xl bg-red-500/10 px-3 py-2 text-red-300">
@@ -314,10 +314,10 @@ export default function PartiesPage() {
       <div className="mt-6 grid gap-5 lg:grid-cols-[360px_1fr]">
         <form
           onSubmit={save}
-          className="rounded-[24px] border border-black/[0.07] bg-transparent p-5 shadow-[0_10px_35px_rgba(15,23,42,0.06)] sm:p-6"
+          className="rounded-[24px] border border-white/10 bg-transparent p-5 shadow-[0_12px_32px_rgba(0,0,0,.16)] backdrop-blur-xl sm:p-6"
         >
           <div className="flex items-center gap-2.5 text-base font-bold tracking-tight text-white">
-            <span className="flex h-9 w-9 items-center justify-center rounded-2xl bg-emerald-500/10 text-emerald-300">
+            <span className="flex h-9 w-9 items-center justify-center rounded-2xl bg-[#7692FF]/10 text-[#7692FF]">
               <Users size={18} />
             </span>
             <span>{editing ? 'Edit party' : 'Add party'}</span>
@@ -464,7 +464,7 @@ export default function PartiesPage() {
                     <span
                       className={
                         Number(row.currentBalance || 0) >= 0
-                          ? 'font-semibold text-emerald-300'
+                          ? 'font-semibold text-[#7692FF]'
                           : 'font-semibold text-rose-300'
                       }
                     >
@@ -474,7 +474,7 @@ export default function PartiesPage() {
                     <button
                       type="button"
                       aria-label={`Edit ${row.name}`}
-                      className="text-white/50 hover:text-emerald-300"
+                      className="text-white/50 hover:text-[#7692FF]"
                       onClick={() => {
                         setEditing(row._id);
                         setForm({
