@@ -50,14 +50,14 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const sidebar = (
     <aside
       className={[
-        'flex h-full flex-col border-r border-white/[0.08] bg-[#111722]/95 shadow-[8px_0_30px_rgba(0,0,0,0.18)]',
+        'flex h-full flex-col border-r border-white/[0.08] bg-[#091540]/95 shadow-[8px_0_30px_rgba(0,0,0,0.18)]',
         collapsed ? 'w-[76px]' : 'w-[258px]',
       ].join(' ')}
     >
       <div className="flex h-16 items-center gap-2 px-3">
         <Link href="/dashboard" onClick={() => setMobileOpen(false)} className="flex min-w-0 flex-1 items-center gap-2 px-2">
-          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-emerald-600 text-sm font-bold text-white">T</span>
-          {!collapsed && <span className="truncate text-[17px] font-semibold tracking-[-0.03em]">TaliKhata<span className="text-emerald-600">.</span></span>}
+          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-[#1B2CC1] text-sm font-bold text-white">T</span>
+          {!collapsed && <span className="truncate text-[17px] font-semibold tracking-[-0.03em]">TaliKhata<span className="text-[#7692FF]">.</span></span>}
         </Link>
         <button
           type="button"
@@ -86,7 +86,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                 title={collapsed ? label : undefined}
                 className={[
                   'flex items-center gap-3 rounded-xl px-3 py-2.5 text-[13px] font-medium transition',
-                  active ? 'bg-transparent text-emerald-400' : 'text-white/60 hover:bg-transparent hover:text-white',
+                  active ? 'bg-transparent text-[#ABD2FA]' : 'text-white/60 hover:bg-transparent hover:text-white',
                   collapsed ? 'justify-center' : '',
                 ].join(' ')}
               >
@@ -103,10 +103,10 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         </div>
       </nav>
 
-      <div className="border-t border-white/[0.08] bg-[#0E141E]/60 p-2">
+      <div className="border-t border-white/[0.08] bg-[#091540]/70 p-2">
         <div className={`rounded-xl border border-emerald-400/10 bg-emerald-400/[0.04] p-3 text-emerald-400 ${collapsed ? 'flex justify-center' : ''}`}>
           <Mic size={18} />
-          {!collapsed && <div className="ml-2"><p className="text-xs font-semibold">Voice ready</p><p className="mt-0.5 text-[11px] text-emerald-300">Bangla · Banglish · English</p></div>}
+          {!collapsed && <div className="ml-2"><p className="text-xs font-semibold">Voice ready</p><p className="mt-0.5 text-[11px] text-[#ABD2FA]">Bangla · Banglish · English</p></div>}
         </div>
       </div>
     </aside>
