@@ -447,7 +447,7 @@ export default function VoiceControl() {
             disabled={state === 'Listening' || state === 'Processing'}
             aria-label={state === 'Listening' ? 'Listening' : 'Start voice input'}
             className={
-              'flex h-10 w-10 shrink-0 items-center justify-center rounded-full transition active:scale-95 sm:h-11 sm:w-11 ' +
+              'group relative flex h-10 w-10 shrink-0 items-center justify-center rounded-full transition-all duration-200 ease-out active:scale-90 sm:h-11 sm:w-11 ' +
               (state === 'Listening'
                 ? 'bg-red-500 text-white shadow-[0_5px_18px_rgba(239,68,68,0.30)] animate-pulse'
                 : state === 'Error'
@@ -464,7 +464,7 @@ export default function VoiceControl() {
             ) : state === 'Error' ? (
               <AlertCircle size={22} />
             ) : (
-              <Mic size={22} />
+              <Mic size={22} className={state === 'Listening' ? 'animate-[pulse_1.1s_ease-in-out_infinite] drop-shadow-[0_0_8px_rgba(118,146,255,0.65)]' : 'transition-transform duration-200 group-hover:scale-105 group-active:scale-90'} />
             )}
           </button>
 
