@@ -9,7 +9,7 @@ type Tx={_id:string;partyId?:{name:string};productId?:{name:string};type:string;
 type DashboardData={parties:number;products:number;lowStock:number;dueCustomers?:number;balances?:{receivable?:number;payable?:number};recent?:Tx[];todaySales?:{total?:number;count?:number};weeklySales?:Array<{label:string;date:string;total:number}>};
 
 const money=(v?:number)=>`৳ ${Number(v||0).toLocaleString('bn-BD')}`;
-const saleType=(type:string)=>/SALE|DUE_SALE|CASH_SALE/i.test(type);
+const saleType=(type:string)=>type==='SALE';
 const txTitle=(x:Tx)=>x.partyId?.name?(/DUE/i.test(x.type)?`${x.partyId.name}-এর বাকি`:x.partyId.name):/SALE/i.test(x.type)?'ক্যাশ বিক্রি':x.productId?.name||x.type;
 const txStatus=(x:Tx)=>/SALE/i.test(x.type)?(/DUE/i.test(x.type)?'Due added, via Voice':'Cash sale'):/PAYMENT|RECEIVE/i.test(x.type)?'Payment, via Voice':'লেনদেন';
 const isPositive=(x:Tx)=>/PAYMENT|RECEIVE/i.test(x.type);
@@ -17,7 +17,7 @@ const time=(v:string)=>new Date(v).toLocaleTimeString('en-US',{hour:'numeric',mi
 
 export default function DashboardPage(){
  const[data,setData]=useState<DashboardData|null>(null);const[loading,setLoading]=useState(true);const[query,setQuery]=useState('');
- const load=async()=>{try{setData(await apiRequest<DashboardData>('/api/dashboard'))}finally{setLoading(false)}};
+ const load=async()=>{try{setData(await apiRequest<DashboardData>('/api/dashboard'))}catch{setData(null)}finally{setLoading(false)}};
  useEffect(()=>{void load();const r=()=>void load();window.addEventListener('talikhata:refresh',r);return()=>window.removeEventListener('talikhata:refresh',r)},[]);
  const recent=useMemo(()=>data?.recent?.filter(x=>{const q=query.trim().toLowerCase();return !q||txTitle(x).toLowerCase().includes(q)||txStatus(x).toLowerCase().includes(q)}).slice(0,5)??[],[data,query]);
  const dueCustomers=data?.dueCustomers??0;
