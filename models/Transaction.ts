@@ -267,6 +267,7 @@ TransactionSchema.index({
 TransactionSchema.index({
   userId: 1,
   isDeleted: 1,
+  type: 1,
   timestamp: -1,
 });
 
