@@ -4,12 +4,12 @@
 
 :root{
   color-scheme: dark;
-  --tk-bg:#0B0F17;
-  --tk-surface:transparent;
-  --tk-border:rgba(255,255,255,.10);
+  --tk-bg:#091540;
+  --tk-surface:rgba(27,44,193,.34);
+  --tk-border:rgba(171,210,250,.16);
   --tk-text:#fff;
-  --tk-muted:rgba(255,255,255,.62);
-  --tk-accent:#10B981;
+  --tk-muted:rgba(235,244,255,.68);
+  --tk-accent:#7692FF;
 }
 
 html{scroll-behavior:smooth}
@@ -121,11 +121,11 @@ button:disabled{cursor:not-allowed;opacity:.65}
 
 /* Dashboard v2 — receipt/ledger inspired visual system */
 :root{
-  --tk-dash-bg:#0B0F17;
-  --tk-dash-surface:#161B26;
+  --tk-dash-bg:#091540;
+  --tk-dash-surface:#1B2CC1;
   --tk-dash-ink:#F8FAFC;
   --tk-dash-muted:rgba(255,255,255,.62);
-  --tk-dash-teal:#10B981;
+  --tk-dash-teal:#7692FF;
   --tk-dash-teal-soft:rgba(16,185,129,.12);
   --tk-dash-pink:rgba(251,113,133,.18);
   --tk-dash-red:#EF4444;
@@ -202,9 +202,9 @@ button:disabled{cursor:not-allowed;opacity:.65}
 
 /* Global dark graphite / slate-glass dashboard palette */
 :root{
-  --tk-app-bg:#0B0F17;
-  --tk-surface:#161B26;
-  --tk-surface-glass:rgba(22,27,38,.85);
+  --tk-app-bg:#091540;
+  --tk-surface:#1B2CC1;
+  --tk-surface-glass:rgba(27,44,193,.34);
 }
 .tk-dashboard{background:var(--tk-app-bg);color:#fff;}
 .tk-dashboard .tk-search{background:var(--tk-surface-glass);border-color:rgba(255,255,255,.10);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);color:rgba(255,255,255,.72);}
@@ -256,7 +256,7 @@ button:disabled{cursor:not-allowed;opacity:.65}
 #direction{padding-right:2.35rem;}
 
 /* App-wide graphite background */
-html,body{background:#0B0F17;color:#fff;}
+html,body{background:var(--tk-bg);color:var(--tk-text);}
 body{min-height:100vh;}
 
 /* Unified surfaces: forms and generic cards inherit the graphite page canvas. */
