@@ -91,8 +91,8 @@ function Field({
     <input
       {...props}
       className={[
-        'w-full rounded-lg border border-white/10 bg-transparent px-3 py-2 text-sm text-white',
-        'outline-none transition focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20',
+        'w-full rounded-lg border border-sky-200/15 bg-transparent px-3 py-2 text-sm text-white',
+        'outline-none transition focus:border-[#7692FF] focus:ring-2 focus:ring-[#7692FF]/20',
         'disabled:cursor-not-allowed disabled:bg-transparent disabled:opacity-60',
         className,
       ].join(' ')}
@@ -559,7 +559,7 @@ export default function Page() {
 
       <form
         onSubmit={save}
-        className="mt-6 grid gap-4 rounded-2xl border bg-transparent p-5 md:grid-cols-6"
+        className="mt-6 grid gap-4 tk-page-surface rounded-2xl p-5 md:grid-cols-6"
       >
         <div>
           <label
@@ -583,7 +583,7 @@ export default function Page() {
               required
             />
             {form.partyName && !form.partyId && parties.length > 0 && (
-              <div className="absolute left-0 right-0 top-full z-20 mt-1 max-h-48 overflow-auto rounded-2xl border bg-transparent p-1 shadow-lg">
+              <div className="absolute left-0 right-0 top-full z-20 mt-1 max-h-48 overflow-auto tk-page-surface rounded-2xl p-1 shadow-lg">
                 {parties
                   .filter((party) =>
                     party.name.toLowerCase().includes(form.partyName.toLowerCase())
@@ -626,7 +626,7 @@ export default function Page() {
               required
             />
             {form.productName && !form.productId && products.length > 0 && (
-              <div className="absolute left-0 right-0 top-full z-20 mt-1 max-h-48 overflow-auto rounded-2xl border bg-transparent p-1 shadow-lg">
+              <div className="absolute left-0 right-0 top-full z-20 mt-1 max-h-48 overflow-auto tk-page-surface rounded-2xl p-1 shadow-lg">
                 {products
                   .filter((product) =>
                     product.name.toLowerCase().includes(form.productName.toLowerCase())
@@ -658,7 +658,7 @@ export default function Page() {
               <label htmlFor="variantId" className="form-label">Variant</label>
               <select
                 id="variantId"
-                className="w-full rounded-lg border border-white/10 bg-transparent px-3 py-2 text-sm text-white outline-none transition focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20"
+                className="w-full rounded-lg border border-sky-200/15 bg-transparent px-3 py-2 text-sm text-white outline-none transition focus:border-[#7692FF] focus:ring-2 focus:ring-[#7692FF]/20"
                 value={form.variantId}
                 onChange={(event) => {
                   const variant = selectedProduct.variants?.find((item) => item._id === event.target.value);
@@ -797,7 +797,7 @@ export default function Page() {
         )}
       </form>
 
-      <div className="mt-6 rounded-2xl border bg-transparent p-5">
+      <div className="mt-6 tk-page-surface rounded-2xl p-5">
         <h2 className="font-semibold">
           Recent sales
         </h2>
