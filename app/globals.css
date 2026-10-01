@@ -318,3 +318,13 @@ body{min-height:100vh;}
   backdrop-filter:blur(14px);
   -webkit-backdrop-filter:blur(14px);
 }
+
+/* Modal readability: stronger backdrop blur + darker overlay */
+.tk-modal-backdrop,
+[role="dialog"]::before{
+  backdrop-filter:blur(18px)!important;
+  -webkit-backdrop-filter:blur(18px)!important;
+}
+[role="dialog"]{
+  isolation:isolate;
+}
