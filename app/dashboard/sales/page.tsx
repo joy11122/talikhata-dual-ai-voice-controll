@@ -91,7 +91,7 @@ function Field({
     <input
       {...props}
       className={[
-        'w-full rounded-lg border border-sky-200/15 bg-transparent px-3 py-2 text-sm text-white',
+        'w-full rounded-[14px] border border-white/10 bg-transparent px-3 py-2 text-sm text-white backdrop-blur-[10px]',
         'outline-none transition focus:border-[#7692FF] focus:ring-2 focus:ring-[#7692FF]/20',
         'disabled:cursor-not-allowed disabled:bg-transparent disabled:opacity-60',
         className,
