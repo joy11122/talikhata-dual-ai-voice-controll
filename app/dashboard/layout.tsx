@@ -50,13 +50,13 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const sidebar = (
     <aside
       className={[
-        'flex h-full flex-col border-r border-white/[0.08] bg-[#091540]/95 shadow-[8px_0_30px_rgba(0,0,0,0.18)]',
+        'flex h-full flex-col border-r border-white/[0.10] bg-[#091540]/96 shadow-[8px_0_30px_rgba(0,0,0,0.12)] backdrop-blur-xl',
         collapsed ? 'w-[76px]' : 'w-[258px]',
       ].join(' ')}
     >
       <div className="flex h-16 items-center gap-2 px-3">
         <Link href="/dashboard" onClick={() => setMobileOpen(false)} className="flex min-w-0 flex-1 items-center gap-2 px-2">
-          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-[#1B2CC1] text-sm font-bold text-white">T</span>
+          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-[10px] bg-[#7692FF] text-sm font-bold text-white shadow-[0_5px_16px_rgba(118,146,255,.20)]">T</span>
           {!collapsed && <span className="truncate text-[17px] font-semibold tracking-[-0.03em]">TaliKhata<span className="text-[#7692FF]">.</span></span>}
         </Link>
         <button
@@ -86,7 +86,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                 title={collapsed ? label : undefined}
                 className={[
                   'flex items-center gap-3 rounded-xl px-3 py-2.5 text-[13px] font-medium transition',
-                  active ? 'bg-transparent text-[#ABD2FA]' : 'text-white/60 hover:bg-transparent hover:text-white',
+                  active ? 'bg-[#7692FF]/10 text-[#7692FF] ring-1 ring-[#7692FF]/10' : 'text-white/60 hover:bg-white/[0.04] hover:text-white',
                   collapsed ? 'justify-center' : '',
                 ].join(' ')}
               >
@@ -96,17 +96,17 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             );
           })}
           {user?.role === 'ADMIN' && (
-            <Link href="/admin" onClick={() => setMobileOpen(false)} title={collapsed ? 'Admin Panel' : undefined} className={`mt-3 flex items-center gap-3 rounded-xl px-3 py-2.5 text-[13px] font-medium text-white/60 hover:bg-transparent ${collapsed ? 'justify-center' : ''}`}>
+            <Link href="/admin" onClick={() => setMobileOpen(false)} title={collapsed ? 'Admin Panel' : undefined} className={`mt-3 flex items-center gap-3 rounded-xl px-3 py-2.5 text-[13px] font-medium text-white/60 hover:bg-white/[0.04] ${collapsed ? 'justify-center' : ''}`}>
               <Settings size={18} />{!collapsed && <span>Admin Panel</span>}
             </Link>
           )}
         </div>
       </nav>
 
-      <div className="border-t border-white/[0.08] bg-[#091540]/70 p-2">
-        <div className={`rounded-xl border border-emerald-400/10 bg-emerald-400/[0.04] p-3 text-emerald-400 ${collapsed ? 'flex justify-center' : ''}`}>
+      <div className="border-t border-white/[0.10] bg-transparent p-3">
+        <div className={`rounded-[14px] border border-[#7692FF]/15 bg-[#7692FF]/[0.06] p-3 text-[#7692FF] ${collapsed ? 'flex justify-center' : ''}`}>
           <Mic size={18} />
-          {!collapsed && <div className="ml-2"><p className="text-xs font-semibold">Voice ready</p><p className="mt-0.5 text-[11px] text-[#ABD2FA]">Bangla · Banglish · English</p></div>}
+          {!collapsed && <div className="ml-2"><p className="text-xs font-semibold">Voice ready</p><p className="mt-0.5 text-[11px] text-white/50">Bangla · Banglish · English</p></div>}
         </div>
       </div>
     </aside>
@@ -125,7 +125,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
       <div className={`relative min-w-0 transition-[padding] duration-200 ${collapsed ? 'md:pl-[76px]' : 'md:pl-[258px]'}`}>
         {/* Desktop workspace header. Mobile uses the dashboard's Apple-style app header. */}
-        <header className="sticky top-0 z-30 hidden h-16 items-center border-b border-white/[0.08] bg-transparent px-3 backdrop-blur-xl sm:px-5 md:flex">
+        <header className="sticky top-0 z-30 hidden h-16 items-center border-b border-white/[0.10] bg-[#091540]/80 px-3 backdrop-blur-xl sm:px-5 md:flex">
           <div className="flex items-center gap-2">
             <Home size={17} className="text-white/40" />
             <span className="text-sm font-medium text-white/60">{currentTitle}</span>
@@ -134,12 +134,12 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         </header>
 
         {/* Mobile app header: fixed controls with a dedicated title column prevent overlap on narrow screens. */}
-        <header className="fixed inset-x-0 top-0 z-[45] h-16 border-b border-white/[0.08] bg-transparent px-3 backdrop-blur-xl md:hidden">
+        <header className="fixed inset-x-0 top-0 z-[45] h-16 border-b border-white/[0.10] bg-[#091540]/80 px-3 backdrop-blur-xl md:hidden">
           <div className="grid h-full grid-cols-[44px_minmax(0,1fr)_auto] items-center gap-2">
             <button
               type="button"
               onClick={() => setMobileOpen(true)}
-              className="flex h-11 w-11 items-center justify-center rounded-full border border-white/[0.08] bg-transparent text-white/80 shadow-[0_4px_18px_rgba(15,23,42,0.10)] transition active:scale-95"
+              className="flex h-11 w-11 items-center justify-center rounded-full border border-white/[0.10] bg-white/[0.03] text-white/80 shadow-[0_4px_18px_rgba(0,0,0,0.10)] transition active:scale-95"
               aria-label="Open dashboard navigation"
             >
               <Menu size={22} />
