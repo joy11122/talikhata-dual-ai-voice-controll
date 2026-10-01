@@ -112,6 +112,9 @@ export default function TransactionsPage() {
   const [busy, setBusy] =
     useState(false);
 
+  const [deleteTarget, setDeleteTarget] =
+    useState<Transaction | null>(null);
+
   const load = useCallback(
     async () => {
       try {
@@ -493,17 +496,7 @@ export default function TransactionsPage() {
     }
   }
 
-  async function del(
-    id: string
-  ) {
-    const confirmed =
-      window.confirm(
-        'Delete this transaction and reverse its effect?'
-      );
-
-    if (!confirmed) {
-      return;
-    }
+  async function del(id: string) {
 
     setBusy(true);
     setError('');
@@ -904,9 +897,7 @@ export default function TransactionsPage() {
                           type="button"
                           disabled={busy}
                           onClick={() =>
-                            void del(
-                              transaction._id
-                            )
+                            setDeleteTarget(transaction)
                           }
                           className="text-red-500 hover:text-red-300 disabled:opacity-50"
                           aria-label={`Delete ${labels[transaction.type] ?? 'transaction'}`}
@@ -930,6 +921,51 @@ export default function TransactionsPage() {
           </p>
         )}
       </div>
+
+      {deleteTarget && (
+        <div
+          className="fixed inset-0 z-[10000] flex items-center justify-center bg-slate-950/35 px-4 backdrop-blur-[10px]"
+          role="presentation"
+          onClick={() => !busy && setDeleteTarget(null)}
+        >
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="delete-transaction-title"
+            className="w-full max-w-md rounded-[18px] border border-white/10 bg-transparent p-6 text-white shadow-[0_24px_80px_rgba(0,0,0,.35)] backdrop-blur-[18px]"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <h2 id="delete-transaction-title" className="text-lg font-semibold">
+              Delete transaction?
+            </h2>
+            <p className="mt-2 text-sm leading-6 text-white/55">
+              This will delete the transaction and reverse its effect. This action cannot be undone.
+            </p>
+            <div className="mt-6 flex justify-end gap-3">
+              <button
+                type="button"
+                disabled={busy}
+                onClick={() => setDeleteTarget(null)}
+                className="rounded-[12px] border border-white/10 bg-transparent px-4 py-2.5 text-sm font-medium text-white/75 backdrop-blur-[10px] hover:bg-white/[0.05] disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                disabled={busy}
+                onClick={async () => {
+                  const id = deleteTarget._id;
+                  setDeleteTarget(null);
+                  await del(id);
+                }}
+                className="rounded-[12px] bg-rose-500 px-4 py-2.5 text-sm font-semibold text-white hover:bg-rose-600 disabled:opacity-50"
+              >
+                {busy ? 'Deleting…' : 'Delete'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
