@@ -50,7 +50,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const sidebar = (
     <aside
       className={[
-        'flex h-full flex-col border-r border-white/[0.08] bg-transparent',
+        'flex h-full flex-col border-r border-white/[0.08] bg-[#111722]/95 shadow-[8px_0_30px_rgba(0,0,0,0.18)]',
         collapsed ? 'w-[76px]' : 'w-[258px]',
       ].join(' ')}
     >
@@ -103,8 +103,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         </div>
       </nav>
 
-      <div className="border-t border-white/[0.08] p-2">
-        <div className={`rounded-xl bg-transparent p-3 text-emerald-400 ${collapsed ? 'flex justify-center' : ''}`}>
+      <div className="border-t border-white/[0.08] bg-[#0E141E]/60 p-2">
+        <div className={`rounded-xl border border-emerald-400/10 bg-emerald-400/[0.04] p-3 text-emerald-400 ${collapsed ? 'flex justify-center' : ''}`}>
           <Mic size={18} />
           {!collapsed && <div className="ml-2"><p className="text-xs font-semibold">Voice ready</p><p className="mt-0.5 text-[11px] text-emerald-300">Bangla · Banglish · English</p></div>}
         </div>
