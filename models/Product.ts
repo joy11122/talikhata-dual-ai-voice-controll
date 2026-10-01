@@ -61,6 +61,7 @@ const S=new Schema<IProduct>({
 
 S.index({name:'text',category:'text',brand:'text',sku:'text',barcode:'text'});
 S.index({userId:1,name:1},{unique:true});
+S.index({userId:1,lowStockThreshold:1,stockQuantity:1});
 S.index({userId:1,sku:1},{unique:true,sparse:true});
 S.index({userId:1,barcode:1},{unique:true,sparse:true});
 
