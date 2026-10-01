@@ -475,7 +475,7 @@ export default function Page() {
 
       <form
         onSubmit={save}
-        className="mt-6 grid gap-4 rounded-2xl border bg-transparent p-5 md:grid-cols-6"
+        className="mt-6 grid gap-4 tk-page-surface rounded-2xl p-5 md:grid-cols-6"
       >
         <div>
           <label
@@ -646,7 +646,7 @@ export default function Page() {
         )}
       </form>
 
-      <div className="mt-6 rounded-2xl border bg-transparent p-5">
+      <div className="mt-6 tk-page-surface rounded-2xl p-5">
         <h2 className="font-semibold">
           Recent purchases
         </h2>
