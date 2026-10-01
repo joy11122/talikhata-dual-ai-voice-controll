@@ -285,3 +285,7 @@ body{min-height:100vh;}
 .tk-transactions-form .field{border-color:rgba(171,210,250,.16);background:rgba(9,21,64,.18)!important}
 .tk-transactions-form .field:hover{border-color:rgba(171,210,250,.28)}
 .tk-transactions-form .field:focus{border-color:rgba(118,146,255,.72);box-shadow:0 0 0 3px rgba(118,146,255,.12);}
+
+/* Shared business-page glass surface */
+.tk-page-surface{background:linear-gradient(145deg,rgba(27,44,193,.16),rgba(9,21,64,.38));border:1px solid rgba(171,210,250,.13);box-shadow:inset 0 1px 0 rgba(171,210,250,.035),0 10px 28px rgba(0,0,0,.10);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);}
+.tk-page-surface:hover{border-color:rgba(171,210,250,.19);}
