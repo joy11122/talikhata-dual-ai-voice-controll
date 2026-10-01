@@ -210,7 +210,7 @@ button:disabled{cursor:not-allowed;opacity:.65}
 .tk-dashboard .tk-search{background:var(--tk-surface-glass);border-color:rgba(255,255,255,.10);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);color:rgba(255,255,255,.72);}
 .tk-dashboard .tk-search input{color:#F8FAFC;font-family:var(--tk-dash-sans);font-size:.9rem;font-weight:500;}
 .tk-dashboard .tk-search input::placeholder{color:rgba(255,255,255,.52);}
-.tk-insight{background:linear-gradient(145deg,rgba(22,27,38,.92),rgba(22,27,38,.78));border-color:rgba(16,185,129,.22);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);}
+.tk-insight{background:transparent;border-color:rgba(255,255,255,.12);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);}
 .tk-transaction{background:var(--tk-surface-glass);border-color:rgba(255,255,255,.09);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);}
 .tk-section-title,.tk-insight h2{color:#fff;}
 .tk-insight-copy,.tk-transaction p{color:rgba(255,255,255,.62);}.tk-transaction p span{color:rgba(255,255,255,.28);}
