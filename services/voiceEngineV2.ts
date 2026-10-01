@@ -681,7 +681,7 @@ async function aiParse(
 
         baseURL: provider.baseURL,
 
-        timeout: 15_000,
+        timeout: 10_000,
 
         maxRetries: 0,
 
@@ -718,7 +718,7 @@ async function aiParse(
           // Voice commands only need a small structured JSON payload.
           // Explicitly cap completion tokens so OpenRouter does not reserve
           // a large default budget (e.g. 65,536 tokens) for each request.
-          max_tokens: 1200,
+          max_tokens: 500,
 
           tools: [VOICE_V2_TOOL],
 
