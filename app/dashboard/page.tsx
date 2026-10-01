@@ -56,7 +56,7 @@ export default function DashboardPage(){
            </div>
          </div>
        </div>
-       <div className="flex flex-col gap-3 border-t border-teal-900/10 pt-3 sm:flex-row sm:items-center sm:justify-between"><p className="tk-insight-copy">গত ৭ দিনের sales এক নজরে দেখুন। আজকের হিসাবসহ দ্রুত business insight।</p><button type="button" className="tk-export" onClick={()=>window.print()}><Download size={15}/> Quick export</button></div>
+       <div className="flex flex-col gap-3 border-t border-white/10 pt-3 sm:flex-row sm:items-center sm:justify-between"><p className="tk-insight-copy">গত ৭ দিনের sales এক নজরে দেখুন। আজকের হিসাবসহ দ্রুত business insight।</p><button type="button" className="tk-export" onClick={()=>window.print()}><Download size={15}/> Quick export</button></div>
      </section>
 
 
@@ -64,7 +64,7 @@ export default function DashboardPage(){
        <Search size={19}/><input value={query} onChange={e=>setQuery(e.target.value)} placeholder="Search (voice-capable)" aria-label="Search, voice-capable"/><button type="button" aria-label="Filter" title="Filter"><SlidersHorizontal size={19}/></button>
      </form>
      <section>
-       <div className="mb-3 flex items-end justify-between"><div><p className="tk-eyebrow">LEDGER</p><h2 className="tk-section-title">রিসেন্ট খাতা ট্রানজ্যাকশন</h2></div><Link href="/dashboard/transactions" className="flex items-center gap-1 text-xs font-semibold text-teal-700">সব দেখুন <ChevronRight size={14}/></Link></div>
+       <div className="mb-3 flex items-end justify-between"><div><p className="tk-eyebrow">LEDGER</p><h2 className="tk-section-title">রিসেন্ট খাতা ট্রানজ্যাকশন</h2></div><Link href="/dashboard/transactions" className="flex items-center gap-1 text-xs font-semibold text-[#7692FF]">সব দেখুন <ChevronRight size={14}/></Link></div>
        <div className="space-y-2.5">
         {recent.map((item,i)=><div key={item._id} className="tk-transaction">
           <span className={`tk-status-dot ${/DUE/i.test(item.type)?'due':isPositive(item)?'paid':'sale'}`}/>
@@ -72,7 +72,7 @@ export default function DashboardPage(){
           <div className="text-right"><strong className={isPositive(item)?'positive':''}>{isPositive(item)?'+':''}{money(item.amount).replace('৳ ','৳ ')}</strong><span>{saleType(item.type)?'Sale':'Transaction'}</span></div>
           {item.source==='VOICE'&&<Mic size={14} className="tk-mic" aria-label="Voice transaction"/>}
         </div>)}
-        {!recent.length&&<div className="rounded-2xl border border-slate-200 bg-transparent p-10 text-center text-sm text-slate-400">এখনো কোনো লেনদেন নেই।</div>}
+        {!recent.length&&<div className="rounded-2xl border border-white/10 bg-transparent p-10 text-center text-sm text-white/40">এখনো কোনো লেনদেন নেই।</div>}
        </div>
      </section>
    </div>
