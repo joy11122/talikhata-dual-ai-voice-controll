@@ -464,12 +464,6 @@ export default function VoiceControl() {
             ) : state === 'Error' ? (
               <AlertCircle size={22} />
             ) : (
-              {state === 'Listening' && (
-                <>
-                  <span aria-hidden="true" className="tk-voice-ring tk-voice-ring-one" />
-                  <span aria-hidden="true" className="tk-voice-ring tk-voice-ring-two" />
-                </>
-              )}
               <Mic size={22} className="relative z-10 transition-transform duration-200 group-hover:scale-105 group-active:scale-90" />
             )}
           </button>
@@ -480,12 +474,6 @@ export default function VoiceControl() {
             className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-slate-900 text-white shadow-md transition hover:bg-black active:scale-95 disabled:opacity-40 sm:h-11 sm:w-11"
             disabled={!text.trim() || state === 'Processing'}
           >
-              {state === 'Listening' && (
-                <>
-                  <span aria-hidden="true" className="tk-voice-ring tk-voice-ring-one" />
-                  <span aria-hidden="true" className="tk-voice-ring tk-voice-ring-two" />
-                </>
-              )}
             <Send size={18} />
           </button>
         </form>
