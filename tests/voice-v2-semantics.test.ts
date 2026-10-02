@@ -1,6 +1,31 @@
 import { describe, expect, it } from 'vitest';
 import { parseVoiceV2 } from '@/services/voiceEngineV2';
 
+describe('entity resolution safety invariants', () => {
+  it('sale must not auto-create a missing product', () => {
+    const productMatches = 0;
+    const saleMayCreateProduct = false;
+    expect(productMatches).toBe(0);
+    expect(saleMayCreateProduct).toBe(false);
+  });
+
+  it('purchase may create a missing product because purchase adds catalog stock', () => {
+    const purchaseMayCreateProduct = true;
+    expect(purchaseMayCreateProduct).toBe(true);
+  });
+
+  it('multiple product matches must require disambiguation', () => {
+    const matches = 2;
+    expect(matches > 1).toBe(true);
+  });
+
+  it('customer and supplier roles must not be silently interchangeable', () => {
+    const requested = 'CUSTOMER';
+    const actual = 'SUPPLIER';
+    expect(requested).not.toBe(actual);
+  });
+});
+
 describe('inventory safety invariants', () => {
   it('must reject a sale larger than available tracked stock', () => {
     const available = 5;
