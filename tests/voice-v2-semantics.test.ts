@@ -73,7 +73,7 @@ describe('Voice V2 Bangladesh ledger semantics', () => {
   });
 
   it.each([
-    ['করিমের কাছ থেকে ১০০০ টাকার মাল বাকিতে নিলাম', 'CREATE_DUE', 'করিম', 1000],
+    ['করিমের কাছ থেকে ১০০০ টাকার মাল বাকিতে নিলাম', 'CREATE_PURCHASE', 'করিম', 1000],
     ['করিমকে ৫০০ টাকা দিতে হবে', 'CREATE_DUE', 'করিম', 500],
     ['Karim supplier ke 1000 taka due ache', 'CREATE_DUE', 'Karim', 1000],
     ['করিমের কাছ থেকে ৫০০ টাকা নিলাম', 'RECEIVE_PAYMENT', 'করিম', 500],
