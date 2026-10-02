@@ -473,7 +473,7 @@ function parseLedgerDirectionCommand(text: string): VoiceV2Command | null {
         .replace(/\s+(?:er|r|ke|der|e)$/i, '')
         .trim();
 
-    if (/(?:দিতে হবে|পাওনা|বাকি|due|payable|দেব|দিলাম|paid|pay)/iu.test(value)) {
+    if (/(?:দিতে হবে|পাওনা|বাকি|due|payable|দেব|দেবে|পাব|পাবে)/iu.test(value)) {
       const result = blank('CREATE_DUE');
       result.entityType = 'SUPPLIER';
       result.entityName = supplierName || null;
