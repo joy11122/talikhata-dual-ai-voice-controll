@@ -109,7 +109,7 @@ function extractCreatePartyName(text: string): { name: string; partyType: 'CUSTO
     .replace(/\s+/g, ' ')
     .trim();
 
-  const partyCreateVerb = '(?:যোগ করো|যোগ করুন|যোগ|এড করো|এড করুন|অ্যাড করো|অ্যাড করুন|add|add koro|add korun|add করো|add করুন|create|create koro|create korun|ক্রিয়েট কর|ক্রিয়েট করো|ক্রিয়েট করুন|ক্রিয়েট|ক্রিয়েট কর|ক্রিয়েট করো|ক্রিয়েট করুন|ক্রিয়েট|করো|করুন|jog koro|jog korun)';
+  const partyCreateVerb = '(?:যোগ করো|যোগ কর|যোগ করুন|যোগ করেন|যোগ|এড করো|এড কর|এড করুন|এড করেন|অ্যাড করো|অ্যাড কর|অ্যাড করুন|অ্যাড করেন|add|add koro|add kor|add korun|add করো|add কর|add করুন|create|create koro|create kor|create korun|ক্রিয়েট কর|ক্রিয়েট করো|ক্রিয়েট করুন|ক্রিয়েট|ক্রিয়েট কর|ক্রিয়েট করো|ক্রিয়েট করুন|ক্রিয়েট|তৈরি করো|তৈরি কর|তৈরি করুন|তৈরি|বানাও|বানিয়ে দাও|বানিয়ে দাও|হিসেবে যোগ করো|হিসেবে যোগ কর|হিসেবে রাখো|লিস্টে রাখো|তালিকায় যোগ করো|তালিকায় যোগ করো|অ্যাকাউন্ট খুলে দাও|অ্যাকাউন্ট খোলো|রেজিস্টার করো|register|register koro|register kor|make customer|open account|jog koro|jog kor|jog korun)';
   const patterns = [
     new RegExp('^(.*?)\\s+(?:name|নামে)\\s+নতুন\\s+(customer|কাস্টমার|গ্রাহক|supplier|সাপ্লায়ার|সরবরাহকারী)\\s+' + partyCreateVerb + '$', 'iu'),
     new RegExp('^(.*?)\\s+(?:name|নামে)\\s+(customer|কাস্টমার|গ্রাহক|supplier|সাপ্লায়ার|সরবরাহকারী)\\s+' + partyCreateVerb + '$', 'iu'),
