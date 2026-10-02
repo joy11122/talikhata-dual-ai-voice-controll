@@ -10,6 +10,7 @@ export type TransactionType =
   | 'STOCK_IN'
   | 'STOCK_OUT'
   | 'EXPENSE'
+  | 'OTHER_INCOME'
   | 'SALE';
 
 /* -------------------------------------------------------------------------- */
@@ -120,6 +121,7 @@ const TransactionSchema = new Schema<ITransaction>(
         'STOCK_IN',
         'STOCK_OUT',
         'EXPENSE',
+        'OTHER_INCOME',
         'SALE',
       ],
       required: true,
