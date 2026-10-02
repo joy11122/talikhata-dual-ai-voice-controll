@@ -123,10 +123,10 @@ export default function VoiceControl() {
 
   const normalizeSpeechCommand = (value: string) =>
     value
-      .replace(/\bজব\b/gu, 'যোগ')
-      .replace(/\bজোগ\b/gu, 'যোগ')
-      .replace(/\bজুগ\b/gu, 'যোগ')
-      .replace(/\bজগ\b/gu, 'যোগ')
+      .replace(/(^|\s)জব(?=\s|$|[,.!?।])/gu, '$1যোগ')
+      .replace(/(^|\s)জোগ(?=\s|$|[,.!?।])/gu, '$1যোগ')
+      .replace(/(^|\s)জুগ(?=\s|$|[,.!?।])/gu, '$1যোগ')
+      .replace(/(^|\s)জগ(?=\s|$|[,.!?।])/gu, '$1যোগ')
       .replace(/\bযোগ কর\b/gu, 'যোগ কর')
       .replace(/\s+/g, ' ')
       .trim();
