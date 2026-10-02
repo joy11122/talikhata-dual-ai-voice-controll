@@ -117,8 +117,19 @@ export default function VoiceControl() {
   const { toast } = useToast();
 
   const latest = useRef('');
+  const finalTranscript = useRef('');
   const recognition = useRef<any>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+
+  const normalizeSpeechCommand = (value: string) =>
+    value
+      .replace(/\bজব\b/gu, 'যোগ')
+      .replace(/\bজোগ\b/gu, 'যোগ')
+      .replace(/\bজুগ\b/gu, 'যোগ')
+      .replace(/\bজগ\b/gu, 'যোগ')
+      .replace(/\bযোগ কর\b/gu, 'যোগ কর')
+      .replace(/\s+/g, ' ')
+      .trim();
 
   /*
    * Preserve the existing TaliKhata command event integration.
@@ -268,6 +279,7 @@ export default function VoiceControl() {
     setError('');
     setText('');
     latest.current = '';
+    finalTranscript.current = '';
     if (
       !(
         'SpeechRecognition' in window ||
@@ -295,6 +307,7 @@ export default function VoiceControl() {
     recognitionInstance.lang = 'bn-BD';
     recognitionInstance.interimResults = true;
     recognitionInstance.continuous = false;
+    recognitionInstance.maxAlternatives = 1;
 
     recognitionInstance.onstart = () => {
       setState('Listening');
@@ -302,18 +315,29 @@ export default function VoiceControl() {
     };
 
     recognitionInstance.onresult = (event: any) => {
-      let output = '';
+      let interimTranscript = '';
 
       for (
-        let index = 0;
+        let index = event.resultIndex;
         index < event.results.length;
         index++
       ) {
-        output += event.results[index][0].transcript;
+        const result = event.results[index];
+        const transcript = result[0]?.transcript || '';
+
+        if (result.isFinal) {
+          finalTranscript.current += transcript + ' ';
+        } else {
+          interimTranscript += transcript;
+        }
       }
 
-      latest.current = output;
-      setText(output);
+      const displayTranscript = normalizeSpeechCommand(
+        finalTranscript.current + interimTranscript,
+      );
+
+      latest.current = displayTranscript;
+      setText(displayTranscript);
     };
 
     recognitionInstance.onerror = () => {
@@ -325,8 +349,14 @@ export default function VoiceControl() {
     };
 
     recognitionInstance.onend = () => {
-      if (latest.current.trim()) {
-        process(latest.current.trim());
+      const transcript = normalizeSpeechCommand(
+        finalTranscript.current || latest.current,
+      );
+
+      if (transcript.trim()) {
+        latest.current = transcript;
+        setText(transcript);
+        process(transcript);
       }
     };
 
