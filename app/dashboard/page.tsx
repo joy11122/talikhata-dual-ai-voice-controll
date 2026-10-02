@@ -46,12 +46,23 @@ export default function DashboardPage(){
      <div className="tk-dash-date">আজকের হিসাব</div>
    </section>
 
-   <section className="tk-dash-command" aria-label="AI Assistant">
-     <Link href="/dashboard/assistant" className="tk-command-icon" aria-label="Open AI Assistant" title="Open AI Assistant"><Sparkles size={18}/></Link>
-     <div className="min-w-0 flex-1">
-       <p>AI ASSISTANT</p><strong>কথা বলেই দোকানের হিসাব জানুন</strong>
-       <span>বিক্রি, বাকি, পেমেন্ট, লাভ বা স্টক সম্পর্কে প্রশ্ন করুন।</span>
-       <form className="mt-3 flex items-center gap-2" onSubmit={async e=>{
+   <section className="tk-dash-command relative overflow-hidden" aria-label="AI Assistant">
+     <div className="pointer-events-none absolute -right-20 -top-24 h-48 w-48 rounded-full bg-[#7692ff]/10 blur-3xl" />
+     <Link href="/dashboard/assistant" className="group relative flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-white/10 bg-white/[.04] text-[#abd2fa] transition hover:border-white/20 hover:bg-white/[.07]" aria-label="Open AI Assistant" title="Open AI Assistant">
+       <Sparkles size={18} className="transition-transform group-hover:rotate-12" />
+     </Link>
+     <div className="relative min-w-0 flex-1">
+       <div className="flex items-start justify-between gap-3">
+         <div className="min-w-0">
+           <div className="flex items-center gap-2">
+             <p>AI ASSISTANT</p>
+             <span className="inline-flex items-center gap-1 rounded-full border border-white/10 bg-white/[.035] px-2 py-0.5 text-[10px] font-medium text-white/55"><span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />READY</span>
+           </div>
+           <strong>দোকানের হিসাব জানতে সরাসরি জিজ্ঞেস করুন</strong>
+           <span>বিক্রি, বাকি, পেমেন্ট বা স্টক—টাইপ করুন অথবা মাইকে বলুন।</span>
+         </div>
+       </div>
+       <form className="mt-4 flex w-full items-center gap-1.5 rounded-2xl border border-white/10 bg-white/[.035] p-1.5 shadow-[inset_0_1px_0_rgba(255,255,255,.04)]" onSubmit={async e=>{
          e.preventDefault();
          if(!assistantQ.trim()||assistantBusy)return;
          setAssistantBusy(true);setAssistantError('');
@@ -63,7 +74,7 @@ export default function DashboardPage(){
          }catch(err){setAssistantError(err instanceof Error?err.message:'Assistant unavailable')}
          finally{setAssistantBusy(false)}
        }}>
-         <input value={assistantQ} onChange={e=>setAssistantQ(e.target.value)} className="min-w-0 flex-1 border-0 bg-transparent px-3 py-2 text-sm outline-none" placeholder="যেমন: আজকের বিক্রি কেমন?" aria-label="Ask AI Assistant"/>
+         <input value={assistantQ} onChange={e=>setAssistantQ(e.target.value)} className="min-w-0 flex-1 border-0 bg-transparent px-2.5 py-2 text-sm text-white outline-none placeholder:text-white/30" placeholder="যেমন: আজকের বিক্রি কত?" aria-label="Ask AI Assistant"/>
          <button type="button" onClick={()=>{
            setAssistantError('');
            if(!('SpeechRecognition' in window||'webkitSpeechRecognition' in window)){setAssistantError('Voice input is not supported in this browser.');return;}
@@ -75,17 +86,18 @@ export default function DashboardPage(){
            recognition.onerror=()=>{setAssistantListening(false);setAssistantError('Voice input could not be captured. Please try again.')};
            recognition.onend=()=>setAssistantListening(false);
            recognition.start();
-         }} disabled={assistantListening||assistantBusy} aria-label="Speak your assistant question" title="Speak your assistant question" className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl transition ${assistantListening?'bg-emerald-600 text-white':'bg-slate-100 text-emerald-700 hover:bg-emerald-50'} disabled:opacity-50`}>
-           {assistantListening?<Mic className="animate-pulse" size={18}/>:<Mic size={18}/>}
+         }} disabled={assistantListening||assistantBusy} aria-label="Speak your assistant question" title="Speak your assistant question" className={`relative flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border transition ${assistantListening?'border-emerald-400/40 bg-emerald-400/10 text-emerald-300':'border-white/10 bg-white/[.05] text-[#abd2fa] hover:bg-white/[.09]'} disabled:opacity-50`}>
+           {assistantListening&&<span className="absolute inset-0 animate-ping rounded-xl bg-emerald-400/10" />}
+           <Mic size={17} className="relative" />
          </button>
-         <button type="submit" disabled={assistantBusy||!assistantQ.trim()} aria-label="Send assistant question" title="Send assistant question" className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-slate-900 text-white transition hover:bg-slate-800 disabled:opacity-40">
+         <button type="submit" disabled={assistantBusy||!assistantQ.trim()} aria-label="Send assistant question" title="Send assistant question" className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#1b2cc1] text-white transition hover:bg-[#2436d4] disabled:opacity-30">
            {assistantBusy?<Loader2 className="animate-spin" size={17}/>:<Send size={17}/>}
          </button>
        </form>
-       {assistantA&&!assistantBusy&&<div className="mt-2 flex items-start gap-2 text-sm text-white/75"><span className="min-w-0 flex-1">{assistantA}</span><button type="button" onClick={()=>setAssistantA('')} aria-label="Clear assistant answer"><X size={15}/></button></div>}
-       {assistantError&&<p className="mt-2 text-xs text-red-300" role="alert">{assistantError}</p>}
+       {assistantA&&!assistantBusy&&<div className="mt-3 rounded-xl border border-white/10 bg-white/[.025] px-3.5 py-3 text-sm text-white/75"><div className="flex items-start gap-2"><span className="min-w-0 flex-1 leading-6">{assistantA}</span><button type="button" onClick={()=>setAssistantA('')} aria-label="Clear assistant answer" className="shrink-0 rounded-lg p-1 text-white/35 transition hover:bg-white/[.06] hover:text-white/70"><X size={15}/></button></div></div>}
+       {assistantError&&<p className="mt-2 px-1 text-xs text-red-300/90" role="alert">{assistantError}</p>}
      </div>
-     <button type="button" className="tk-command-button" aria-label="Open Voice AI" onClick={()=>window.dispatchEvent(new CustomEvent('talikhata:voice-open'))}><Mic size={19}/><span>Voice AI</span></button>
+     <button type="button" className="tk-command-button relative shrink-0" aria-label="Open Voice AI" onClick={()=>window.dispatchEvent(new CustomEvent('talikhata:voice-open'))}><Mic size={18}/><span>Voice AI</span></button>
    </section>
 
    <section className="tk-dash-stats">
