@@ -2371,6 +2371,8 @@ export async function executeVoiceV2(
                 quantity: 0,
 
                 notes: command.notes || undefined,
+                commandId,
+                source: 'VOICE',
               },
               userId,
               session,
@@ -2462,6 +2464,8 @@ export async function executeVoiceV2(
                 notes:
                   command.notes ||
                   undefined,
+                commandId,
+                source: 'VOICE',
               },
               userId,
               session,
@@ -2741,6 +2745,12 @@ export async function executeVoiceV2(
                 notes:
                   command.notes ||
                   transcript,
+                commandId,
+                source: 'VOICE',
+                commandId,
+                source: 'VOICE',
+                commandId,
+                source: 'VOICE',
               },
               userId,
               session,
@@ -2776,6 +2786,8 @@ export async function executeVoiceV2(
                 amount: command.amount,
                 quantity: 0,
                 notes: command.notes || transcript,
+                commandId,
+                source: 'VOICE',
               },
               userId,
               session,
