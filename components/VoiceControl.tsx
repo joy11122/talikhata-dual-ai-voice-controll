@@ -11,7 +11,7 @@ import {
   Send,
   ChevronRight,
 } from 'lucide-react';
-import { AnimatePresence, motion } from 'framer-motion';
+import { AnimatePresence, motion, LazyMotion, domAnimation } from 'framer-motion';
 import { useToast } from '@/components/ToastProvider';
 
 type State = 'Idle' | 'Listening' | 'Processing' | 'Success' | 'Error';
@@ -376,6 +376,7 @@ export default function VoiceControl() {
   };
 
   return (
+    <LazyMotion features={domAnimation} strict>
     <>
       {result?.command?.action === 'READ_BALANCE' && (
         <motion.div
@@ -528,5 +529,6 @@ export default function VoiceControl() {
         )}
       </AnimatePresence>
     </>
+    </LazyMotion>
   )
 }
