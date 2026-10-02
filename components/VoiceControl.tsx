@@ -119,6 +119,8 @@ export default function VoiceControl() {
   const latest = useRef('');
   const finalTranscript = useRef('');
   const recognition = useRef<any>(null);
+  const requestId = useRef(0);
+  const activeSessionId = useRef(0);
   const inputRef = useRef<HTMLInputElement>(null);
 
   const normalizeSpeechCommand = (value: string) =>
@@ -177,10 +179,12 @@ export default function VoiceControl() {
     command?: any,
     confirmed = false,
   ) => {
-    if (!transcript.trim() && !command) {
+    const cleanTranscript = normalizeSpeechCommand(transcript);
+    if (!cleanTranscript.trim() && !command) {
       return;
     }
 
+    const currentRequestId = ++requestId.current;
     setState('Processing');
     setVoiceModalOpen(true);
     setError('');
@@ -192,7 +196,7 @@ export default function VoiceControl() {
           'content-type': 'application/json',
         },
         body: JSON.stringify({
-          transcript: transcript || text,
+          transcript: cleanTranscript,
           confirmed,
           command,
         }),
@@ -203,6 +207,8 @@ export default function VoiceControl() {
         .catch(() => ({
           error: 'Invalid server response',
         }));
+
+      if (currentRequestId !== requestId.current) return;
 
       if (!response.ok || !data.ok) {
         if (data.confirmationRequired) {
@@ -266,6 +272,7 @@ export default function VoiceControl() {
         setState('Idle');
       }, 1800);
     } catch (err: any) {
+      if (currentRequestId !== requestId.current) return;
       setState('Error');
       setVoiceModalOpen(true);
 
@@ -276,8 +283,13 @@ export default function VoiceControl() {
   };
 
   const start = () => {
+    const sessionId = ++activeSessionId.current;
+    requestId.current += 1;
+    recognition.current?.abort?.();
     setError('');
     setText('');
+    setResult(null);
+    setPending(null);
     latest.current = '';
     finalTranscript.current = '';
     if (
@@ -315,6 +327,7 @@ export default function VoiceControl() {
     };
 
     recognitionInstance.onresult = (event: any) => {
+      if (sessionId !== activeSessionId.current) return;
       let interimTranscript = '';
 
       for (
@@ -341,6 +354,7 @@ export default function VoiceControl() {
     };
 
     recognitionInstance.onerror = () => {
+      if (sessionId !== activeSessionId.current) return;
       setState('Error');
 
       const message = 'Voice input নেওয়া যায়নি। Text command চেষ্টা করুন।';
@@ -349,6 +363,7 @@ export default function VoiceControl() {
     };
 
     recognitionInstance.onend = () => {
+      if (sessionId !== activeSessionId.current) return;
       const transcript = normalizeSpeechCommand(
         finalTranscript.current || latest.current,
       );
@@ -378,7 +393,7 @@ export default function VoiceControl() {
     }
 
     process(
-      text || latest.current,
+      pending.command?.entityName ? '' : text,
       pending.command,
       true,
     );
@@ -397,7 +412,7 @@ export default function VoiceControl() {
     setPending(null);
 
     process(
-      text || latest.current,
+      '',
       command,
       false,
     );
