@@ -2638,6 +2638,13 @@ export async function executeVoiceV2(
 
           const product = resolvedProduct.product;
 
+          if (!isAmountOnlySale && !product) {
+            throw new VoiceV2Error(
+              'PRODUCT_NOT_FOUND',
+              `Product "${command.entityName}" পাওয়া যায়নি। আগে product হিসেবে যোগ করুন।`,
+            );
+          }
+
           const total = isAmountOnlySale
             ? money(command.amount)
             : money(
@@ -2834,10 +2841,6 @@ export async function executeVoiceV2(
                 notes:
                   command.notes ||
                   transcript,
-                commandId,
-                source: 'VOICE',
-                commandId,
-                source: 'VOICE',
                 commandId,
                 source: 'VOICE',
               },
