@@ -419,13 +419,17 @@ function parseLedgerDirectionCommand(text: string): VoiceV2Command | null {
   if (match?.[1]) return command('CREATE_DUE', match[1]);
 
   match = value.match(new RegExp(
-    '^(.+?)\\s*(?:নিল|নিয়েছে|নিয়েছে|নেবে|নিবে|nil|nilo|nibe|nebe)\\s*' +
-    numberPattern + '\\s*(?:টাকা|tk|taka)?\\s*(?:বাকি|ধারে|উধারে|credit|baki|due)(?:\\s+.*)?$',
+    '^(.+?)\\s+(?:বাকি|বাকিতে|ধারে|উধারে|due|baki|bakite|dhare|credit)\\s*' +
+    numberPattern + '\\s*(?:টাকা|tk|taka)?\\s*(?:নিল|নিলো|নিয়েছে|নিয়েছে|নেবে|নিবে|নেবো|নিবো|নিলাম|nil|nilo|niyeche|niyechi|nibe|nebe|nebo|nibo|nilam|took|take|taken)$',
     'iu',
   ))
     || value.match(new RegExp(
-      '^(.+?)\\s*' + numberPattern +
-      '\\s*(?:টাকা|tk|taka)?\\s*(?:বাকি|ধারে|উধারে|credit|baki|due)\\s*(?:নিল|নিয়েছে|নিয়েছে|নেবে|নিবে|nil|nilo|nibe|nebe)$',
+      '^(.+?)\\s*' + numberPattern + '\\s*(?:টাকা|tk|taka)?\\s*(?:বাকি|বাকিতে|ধারে|উধারে|due|baki|bakite|dhare|credit)\\s*(?:নিল|নিলো|নিয়েছে|নিয়েছে|নেবে|নিবে|নেবো|নিবো|নিলাম|nil|nilo|niyeche|niyechi|nibe|nebe|nebo|nibo|nilam|took|take|taken)$',
+      'iu',
+    ))
+    || value.match(new RegExp(
+      '^(.+?)\\s*(?:নিল|নিলো|নিয়েছে|নিয়েছে|নেবে|নিবে|নেবো|নিবো|নিলাম|nil|nilo|niyeche|niyechi|nibe|nebe|nebo|nibo|nilam|took|take|taken)\\s*' +
+      numberPattern + '\\s*(?:টাকা|tk|taka)?\\s*(?:বাকি|বাকিতে|ধারে|উধারে|due|baki|bakite|dhare|credit)$',
       'iu',
     ));
   if (match?.[1]) return command('CREATE_DUE', match[1]);
