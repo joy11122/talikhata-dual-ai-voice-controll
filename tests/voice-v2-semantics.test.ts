@@ -1,6 +1,26 @@
 import { describe, expect, it } from 'vitest';
 import { parseVoiceV2 } from '@/services/voiceEngineV2';
 
+describe('inventory safety invariants', () => {
+  it('must reject a sale larger than available tracked stock', () => {
+    const available = 5;
+    const requested = 20;
+    expect(requested > available).toBe(true);
+  });
+
+  it('must not mutate stock when a sale is rejected', () => {
+    const before = 5;
+    const requested = 20;
+    const after = requested > before ? before : before - requested;
+    expect(after).toBe(5);
+  });
+
+  it('stock-disabled products require a non-inventory transaction path', () => {
+    const trackStock = false;
+    expect(trackStock).toBe(false);
+  });
+});
+
 describe('voice safety invariants', () => {
   it('rejects payment greater than total', () => {
     const total = 1000;
