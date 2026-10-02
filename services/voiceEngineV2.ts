@@ -1388,6 +1388,27 @@ export async function executeVoiceV2(
     if (old?.result) {
       return old.result;
     }
+
+    // Transaction-level idempotency protects against duplicate execution
+    // even when the audit write has not completed yet.
+    const existingTransaction = await Transaction.findOne({
+      userId: uid,
+      commandId,
+    }).lean();
+
+    if (existingTransaction) {
+      return {
+        type: command.action,
+        amount: existingTransaction.amount,
+        quantity: existingTransaction.quantity,
+        transaction: {
+          id: String(existingTransaction._id),
+          type: existingTransaction.type,
+          amount: existingTransaction.amount,
+          quantity: existingTransaction.quantity,
+        },
+      };
+    }
   }
 
   /* ---------------------------------------------------------------------- */
