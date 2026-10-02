@@ -65,6 +65,20 @@ describe('Voice V2 Bangladesh ledger semantics', () => {
     expect(command.unitPrice).toBe(unitPrice);
   });
 
+  it.each([
+    ['আজ ৫০০ টাকা দোকান ভাড়া দিলাম', 'CREATE_EXPENSE', 500],
+    ['১০০ টাকা বিদ্যুৎ বিল দিলাম', 'CREATE_EXPENSE', 100],
+    ['আজ ২০০ টাকা পরিবহন খরচ হয়েছে', 'CREATE_EXPENSE', 200],
+    ['চায়ের জন্য ৫০ টাকা খরচ হয়েছে', 'CREATE_EXPENSE', 50],
+    ['আজ ৫০০ টাকা অতিরিক্ত আয় হয়েছে', 'CREATE_INCOME', 500],
+    ['কমিশন হিসেবে ১০০০ টাকা পেলাম', 'CREATE_INCOME', 1000],
+    ['অন্যান্য আয় ৫০০ টাকা যোগ করো', 'CREATE_INCOME', 500],
+  ])('%s → finance action', async (text, action, amount) => {
+    const command = await parseVoiceV2(text);
+    expect(command.action).toBe(action);
+    expect(command.amount).toBe(amount);
+  });
+
   it('supports Bengali word amounts in ledger commands', async () => {
     const command = await parseVoiceV2('রহিমকে পাঁচশ টাকা দিলাম');
 
