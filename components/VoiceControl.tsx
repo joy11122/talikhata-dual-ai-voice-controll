@@ -403,8 +403,57 @@ export default function VoiceControl() {
             <button type="submit" aria-label="Send command" className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#1b2cc1] text-white shadow-md transition hover:bg-[#2a3ddd] active:scale-95 disabled:opacity-40 sm:h-11 sm:w-11" disabled={!text.trim() || state === 'Processing'}><Send size={18} /></button>
           </form>
         </div>
-      )
+      )}
 
+      <AnimatePresence>
+        {voiceModalOpen && (
+          <motion.div
+            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[70] flex items-center justify-center bg-slate-950/40 px-4 backdrop-blur-[16px]"
+            role="dialog" aria-modal="true" aria-labelledby="voice-ai-title"
+          >
+            <motion.div
+              initial={{ opacity: 0, scale: 0.96, y: 8 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.96 }}
+              className="w-full max-w-md rounded-[20px] border border-white/10 bg-transparent p-6 text-white shadow-[0_24px_80px_rgba(0,0,0,.35)] backdrop-blur-[18px]"
+            >
+              <div className="flex items-center justify-between">
+                <div><p className="text-xs text-white/50">TaliKhata Voice AI</p><h2 id="voice-ai-title" className="mt-1 text-xl font-semibold">Voice command</h2></div>
+                <button type="button" onClick={() => { recognition.current?.stop?.(); setVoiceModalOpen(false); }} aria-label="Close voice result" className="rounded-full p-2 text-white/60 hover:bg-white/10"><X size={18} /></button>
+              </div>
+              <div className="mt-5 rounded-[14px] border border-white/10 bg-white/[0.04] p-4">
+                <p className="text-xs font-medium text-white/45">আপনি বলেছেন</p>
+                <p className="mt-2 min-h-12 text-base leading-7 text-white">{text || 'শুনছি…'}</p>
+              </div>
+              <div className="mt-3 flex items-center gap-3 rounded-[14px] border border-white/10 bg-white/[0.04] p-4">
+                {state === 'Listening' && <Mic size={20} className="text-red-400" />}
+                {state === 'Processing' && <Loader2 size={20} className="animate-spin text-blue-400" />}
+                {state === 'Success' && <Check size={20} className="text-emerald-400" />}
+                {state === 'Error' && <AlertCircle size={20} className="text-red-400" />}
+                <div><p className="text-xs text-white/45">Status</p><p className="mt-1 text-sm font-semibold">{state === 'Listening' ? 'শুনছি…' : state === 'Processing' ? 'কমান্ড প্রক্রিয়াকরণ হচ্ছে…' : state === 'Success' ? 'কাজ সফল হয়েছে' : state === 'Error' ? 'কাজটি সম্পন্ন হয়নি' : 'প্রস্তুত'}</p></div>
+              </div>
+              {state === 'Success' && result && (
+                <div className="mt-3 space-y-3">
+                  <div className="rounded-[14px] border border-emerald-400/20 bg-emerald-400/10 p-4 text-sm leading-6 text-emerald-100">
+                    {message(result.command, result.result)}
+                  </div>
+                  {result.command?.action === 'READ_BALANCE' && (
+                    <div className="grid grid-cols-2 gap-2">
+                      <div className="rounded-[14px] border border-white/10 bg-white/[0.035] p-3">
+                        <p className="text-[11px] text-white/45">আপনি পাবেন</p>
+                        <p className="mt-1 text-lg font-bold text-white">৳ {Number(result.result?.receivable || 0).toLocaleString('bn-BD')}</p>
+                      </div>
+                      <div className="rounded-[14px] border border-white/10 bg-white/[0.035] p-3">
+                        <p className="text-[11px] text-white/45">আপনাকে দিতে হবে</p>
+                        <p className="mt-1 text-lg font-bold text-white">৳ {Number(result.result?.payable || 0).toLocaleString('bn-BD')}</p>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+              {state === 'Error' && error && <div className="mt-3 rounded-[14px] border border-red-400/20 bg-red-400/10 p-4 text-sm leading-6 text-red-100">{error}</div>}
+            </motion.div>
+          </motion.div>
+        )}
       <AnimatePresence>
         {voiceModalOpen && (
           <motion.div
