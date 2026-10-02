@@ -141,7 +141,7 @@ button:disabled{cursor:not-allowed;opacity:.65}
 .tk-dashboard .tk-search button{display:flex;align-items:center;justify-content:center;width:40px;height:40px;border:0;border-left:1px solid rgba(255,255,255,.10);background:transparent;color:rgba(255,255,255,.65);cursor:pointer}
 .tk-metric{display:flex;min-height:138px;flex-direction:column;justify-content:center;border-radius:18px;padding:1rem 1.05rem;text-decoration:none;box-shadow:0 2px 12px rgba(20,20,20,.035);transition:transform .16s ease,box-shadow .16s ease}
 .tk-metric:hover{transform:translateY(-2px);box-shadow:0 8px 22px rgba(20,20,20,.07)}
-.tk-metric span{font-size:.85rem;font-weight:700;color:#454545}
+.tk-metric span{font-size:.85rem;font-weight:700;color:#EAF2FF}
 .tk-metric strong{margin-top:.45rem;font-family:var(--tk-dash-mono);font-size:clamp(1.45rem,5vw,2rem);font-weight:800;letter-spacing:-.04em;color:#151515}
 .tk-metric small{margin-top:.35rem;font-size:.72rem;color:#777}
 .tk-metric-sales{border:1.5px solid var(--tk-dash-teal)}
