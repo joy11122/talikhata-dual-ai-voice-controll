@@ -23,10 +23,7 @@ export async function GET(){
   await connectDB();
   const uid=new Types.ObjectId(s.user.id);
   const todayStart=dhakaDayStart(0), todayEnd=dhakaDayEnd(0), sevenStart=dhakaDayStart(6);
-  const [parties,products,lowStock,recent,balances,dueCustomers,todaySales,weekly]=await Promise.all([
-    Party.countDocuments({userId:uid}),
-    Product.countDocuments({userId:uid}),
-    Product.countDocuments({userId:uid,$expr:{$lte:['$stockQuantity','$lowStockThreshold']}}),
+  const [recent,balances,dueCustomers,todaySales,weekly]=await Promise.all([
     Transaction.find({userId:uid,isDeleted:false}).sort({timestamp:-1}).limit(5).populate('partyId','name').populate('productId','name').lean(),
     Party.aggregate([{$match:{userId:uid}},{$group:{_id:null,receivable:{$sum:{$cond:[{$gt:['$currentBalance',0]},'$currentBalance',0]}},payable:{$sum:{$cond:[{$lt:['$currentBalance',0]},{$abs:'$currentBalance'},0]}}}}]),
     Party.countDocuments({userId:uid,currentBalance:{$gt:0}}),
@@ -39,5 +36,5 @@ export async function GET(){
     const p=dhakaDateParts(d);
     return {label:i===6?'আজ':['৭ম','৬ষ্ঠ','৫ম','৪র্থ','৩য়','২য়'][i]||'',date:`${p.year}-${p.month}-${p.day}`,total:weeklyMap.get(`${p.year}-${p.month}-${p.day}`)||0};
   });
-  return NextResponse.json({parties,products,lowStock,recent,balances:balances[0]||{receivable:0,payable:0},dueCustomers,todaySales:todaySales[0]||{total:0,count:0},weeklySales:chart});
+  return NextResponse.json({recent,balances:balances[0]||{receivable:0,payable:0},dueCustomers,todaySales:todaySales[0]||{total:0,count:0},weeklySales:chart});
 }
