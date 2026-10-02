@@ -46,7 +46,7 @@ export default function DashboardPage(){
      <div className="tk-dash-date">আজকের হিসাব</div>
    </section>
 
-   <section className="tk-dash-command relative overflow-hidden" aria-label="AI Assistant">
+   <section className="w-full" aria-label="AI Assistant">
      <div className="pointer-events-none absolute -right-20 -top-24 h-48 w-48 rounded-full bg-[#7692ff]/10 blur-3xl" />
           <div className="relative min-w-0 flex-1">
        <form className="mt-4 flex w-full items-center gap-1.5 rounded-2xl border border-white/10 bg-white/[.035] p-1.5 shadow-[inset_0_1px_0_rgba(255,255,255,.04)]" onSubmit={async e=>{
