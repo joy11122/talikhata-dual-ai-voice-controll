@@ -150,17 +150,17 @@ function partyName(text: string): string | null {
       .trim();
 
   const patterns = [
-    /^(.+?)\s*(?:এর|ের|র)\s*(?:কাছে)?\s*(?:কত|কতো)\s*(?:টাকা)?\s*(?:পাব|পাবে|পাও|বাকি|পাওনা|দেনা)/iu,
-    /^(.+?)\s*(?:এর|ের|র)\s*(?:কাছে)?\s*\d[\d,]*(?:\.\d+)?\s*(?:টাকা|tk|taka)?\s*(?:বাকি|পাওনা|দেনা|due|baki)(?:\s*(?:আছে|রয়েছে|রয়েছে|হয়েছে|হয়েছে))?/iu,
+    /^(.+?)\s*(?:এর|র)\s*(?:কাছে)?\s*(?:কত|কতো)\s*(?:টাকা)?\s*(?:পাব|পাবে|পাও|বাকি|পাওনা|দেনা)/iu,
+    /^(.+?)\s*(?:এর|র)\s*(?:কাছে)?\s*\d[\d,]*(?:\.\d+)?\s*(?:টাকা|tk|taka)?\s*(?:বাকি|পাওনা|দেনা|due|baki)(?:\s*(?:আছে|রয়েছে|রয়েছে|হয়েছে|হয়েছে))?/iu,
     /^(.+?)\s*কে\s*\d[\d,]*(?:\.\d+)?\s*(?:টাকা|tk|taka)?\s*(?:বাকি\s*)?(?:দিলাম|দিল|দিয়েছি|দিয়েছি|দেব|দিব|রাখলাম|রাখি|dilam|dilo|dil|diyechi|dibo)/iu,
     /^(.+?)\s+\d[\d,]*(?:\.\d+)?\s*(?:টাকা|tk|taka)?\s*(?:দিল|দিলো|দিয়েছে|দিয়েছে|পাঠিয়েছে|পরিশোধ করেছে|dilo|dil|diyeche|paid)/iu,
-    /^(.+?)\s*(?:এর|ের|র)\s*(?:কাছ থেকে|কাছথেকে|থেকে)\s*\d[\d,]*(?:\.\d+)?\s*(?:টাকা|tk|taka)?\s*(?:পেলাম|পেয়েছি|পেয়েছি|নিলাম|নিয়েছি|নিয়েছি|আদায় করলাম|আদায় করলাম|received|nilam)/iu,
+    /^(.+?)\s*(?:এর|র)\s*(?:কাছ থেকে|কাছথেকে|থেকে)\s*\d[\d,]*(?:\.\d+)?\s*(?:টাকা|tk|taka)?\s*(?:পেলাম|পেয়েছি|পেয়েছি|নিলাম|নিয়েছি|নিয়েছি|আদায় করলাম|আদায় করলাম|received|nilam)/iu,
     /^(.+?)\s+er\s+kache\s+\d[\d,]*(?:\.\d+)?\s*(?:taka|tk)?\s*(?:baki|due)(?:\s+.*)?$/i,
     /^(.+?)\s+er\s+baki\s*(?:koto|how much|ache)?$/i,
     /^(.+?)\s+ke\s+\d[\d,]*(?:\.\d+)?\s*(?:taka|tk)?\s*(?:baki\s*)?(?:dilam|dilo|dil|diyechi|dib|dibo|rakhlam|paid)?$/i,
     /^(.+?)\s+\d[\d,]*(?:\.\d+)?\s*(?:taka|tk)?\s*(?:dil|dilo|diyeche|paid)$/i,
     /^(.+?)\s+er\s+kach\s+theke\s+\d[\d,]*(?:\.\d+)?\s*(?:taka|tk)?\s*(?:pelam|peyechi|nilam|received)$/i,
-    /^(.+?)\s*(?:এর|ের|র)\s*(?:খাতায়|খাতায়|অ্যাকাউন্টে|account\s*e)\s*\d[\d,]*(?:\.\d+)?/iu,
+    /^(.+?)\s*(?:এর|র)\s*(?:খাতায়|খাতায়|অ্যাকাউন্টে|account\s*e)\s*\d[\d,]*(?:\.\d+)?/iu,
   ];
 
   for (const pattern of patterns) {
@@ -367,13 +367,13 @@ function parseLedgerDirectionCommand(text: string): VoiceV2Command | null {
     .trim()
     .replace(/^(?:আমি|আমরা|i|we)\\s+/iu, '')
     .replace(/\\s+(?:আমাকে|আমার কাছে|me|to me)$/iu, '')
-    .replace(/(?:এর|ের|র|কে|দের)$/u, '')
+    .replace(/(?:এর|র|কে|দের)$/u, '')
     .replace(/\\s+(?:er|r|ke|der)$/i, '')
     .trim();
 
   // Actual money received from the party.
   let m = value.match(new RegExp(
-    '^(.+?)\\s*(?:এর|ের|র)?\\s*(?:কাছ থেকে|কাছথেকে|থেকে)\\s*' +
+    '^(.+?)\\s*(?:এর|র)?\\s*(?:কাছ থেকে|কাছথেকে|থেকে)\\s*' +
     amountPattern +
     '\\s*(?:টাকা|tk|taka)?\\s*(?:পেলাম|পেয়েছি|পেয়েছি|নিলাম|নিয়েছি|নিয়েছি|আদায় করলাম|আদায় করলাম|received|got|nilam|pelam|peyechi)$',
     'iu',
@@ -402,18 +402,18 @@ function parseLedgerDirectionCommand(text: string): VoiceV2Command | null {
       'iu',
     ))
     || value.match(new RegExp(
-      '^(.+?)\\s*(?:এর|ের|র)\\s*(?:কাছে)\\s*(?:পাবো|পাব|পাবে|পাও|pabo|pabe)\\s*' +
+      '^(.+?)\\s*(?:এর|র)\\s*(?:কাছে)\\s*(?:পাবো|পাব|পাবে|পাও|pabo|pabe)\\s*' +
       amountPattern + '\\s*(?:টাকা|tk|taka)?
   if (m?.[1]) return make('CREATE_DUE', cleanParty(m[1]));
 
   // Existing due wording.
   m = value.match(new RegExp(
-    '^(.+?)\\s*(?:এর|ের|র)\\s*(?:কাছে\\s*)?(?:বাকি|পাওনা|দেনা|due|baki)\\s*' +
+    '^(.+?)\\s*(?:এর|র)\\s*(?:কাছে\\s*)?(?:বাকি|পাওনা|দেনা|due|baki)\\s*' +
     amountPattern + '\\s*(?:টাকা|tk|taka)?$',
     'iu',
   ))
     || value.match(new RegExp(
-      '^(.+?)\\s*(?:এর|ের|র)\\s*(?:কাছে\\s*)?' +
+      '^(.+?)\\s*(?:এর|র)\\s*(?:কাছে\\s*)?' +
       amountPattern + '\\s*(?:টাকা|tk|taka)?\\s*(?:বাকি|পাওনা|দেনা|due|baki)$',
       'iu',
     ));
@@ -448,7 +448,7 @@ function parseLedgerDirectionCommand(text: string): VoiceV2Command | null {
 
   // Explicit "আমি কাজলের কাছ থেকে নেবো/পাবো" means a receipt.
   m = value.match(new RegExp(
-    '^(?:আমি|আমরা|i|we)\\s+(.+?)\\s*(?:এর|ের|র)?\\s*(?:কাছ থেকে|কাছথেকে|থেকে)\\s*' +
+    '^(?:আমি|আমরা|i|we)\\s+(.+?)\\s*(?:এর|র)?\\s*(?:কাছ থেকে|কাছথেকে|থেকে)\\s*' +
     amountPattern + '\\s*(?:টাকা|tk|taka)?\\s*(?:নেবো|নেব|নিবো|নিব|পাবো|পাব|nebo|nibo|pabo)$',
     'iu',
   ));
@@ -7320,7 +7320,7 @@ export async function executeVoiceV2(
 /* -------------------------------------------------------------------------- */
 
 , 'iu'))
-    || value.match(new RegExp('^(.+?)\\s*(?:এর|ের|র)\\s*(?:কাছে)?\\s*(?:' + amountText + '\\s*(?:টাকা|tk|taka)?\\s*)?(?:পাবো|পাব|পাবে|পাও|pabo|pabe|pabo)\\s*
+    || value.match(new RegExp('^(.+?)\\s*(?:এর|র)\\s*(?:কাছে)?\\s*(?:' + amountText + '\\s*(?:টাকা|tk|taka)?\\s*)?(?:পাবো|পাব|পাবে|পাও|pabo|pabe|pabo)\\s*
 
 function localParse(text: string): VoiceV2Command | null {
   const inventory = parseInventoryPurchaseCommand(text);
@@ -9604,7 +9604,7 @@ export async function executeVoiceV2(
 /* -------------------------------------------------------------------------- */
 
 , 'iu'))
-    || value.match(new RegExp('^(.+?)\\s*(?:এর|ের|র)\\s*(?:কাছে)\\s*' + amountText + '\\s*(?:টাকা|tk|taka)?\\s*(?:পাবো|পাব|পাবে|পাও|baki|due)
+    || value.match(new RegExp('^(.+?)\\s*(?:এর|র)\\s*(?:কাছে)\\s*' + amountText + '\\s*(?:টাকা|tk|taka)?\\s*(?:পাবো|পাব|পাবে|পাও|baki|due)
 
 function localParse(text: string): VoiceV2Command | null {
   const inventory = parseInventoryPurchaseCommand(text);
@@ -11891,7 +11891,7 @@ export async function executeVoiceV2(
   if (m?.[1]) return make('CREATE_DUE', cleanParty(m[1]));
 
   // "Kajol এর বাকি 1000" / "Kajol-এর কাছে পাওনা 1000".
-  m = value.match(new RegExp('^(.+?)\\s*(?:এর|ের|র)\\s*(?:কাছে\\s*)?(?:বাকি|পাওনা|দেনা|due|baki)\\s*' + amountText + '\\s*(?:টাকা|tk|taka)?
+  m = value.match(new RegExp('^(.+?)\\s*(?:এর|র)\\s*(?:কাছে\\s*)?(?:বাকি|পাওনা|দেনা|due|baki)\\s*' + amountText + '\\s*(?:টাকা|tk|taka)?
 
 function localParse(text: string): VoiceV2Command | null {
   const inventory = parseInventoryPurchaseCommand(text);
@@ -14175,7 +14175,7 @@ export async function executeVoiceV2(
 /* -------------------------------------------------------------------------- */
 
 , 'iu'))
-    || value.match(new RegExp('^(.+?)\\s*(?:এর|ের|র)\\s*(?:কাছে\\s*)?' + amountText + '\\s*(?:টাকা|tk|taka)?\\s*(?:বাকি|পাওনা|দেনা|due|baki)
+    || value.match(new RegExp('^(.+?)\\s*(?:এর|র)\\s*(?:কাছে\\s*)?' + amountText + '\\s*(?:টাকা|tk|taka)?\\s*(?:বাকি|পাওনা|দেনা|due|baki)
 
 function localParse(text: string): VoiceV2Command | null {
   const inventory = parseInventoryPurchaseCommand(text);
@@ -25605,7 +25605,7 @@ export async function executeVoiceV2(
 
   // Explicit "I will take/get from Kajol" is a future receipt intent. We keep
   // it as RECEIVE_PAYMENT because this is the existing action vocabulary.
-  m = value.match(new RegExp('^(?:আমি|আমরা|i|we)\\s*(?:' + suffix + '\\s*)?(.+?)\\s*(?:এর|ের|র)?\\s*(?:কাছ থেকে|কাছথেকে|থেকে)\\s*' + amountText + '\\s*(?:টাকা|tk|taka)?\\s*(?:নেবো|নেব|নিবো|নিব|পাবো|পাব|নেওয়া|nebo|nebe|nibo|nib|pabo)
+  m = value.match(new RegExp('^(?:আমি|আমরা|i|we)\\s*(?:' + suffix + '\\s*)?(.+?)\\s*(?:এর|র)?\\s*(?:কাছ থেকে|কাছথেকে|থেকে)\\s*' + amountText + '\\s*(?:টাকা|tk|taka)?\\s*(?:নেবো|নেব|নিবো|নিব|পাবো|পাব|নেওয়া|nebo|nebe|nibo|nib|pabo)
 
 function localParse(text: string): VoiceV2Command | null {
   const inventory = parseInventoryPurchaseCommand(text);
@@ -30183,18 +30183,18 @@ export async function executeVoiceV2(
       'iu',
     ))
     || value.match(new RegExp(
-      '^(.+?)\\s*(?:এর|ের|র)\\s*(?:কাছে)\\s*' + amountPattern +
+      '^(.+?)\\s*(?:এর|র)\\s*(?:কাছে)\\s*' + amountPattern +
       '\\s*(?:টাকা|tk|taka)?\\s*(?:পাবো|পাব|পাবে|পাও|pabo|pabe)
   if (m?.[1]) return make('CREATE_DUE', cleanParty(m[1]));
 
   // Existing due wording.
   m = value.match(new RegExp(
-    '^(.+?)\\s*(?:এর|ের|র)\\s*(?:কাছে\\s*)?(?:বাকি|পাওনা|দেনা|due|baki)\\s*' +
+    '^(.+?)\\s*(?:এর|র)\\s*(?:কাছে\\s*)?(?:বাকি|পাওনা|দেনা|due|baki)\\s*' +
     amountPattern + '\\s*(?:টাকা|tk|taka)?$',
     'iu',
   ))
     || value.match(new RegExp(
-      '^(.+?)\\s*(?:এর|ের|র)\\s*(?:কাছে\\s*)?' +
+      '^(.+?)\\s*(?:এর|র)\\s*(?:কাছে\\s*)?' +
       amountPattern + '\\s*(?:টাকা|tk|taka)?\\s*(?:বাকি|পাওনা|দেনা|due|baki)$',
       'iu',
     ));
@@ -30229,7 +30229,7 @@ export async function executeVoiceV2(
 
   // Explicit "আমি কাজলের কাছ থেকে নেবো/পাবো" means a receipt.
   m = value.match(new RegExp(
-    '^(?:আমি|আমরা|i|we)\\s+(.+?)\\s*(?:এর|ের|র)?\\s*(?:কাছ থেকে|কাছথেকে|থেকে)\\s*' +
+    '^(?:আমি|আমরা|i|we)\\s+(.+?)\\s*(?:এর|র)?\\s*(?:কাছ থেকে|কাছথেকে|থেকে)\\s*' +
     amountPattern + '\\s*(?:টাকা|tk|taka)?\\s*(?:নেবো|নেব|নিবো|নিব|পাবো|পাব|nebo|nibo|pabo)$',
     'iu',
   ));
@@ -37101,7 +37101,7 @@ export async function executeVoiceV2(
 /* -------------------------------------------------------------------------- */
 
 , 'iu'))
-    || value.match(new RegExp('^(.+?)\\s*(?:এর|ের|র)\\s*(?:কাছে)?\\s*(?:' + amountText + '\\s*(?:টাকা|tk|taka)?\\s*)?(?:পাবো|পাব|পাবে|পাও|pabo|pabe|pabo)\\s*
+    || value.match(new RegExp('^(.+?)\\s*(?:এর|র)\\s*(?:কাছে)?\\s*(?:' + amountText + '\\s*(?:টাকা|tk|taka)?\\s*)?(?:পাবো|পাব|পাবে|পাও|pabo|pabe|pabo)\\s*
 
 function localParse(text: string): VoiceV2Command | null {
   const inventory = parseInventoryPurchaseCommand(text);
@@ -39385,7 +39385,7 @@ export async function executeVoiceV2(
 /* -------------------------------------------------------------------------- */
 
 , 'iu'))
-    || value.match(new RegExp('^(.+?)\\s*(?:এর|ের|র)\\s*(?:কাছে)\\s*' + amountText + '\\s*(?:টাকা|tk|taka)?\\s*(?:পাবো|পাব|পাবে|পাও|baki|due)
+    || value.match(new RegExp('^(.+?)\\s*(?:এর|র)\\s*(?:কাছে)\\s*' + amountText + '\\s*(?:টাকা|tk|taka)?\\s*(?:পাবো|পাব|পাবে|পাও|baki|due)
 
 function localParse(text: string): VoiceV2Command | null {
   const inventory = parseInventoryPurchaseCommand(text);
@@ -41672,7 +41672,7 @@ export async function executeVoiceV2(
   if (m?.[1]) return make('CREATE_DUE', cleanParty(m[1]));
 
   // "Kajol এর বাকি 1000" / "Kajol-এর কাছে পাওনা 1000".
-  m = value.match(new RegExp('^(.+?)\\s*(?:এর|ের|র)\\s*(?:কাছে\\s*)?(?:বাকি|পাওনা|দেনা|due|baki)\\s*' + amountText + '\\s*(?:টাকা|tk|taka)?
+  m = value.match(new RegExp('^(.+?)\\s*(?:এর|র)\\s*(?:কাছে\\s*)?(?:বাকি|পাওনা|দেনা|due|baki)\\s*' + amountText + '\\s*(?:টাকা|tk|taka)?
 
 function localParse(text: string): VoiceV2Command | null {
   const inventory = parseInventoryPurchaseCommand(text);
@@ -43956,7 +43956,7 @@ export async function executeVoiceV2(
 /* -------------------------------------------------------------------------- */
 
 , 'iu'))
-    || value.match(new RegExp('^(.+?)\\s*(?:এর|ের|র)\\s*(?:কাছে\\s*)?' + amountText + '\\s*(?:টাকা|tk|taka)?\\s*(?:বাকি|পাওনা|দেনা|due|baki)
+    || value.match(new RegExp('^(.+?)\\s*(?:এর|র)\\s*(?:কাছে\\s*)?' + amountText + '\\s*(?:টাকা|tk|taka)?\\s*(?:বাকি|পাওনা|দেনা|due|baki)
 
 function localParse(text: string): VoiceV2Command | null {
   const inventory = parseInventoryPurchaseCommand(text);
@@ -55386,7 +55386,7 @@ export async function executeVoiceV2(
 
   // Explicit "I will take/get from Kajol" is a future receipt intent. We keep
   // it as RECEIVE_PAYMENT because this is the existing action vocabulary.
-  m = value.match(new RegExp('^(?:আমি|আমরা|i|we)\\s*(?:' + suffix + '\\s*)?(.+?)\\s*(?:এর|ের|র)?\\s*(?:কাছ থেকে|কাছথেকে|থেকে)\\s*' + amountText + '\\s*(?:টাকা|tk|taka)?\\s*(?:নেবো|নেব|নিবো|নিব|পাবো|পাব|নেওয়া|nebo|nebe|nibo|nib|pabo)
+  m = value.match(new RegExp('^(?:আমি|আমরা|i|we)\\s*(?:' + suffix + '\\s*)?(.+?)\\s*(?:এর|র)?\\s*(?:কাছ থেকে|কাছথেকে|থেকে)\\s*' + amountText + '\\s*(?:টাকা|tk|taka)?\\s*(?:নেবো|নেব|নিবো|নিব|পাবো|পাব|নেওয়া|nebo|nebe|nibo|nib|pabo)
 
 function localParse(text: string): VoiceV2Command | null {
   const inventory = parseInventoryPurchaseCommand(text);
@@ -59967,12 +59967,12 @@ export async function executeVoiceV2(
 
   // Existing due wording.
   m = value.match(new RegExp(
-    '^(.+?)\\s*(?:এর|ের|র)\\s*(?:কাছে\\s*)?(?:বাকি|পাওনা|দেনা|due|baki)\\s*' +
+    '^(.+?)\\s*(?:এর|র)\\s*(?:কাছে\\s*)?(?:বাকি|পাওনা|দেনা|due|baki)\\s*' +
     amountPattern + '\\s*(?:টাকা|tk|taka)?$',
     'iu',
   ))
     || value.match(new RegExp(
-      '^(.+?)\\s*(?:এর|ের|র)\\s*(?:কাছে\\s*)?' +
+      '^(.+?)\\s*(?:এর|র)\\s*(?:কাছে\\s*)?' +
       amountPattern + '\\s*(?:টাকা|tk|taka)?\\s*(?:বাকি|পাওনা|দেনা|due|baki)$',
       'iu',
     ));
@@ -60007,7 +60007,7 @@ export async function executeVoiceV2(
 
   // Explicit "আমি কাজলের কাছ থেকে নেবো/পাবো" means a receipt.
   m = value.match(new RegExp(
-    '^(?:আমি|আমরা|i|we)\\s+(.+?)\\s*(?:এর|ের|র)?\\s*(?:কাছ থেকে|কাছথেকে|থেকে)\\s*' +
+    '^(?:আমি|আমরা|i|we)\\s+(.+?)\\s*(?:এর|র)?\\s*(?:কাছ থেকে|কাছথেকে|থেকে)\\s*' +
     amountPattern + '\\s*(?:টাকা|tk|taka)?\\s*(?:নেবো|নেব|নিবো|নিব|পাবো|পাব|nebo|nibo|pabo)$',
     'iu',
   ));
@@ -66879,7 +66879,7 @@ export async function executeVoiceV2(
 /* -------------------------------------------------------------------------- */
 
 , 'iu'))
-    || value.match(new RegExp('^(.+?)\\s*(?:এর|ের|র)\\s*(?:কাছে)?\\s*(?:' + amountText + '\\s*(?:টাকা|tk|taka)?\\s*)?(?:পাবো|পাব|পাবে|পাও|pabo|pabe|pabo)\\s*
+    || value.match(new RegExp('^(.+?)\\s*(?:এর|র)\\s*(?:কাছে)?\\s*(?:' + amountText + '\\s*(?:টাকা|tk|taka)?\\s*)?(?:পাবো|পাব|পাবে|পাও|pabo|pabe|pabo)\\s*
 
 function localParse(text: string): VoiceV2Command | null {
   const inventory = parseInventoryPurchaseCommand(text);
@@ -69163,7 +69163,7 @@ export async function executeVoiceV2(
 /* -------------------------------------------------------------------------- */
 
 , 'iu'))
-    || value.match(new RegExp('^(.+?)\\s*(?:এর|ের|র)\\s*(?:কাছে)\\s*' + amountText + '\\s*(?:টাকা|tk|taka)?\\s*(?:পাবো|পাব|পাবে|পাও|baki|due)
+    || value.match(new RegExp('^(.+?)\\s*(?:এর|র)\\s*(?:কাছে)\\s*' + amountText + '\\s*(?:টাকা|tk|taka)?\\s*(?:পাবো|পাব|পাবে|পাও|baki|due)
 
 function localParse(text: string): VoiceV2Command | null {
   const inventory = parseInventoryPurchaseCommand(text);
@@ -71450,7 +71450,7 @@ export async function executeVoiceV2(
   if (m?.[1]) return make('CREATE_DUE', cleanParty(m[1]));
 
   // "Kajol এর বাকি 1000" / "Kajol-এর কাছে পাওনা 1000".
-  m = value.match(new RegExp('^(.+?)\\s*(?:এর|ের|র)\\s*(?:কাছে\\s*)?(?:বাকি|পাওনা|দেনা|due|baki)\\s*' + amountText + '\\s*(?:টাকা|tk|taka)?
+  m = value.match(new RegExp('^(.+?)\\s*(?:এর|র)\\s*(?:কাছে\\s*)?(?:বাকি|পাওনা|দেনা|due|baki)\\s*' + amountText + '\\s*(?:টাকা|tk|taka)?
 
 function localParse(text: string): VoiceV2Command | null {
   const inventory = parseInventoryPurchaseCommand(text);
@@ -73734,7 +73734,7 @@ export async function executeVoiceV2(
 /* -------------------------------------------------------------------------- */
 
 , 'iu'))
-    || value.match(new RegExp('^(.+?)\\s*(?:এর|ের|র)\\s*(?:কাছে\\s*)?' + amountText + '\\s*(?:টাকা|tk|taka)?\\s*(?:বাকি|পাওনা|দেনা|due|baki)
+    || value.match(new RegExp('^(.+?)\\s*(?:এর|র)\\s*(?:কাছে\\s*)?' + amountText + '\\s*(?:টাকা|tk|taka)?\\s*(?:বাকি|পাওনা|দেনা|due|baki)
 
 function localParse(text: string): VoiceV2Command | null {
   const inventory = parseInventoryPurchaseCommand(text);
@@ -85164,7 +85164,7 @@ export async function executeVoiceV2(
 
   // Explicit "I will take/get from Kajol" is a future receipt intent. We keep
   // it as RECEIVE_PAYMENT because this is the existing action vocabulary.
-  m = value.match(new RegExp('^(?:আমি|আমরা|i|we)\\s*(?:' + suffix + '\\s*)?(.+?)\\s*(?:এর|ের|র)?\\s*(?:কাছ থেকে|কাছথেকে|থেকে)\\s*' + amountText + '\\s*(?:টাকা|tk|taka)?\\s*(?:নেবো|নেব|নিবো|নিব|পাবো|পাব|নেওয়া|nebo|nebe|nibo|nib|pabo)
+  m = value.match(new RegExp('^(?:আমি|আমরা|i|we)\\s*(?:' + suffix + '\\s*)?(.+?)\\s*(?:এর|র)?\\s*(?:কাছ থেকে|কাছথেকে|থেকে)\\s*' + amountText + '\\s*(?:টাকা|tk|taka)?\\s*(?:নেবো|নেব|নিবো|নিব|পাবো|পাব|নেওয়া|nebo|nebe|nibo|nib|pabo)
 
 function localParse(text: string): VoiceV2Command | null {
   const inventory = parseInventoryPurchaseCommand(text);
