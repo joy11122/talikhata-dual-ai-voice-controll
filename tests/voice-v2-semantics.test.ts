@@ -118,6 +118,19 @@ describe('Voice V2 Bangladesh ledger semantics', () => {
   });
 
   it.each([
+    ['রহিমকে ১০০০ টাকার মাল বিক্রি করলাম, ৪০০ টাকা দিল', 'রহিম', 1000, 400],
+    ['রহিমকে ১০০০ টাকার মাল বিক্রি করলাম ৪০০ টাকা বাকি', 'রহিম', 1000, 600],
+  ])('%s → amount-only compound sale', async (text, party, total, paid) => {
+    const command = await parseVoiceV2(text);
+    expect(command.action).toBe('CREATE_SALE');
+    expect(command.query).toBe(party);
+    expect(command.amount).toBe(total);
+    expect(command.paidAmount).toBe(paid);
+    expect(command.quantity).toBeNull();
+    expect(command.unitPrice).toBeNull();
+  });
+
+  it.each([
     ['রহিম ২ কেজি চাল নিল ১৪০ টাকা', 'CREATE_SALE', 'রহিম', 'চাল', 2, 70, 140],
     ['Rahim took 2 kg rice for 140 taka', 'CREATE_SALE', 'Rahim', 'rice', 2, 70, 140],
   ])('%s → natural total sale', async (text, action, party, product, quantity, unitPrice, amount) => {
