@@ -353,6 +353,23 @@ function localParse(text: string): VoiceV2Command | null {
     return command;
   }
 
+  // Defensive local fallback: create-party commands must never reach a paid AI
+  // provider just because a speech transcript used a slightly different ending.
+  const createPartyFallback = value.match(
+    /^(.*?)\\s+(?:name|নামে)\\s+নতুন\\s+(customer|কাস্টমার|গ্রাহক|supplier|সাপ্লায়ার|সরবরাহকারী)\\s+(?:যোগ|add|create)(?:\\s+(?:কর|করো|করুন|করতে|দাও|দাওনা))?$/iu,
+  );
+  if (createPartyFallback?.[1]?.trim()) {
+    const partyType =
+      /^(supplier|সাপ্লায়ার|সরবরাহকারী)$/iu.test(createPartyFallback[2] || '')
+        ? 'SUPPLIER'
+        : 'CUSTOMER';
+    const command = blank('CREATE_PARTY');
+    command.entityType = partyType;
+    command.entityName = createPartyFallback[1].trim();
+    command.partyType = partyType;
+    return command;
+  }
+
   const list = /(?:list|তালিকা|সব|সকল|দেখাও|দেখান|দেখতে চাই|show|dao|দাও|লিস্ট)/i.test(value);
 
   if (/(?:customer|কাস্টমার|গ্রাহক|party|পার্টি)/i.test(value) && list) {
@@ -666,7 +683,7 @@ async function aiParse(
           // Voice commands only need a small structured JSON payload.
           // Explicitly cap completion tokens so OpenRouter does not reserve
           // a large default budget (e.g. 65,536 tokens) for each request.
-          max_tokens: 256,
+          max_tokens: 128,
 
           tools: [VOICE_V2_TOOL],
 
