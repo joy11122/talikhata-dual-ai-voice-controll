@@ -63,7 +63,16 @@ describe('Voice V2 Bangladesh ledger semantics', () => {
   });
 
   it.each([
-    ['supplier Karim ke 1000 taka dite hobe', 'SUPPLIER', 'SUPPLIER'],
+    ['supplier Karim ke 1000 taka dite hobe', 'SUPPLIER', 'SUPPLIER', 'CREATE_DUE'],
+    ['সরবরাহকারী করিমের ১০০০ টাকা পাওনা', 'SUPPLIER', 'SUPPLIER', 'CREATE_DUE'],
+  ])('%s → explicit supplier role', async (text, entityType, partyType, action) => {
+    const command = await parseVoiceV2(text);
+    expect(command.action).toBe(action);
+    expect(command.entityType).toBe(entityType);
+    expect(command.partyType).toBe(partyType);
+  });
+
+
     ['সরবরাহকারী করিমের ১০০০ টাকা পাওনা', 'SUPPLIER', 'SUPPLIER'],
   ])('%s → explicit supplier role', async (text, entityType, partyType) => {
     const command = await parseVoiceV2(text);
