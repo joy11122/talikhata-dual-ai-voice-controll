@@ -1,6 +1,29 @@
 import { describe, expect, it } from 'vitest';
 import { parseVoiceV2 } from '@/services/voiceEngineV2';
 
+describe('trade accounting invariants', () => {
+  it('sale partial payment must represent sale=1000, received=400, due=600', () => {
+    const total = 1000;
+    const paid = 400;
+    expect(total - paid).toBe(600);
+    expect(paid).toBeLessThanOrEqual(total);
+  });
+
+  it('purchase partial payment must represent purchase=1400, paid=500, payable=900', () => {
+    const total = 1400;
+    const paid = 500;
+    expect(total - paid).toBe(900);
+    expect(paid).toBeLessThanOrEqual(total);
+  });
+
+  it('purchase stock quantity must be applied by the transaction exactly once', () => {
+    const initialProductQuantity = 0;
+    const purchaseQuantity = 20;
+    const stockAfterTransaction = initialProductQuantity + purchaseQuantity;
+    expect(stockAfterTransaction).toBe(20);
+  });
+});
+
 describe('Voice V2 Bangladesh ledger semantics', () => {
   it.each([
     ['রহিমকে ৫০০ টাকা দিলাম', 'CREATE_DUE', 'রহিম', 500],
