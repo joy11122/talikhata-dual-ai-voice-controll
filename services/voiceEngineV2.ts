@@ -115,6 +115,8 @@ function extractCreatePartyName(text: string): { name: string; partyType: 'CUSTO
     new RegExp('^(.*?)\\s+(?:name|নামে)\\s+(customer|কাস্টমার|গ্রাহক|supplier|সাপ্লায়ার|সরবরাহকারী)\\s+' + partyCreateVerb + '$', 'iu'),
     new RegExp('^(.*?)\\s+নতুন\\s+(customer|কাস্টমার|গ্রাহক|supplier|সাপ্লায়ার|সরবরাহকারী)\\s+' + partyCreateVerb + '$', 'iu'),
   ];
+
+  for (const pattern of patterns) {
     const match = value.match(pattern);
     if (!match) continue;
     const name = match[1]?.trim();
