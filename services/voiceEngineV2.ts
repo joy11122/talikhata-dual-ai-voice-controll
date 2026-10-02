@@ -262,20 +262,43 @@ function parseInventoryPurchaseCommand(text: string): VoiceV2Command | null {
 
   const units = '(কেজি|kg|কিলো|কিলোগ্রাম|গ্রাম|gram|g|লিটার|liter|litre|l|পিস|পিছ|পিসে|টা|টি|piece|pieces|pcs|unit|ইউনিট|ডজন|dozen)';
   const number = '(\\d[\\d,]*(?:\\.\\d+)?)';
-
-  const purchaseWords = '(?:কিনলাম|কিনেছি|কিনেছে|কেনা হলো|কেনা করলাম|ক্রয় করলাম|ক্রয় করেছি|ক্রয়|purchase|purchased|bought|buy|kinlam|kinechi|kinechi)';
+  const purchaseWords = '(?:কিনলাম|কিনেছি|কিনেছে|কেনা হলো|কেনা করলাম|ক্রয় করলাম|ক্রয় করেছি|ক্রয়|purchase|purchased|bought|buy|kinlam|kinechi)';
   const addWords = '(?:যোগ করো|যোগ করুন|যোগ|দাও|দিয়ে রাখো|স্টকে রাখো|স্টক করো|add|create|put|stock in|stock-in)';
   const rateWords = '(?:দরে|ধরে|দাম(?:এ|তে)?|প্রতি|দর|dore|dhore|dam|dame|proti|per|rate|at)';
 
-  // Purchase forms are handled deterministically so prices can never become product names.
-  // Examples:
-  // “20 kg wheat 50 taka dore kinlam”
-  // “50 taka dore 20 kg alu kinlam”
-  const purchasePatterns: Array<{ pattern: RegExp; quantityIndex: number; priceIndex: number; nameIndex: number }> = [
+  const purchasePatterns = [
     {
-      pattern: new RegExp('^' + number + '\\s*' + units + '\\s+(.+?)\\s+' + number + '\\s*(?:টাকা|taka|tk)?\\s*' + rateWords + '\\s*' + purchaseWords + '
+      pattern: new RegExp('^' + number + '\\s*' + units + '\\s+(.+?)\\s+' + number + '\\s*(?:টাকা|taka|tk)?\\s*' + rateWords + '\\s*' + purchaseWords + '$', 'iu'),
+      quantityIndex: 1, nameIndex: 3, priceIndex: 4,
+    },
+    {
+      pattern: new RegExp('^' + number + '\\s*(?:টাকা|taka|tk)?\\s*' + rateWords + '\\s+' + number + '\\s*' + units + '\\s+(.+?)\\s*' + purchaseWords + '$', 'iu'),
+      quantityIndex: 2, nameIndex: 4, priceIndex: 1,
+    },
+    {
+      pattern: new RegExp('^(?:আজ|today)\\s+(.+?)\\s+' + number + '\\s*' + units + '\\s+' + number + '\\s*(?:টাকা|taka|tk)?\\s*' + rateWords + '\\s*' + purchaseWords + '$', 'iu'),
+      quantityIndex: 2, nameIndex: 1, priceIndex: 3,
+    },
+  ];
 
-  // Stock/product add: “70 taka rate-e 10 kg wheat jog koro”
+  for (const { pattern, quantityIndex, nameIndex, priceIndex } of purchasePatterns) {
+    const m = value.match(pattern);
+    if (!m) continue;
+    const quantity = Number((m[quantityIndex] || '').replace(/,/g, ''));
+    const unit = value.match(new RegExp(units, 'iu'))?.[1] || null;
+    const unitPrice = Number((m[priceIndex] || '').replace(/,/g, ''));
+    const name = (m[nameIndex] || '').replace(/^(?:আজ|today)\s+/iu, '').trim();
+    if (!name || !unit || !Number.isFinite(quantity) || !Number.isFinite(unitPrice)) continue;
+
+    const command = blank('STOCK_IN');
+    command.entityType = 'PRODUCT';
+    command.entityName = name;
+    command.quantity = quantity;
+    command.unit = unit;
+    command.unitPrice = unitPrice;
+    return command;
+  }
+
   const addPatterns = [
     new RegExp('^' + number + '\\s*(?:টাকা|taka|tk)?\\s*' + rateWords + '\\s+' + number + '\\s*' + units + '\\s+(.+?)\\s+' + addWords + '$', 'iu'),
     new RegExp('^' + number + '\\s*' + units + '\\s+(.+?)\\s+' + number + '\\s*(?:টাকা|taka|tk)?\\s*' + rateWords + '\\s+' + addWords + '$', 'iu'),
@@ -295,19 +318,15 @@ function parseInventoryPurchaseCommand(text: string): VoiceV2Command | null {
     const command = blank('CREATE_PRODUCT');
     command.entityType = 'PRODUCT';
     command.entityName = name;
-    const firstNumberIsPrice = new RegExp(
-      '^' + number + '\\s*(?:টাকা|taka|tk)?\\s*' + rateWords,
-      'iu',
-    ).test(value);
-
+    const firstNumberIsPrice = new RegExp('^' + number + '\\s*(?:টাকা|taka|tk)?\\s*' + rateWords, 'iu').test(value);
     command.quantity = firstNumberIsPrice ? nums[1] : nums[0];
     command.unit = unit;
     command.unitPrice = firstNumberIsPrice ? nums[0] : nums[1];
     return command;
   }
+
   return null;
 }
-
 /* -------------------------------------------------------------------------- */
 /* Local parser                                                               */
 /* -------------------------------------------------------------------------- */
