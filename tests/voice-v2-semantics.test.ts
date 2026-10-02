@@ -23,6 +23,7 @@ describe('Voice V2 Bangladesh ledger semantics', () => {
     ['কাজল ১০০০ টাকা দিল', 'RECEIVE_PAYMENT', 'কাজল', 1000],
     ['কাজলের কাছ থেকে ১০০০ টাকা নিলাম', 'RECEIVE_PAYMENT', 'কাজল', 1000],
     ['আমি কাজলের কাছ থেকে ১০০০ টাকা নেবো', 'RECEIVE_PAYMENT', 'কাজল', 1000],
+    ['কাজলের কাছে এক হাজার টাকা পাবো', 'CREATE_DUE', 'কাজল', 1000],
     ['Rahim ke 500 taka dilam', 'CREATE_DUE', 'Rahim', 500],
   ])('%s → %s', async (text, action, name, amount) => {
     const command = await parseVoiceV2(text);
