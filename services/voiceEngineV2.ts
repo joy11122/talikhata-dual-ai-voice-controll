@@ -80,6 +80,38 @@ const norm = (value: string): string =>
     .replace(/\s+/g, ' ')
     .trim();
 
+function validateVoiceCommandSafety(command: VoiceV2Command): VoiceV2Command {
+  const amount = command.amount;
+  const paid = command.paidAmount;
+
+  if (amount !== null && amount !== undefined && (!Number.isFinite(amount) || amount < 0)) {
+    throw new VoiceV2Error('INVALID_AMOUNT', 'টাকার পরিমাণ সঠিক নয়।');
+  }
+  if (paid !== null && paid !== undefined && (!Number.isFinite(paid) || paid < 0)) {
+    throw new VoiceV2Error('INVALID_PAID_AMOUNT', 'পরিশোধের পরিমাণ সঠিক নয়।');
+  }
+  if (
+    amount !== null &&
+    amount !== undefined &&
+    paid !== null &&
+    paid !== undefined &&
+    paid > amount
+  ) {
+    throw new VoiceV2Error(
+      'PAID_EXCEEDS_TOTAL',
+      'পরিশোধের টাকা মোট টাকার চেয়ে বেশি হতে পারে না।',
+      { amount, paidAmount: paid },
+    );
+  }
+  if (command.quantity !== null && command.quantity !== undefined && (!Number.isFinite(command.quantity) || command.quantity <= 0)) {
+    throw new VoiceV2Error('INVALID_QUANTITY', 'পরিমাণ সঠিক নয়।');
+  }
+  if (command.unitPrice !== null && command.unitPrice !== undefined && (!Number.isFinite(command.unitPrice) || command.unitPrice < 0)) {
+    throw new VoiceV2Error('INVALID_UNIT_PRICE', 'দর সঠিক নয়।');
+  }
+  return command;
+}
+
 /* -------------------------------------------------------------------------- */
 /* Blank command                                                              */
 /* -------------------------------------------------------------------------- */
@@ -693,7 +725,7 @@ function normalizeLedgerSemantics(
   if (incomingFromParty && ['CREATE_DUE', 'RECEIVE_PAYMENT'].includes(command.action)) {
     return { ...command, action: 'RECEIVE_PAYMENT', entityType: 'CUSTOMER', partyType: 'CUSTOMER', entityName: command.entityName || name, amount };
   }
-  return command;
+  return validateVoiceCommandSafety(command);
 }
 
 /* -------------------------------------------------------------------------- */
