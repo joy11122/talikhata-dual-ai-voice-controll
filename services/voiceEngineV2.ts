@@ -2444,39 +2444,52 @@ export async function executeVoiceV2(
           command.action ===
             'CREATE_PURCHASE'
         ) {
+          const isAmountOnlySale =
+            command.action === 'CREATE_SALE' &&
+            !command.entityName &&
+            !command.quantity &&
+            !command.unitPrice &&
+            !!command.amount &&
+            command.amount > 0;
+
           if (
-            !command.entityName ||
-            !command.quantity ||
-            command.quantity <= 0 ||
-            !command.unitPrice ||
-            command.unitPrice <= 0
+            !isAmountOnlySale &&
+            (!command.entityName ||
+              !command.quantity ||
+              command.quantity <= 0 ||
+              !command.unitPrice ||
+              command.unitPrice <= 0)
           ) {
             throw new VoiceV2Error(
               'INVALID_TRADE',
-              'Product, quantity and unit price are required',
+              'Product, quantity and unit price are required for an inventory sale or purchase',
             );
           }
 
           const resolvedProduct =
-            command.action === 'CREATE_PURCHASE'
-              ? await findOrCreateProduct(
-                  userId,
-                  command.entityName,
-                  session,
-                  {
-                    unit: command.unit,
-                    quantity: command.quantity,
-                    unitPrice: command.unitPrice,
-                  },
-                )
-              : { product: await findProduct(userId, command.entityName, session), created: false };
+            isAmountOnlySale
+              ? { product: null, created: false }
+              : command.action === 'CREATE_PURCHASE'
+                ? await findOrCreateProduct(
+                    userId,
+                    command.entityName!,
+                    session,
+                    {
+                      unit: command.unit,
+                      quantity: command.quantity!,
+                      unitPrice: command.unitPrice!,
+                    },
+                  )
+                : { product: await findProduct(userId, command.entityName!, session), created: false };
 
           const product = resolvedProduct.product;
 
-          const total = money(
-            command.quantity *
-              command.unitPrice,
-          );
+          const total = isAmountOnlySale
+            ? money(command.amount)
+            : money(
+                command.quantity! *
+                  command.unitPrice!,
+              );
 
           const paid = num(
             command.paidAmount,
@@ -2517,17 +2530,13 @@ export async function executeVoiceV2(
 
                   partyId,
 
-                  productId: String(
-                    product._id,
-                  ),
+                  productId: product ? String(product._id) : undefined,
 
                   amount: total,
 
-                  quantity:
-                    command.quantity,
+                  quantity: command.quantity ?? 0,
 
-                  unitPrice:
-                    command.unitPrice,
+                  unitPrice: command.unitPrice ?? undefined,
 
                   paidAmount: paid,
 
@@ -2543,7 +2552,7 @@ export async function executeVoiceV2(
               type: 'CREATE_SALE',
 
               product:
-                product.name,
+                product?.name ?? null,
 
               total,
 
