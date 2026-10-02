@@ -265,7 +265,7 @@ function parseInventoryPurchaseCommand(text: string): VoiceV2Command | null {
 
   const purchaseWords = '(?:কিনলাম|কিনেছি|কিনেছে|কেনা হলো|কেনা করলাম|ক্রয় করলাম|ক্রয় করেছি|ক্রয়|purchase|purchased|bought|buy|kinlam|kinechi|kinechi)';
   const addWords = '(?:যোগ করো|যোগ করুন|যোগ|দাও|দিয়ে রাখো|স্টকে রাখো|স্টক করো|add|create|put|stock in|stock-in)';
-  const rateWords = '(?:দরে|দাম(?:এ|তে)?|প্রতি|per|rate|at|দর)';
+  const rateWords = '(?:দরে|ধরে|দাম(?:এ|তে)?|প্রতি|per|rate|at|দর)';
 
   // Purchase: “20 kg wheat 50 taka rate-e kinlam”
   const purchasePatterns = [
@@ -666,7 +666,7 @@ async function aiParse(
           // Voice commands only need a small structured JSON payload.
           // Explicitly cap completion tokens so OpenRouter does not reserve
           // a large default budget (e.g. 65,536 tokens) for each request.
-          max_tokens: 500,
+          max_tokens: 256,
 
           tools: [VOICE_V2_TOOL],
 
