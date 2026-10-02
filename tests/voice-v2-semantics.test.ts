@@ -102,6 +102,34 @@ describe('Voice V2 Bangladesh ledger semantics', () => {
   });
 
   it.each([
+    ['রহিমের কাছে ২ কেজি চাল ৭০ টাকা দরে বিক্রি করলাম', 'CREATE_SALE'],
+    ['রহিমকে ২ কেজি চাল বিক্রি করলাম', 'CREATE_SALE'],
+    ['রহিম ২ কেজি চাল নিল ১৪০ টাকা', 'CREATE_SALE'],
+    ['২ কেজি চাল ১৪০ টাকায় বিক্রি করলাম', 'CREATE_SALE'],
+    ['রহিমকে ২ কেজি চাল বাকিতে দিলাম', 'CREATE_SALE'],
+    ['রহিমকে ২ কেজি চাল নগদে বিক্রি করলাম', 'CREATE_SALE'],
+    ['Rahim ke 2 kg chal 70 taka dore bikri korlam', 'CREATE_SALE'],
+    ['Rahim 2 kg rice took for 140 taka', 'CREATE_SALE'],
+    ['রহিমকে ১০০০ টাকার মাল বিক্রি করলাম, ৪০০ টাকা দিল', 'CREATE_SALE'],
+    ['রহিমকে ১০০০ টাকার মাল বিক্রি করলাম ৪০০ টাকা বাকি', 'CREATE_SALE'],
+  ])('%s → sale command', async (text, action) => {
+    const command = await parseVoiceV2(text);
+    expect(command.action).toBe(action);
+  });
+
+  it.each([
+    ['করিমের কাছ থেকে ২০ কেজি চাল ৭০ টাকা দরে কিনলাম', 'CREATE_PURCHASE'],
+    ['২০ কেজি চাল ১৪০০ টাকায় কিনলাম', 'CREATE_PURCHASE'],
+    ['করিমের কাছ থেকে ২০ কেজি চাল বাকিতে কিনলাম', 'CREATE_PURCHASE'],
+    ['করিমের কাছ থেকে ২০ কেজি চাল কিনলাম, ৫০০ টাকা দিলাম', 'CREATE_PURCHASE'],
+    ['Karim er kach theke 20 kg chal 70 taka dore kinlam', 'CREATE_PURCHASE'],
+    ['I bought 20 kg rice from Karim for 1400 taka', 'CREATE_PURCHASE'],
+  ])('%s → purchase command', async (text, action) => {
+    const command = await parseVoiceV2(text);
+    expect(command.action).toBe(action);
+  });
+
+  it.each([
     ['আজ ৫০০ টাকা দোকান ভাড়া দিলাম', 'CREATE_EXPENSE', 500],
     ['১০০ টাকা বিদ্যুৎ বিল দিলাম', 'CREATE_EXPENSE', 100],
     ['আজ ২০০ টাকা পরিবহন খরচ হয়েছে', 'CREATE_EXPENSE', 200],
