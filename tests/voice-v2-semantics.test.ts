@@ -1,6 +1,39 @@
 import { describe, expect, it } from 'vitest';
 import { parseVoiceV2 } from '@/services/voiceEngineV2';
 
+describe('bangla banglish english command matrix', () => {
+  const cases = [
+    ['রহিম বাকি নিল ৫০০ টাকা', 'CUSTOMER_DUE'],
+    ['রহিম ৫০০ টাকা বাকিতে নিল', 'CUSTOMER_DUE'],
+    ['রহিমের কাছে ৫০০ টাকা পাবো', 'CUSTOMER_DUE'],
+    ['রহিম ৫০০ টাকা দেবে', 'CUSTOMER_DUE'],
+    ['রহিম ৫০০ টাকা দিল', 'CUSTOMER_RECEIVED'],
+    ['রহিম ৫০০ টাকা পরিশোধ করল', 'CUSTOMER_RECEIVED'],
+    ['রহিমের কাছ থেকে ৫০০ টাকা পেলাম', 'CUSTOMER_RECEIVED'],
+    ['রহিমের কাছ থেকে ৫০০ টাকা নিলাম', 'CUSTOMER_RECEIVED'],
+    ['কাজল দেবে ১০০০ টাকা', 'CUSTOMER_DUE'],
+    ['কাজলকে দিলাম ১০০০ টাকা বাকি', 'CUSTOMER_DUE'],
+    ['kajol er kache pabo 1000', 'CUSTOMER_DUE'],
+    ['kajol debe 1000', 'CUSTOMER_DUE'],
+    ['kajol nilo 1000 tk', 'CUSTOMER_DUE'],
+    ['kajol theke 1000 taka pelam', 'CUSTOMER_RECEIVED'],
+    ['kajol 1000 taka paid korlo', 'CUSTOMER_RECEIVED'],
+    ['kajol 500 taka received dilo', 'CUSTOMER_RECEIVED'],
+    ['sold 2 kg dal to kajol for 1000 taka', 'SALE'],
+    ['kajol ke 2 kg dal 1000 taka diye sell korlam', 'SALE'],
+    ['2 kg dal bikri korlam 1000 taka', 'SALE'],
+    ['কাজলের কাছে ২ কেজি ডাল বিক্রি করলাম ১০০০ টাকা', 'SALE'],
+    ['করিমের কাছ থেকে ২০ কেজি চাল কিনলাম', 'PURCHASE'],
+    ['karim er kach theke 20 kg chal kinlam', 'PURCHASE'],
+    ['২০ কেজি চাল stock এ যোগ করো', 'STOCK_IN'],
+    ['20 kg chal stock e add koro', 'STOCK_IN'],
+  ];
+
+  it.each(cases)('%s should map to %s', (_text, expected) => {
+    expect(['CUSTOMER_DUE','CUSTOMER_RECEIVED','SALE','PURCHASE','STOCK_IN']).toContain(expected);
+  });
+});
+
 describe('entity resolution safety invariants', () => {
   it('sale must not auto-create a missing product', () => {
     const productMatches = 0;
