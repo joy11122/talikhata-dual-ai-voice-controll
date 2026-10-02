@@ -360,7 +360,7 @@ function parseShopFinanceCommand(text: string): VoiceV2Command | null {
   }
 
   // Expenses.
-  if (/(?:খরচ|ব্যয়|ব্যয়|expense|spent|cost)/iu.test(value)) {
+  if (/(?:খরচ|ব্যয়|ব্যয়|ভাড়া|ভাড়া|বিদ্যুৎ|বিল|পরিবহন|চা|খাবার|বেতন|মজুরি|expense|spent|cost|rent|electricity|transport|tea|salary|wage)/iu.test(value)) {
     const command = result('CREATE_EXPENSE');
     command.notes = text.trim();
     return command;
