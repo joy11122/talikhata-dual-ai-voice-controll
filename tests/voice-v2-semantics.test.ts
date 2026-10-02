@@ -39,6 +39,20 @@ describe('Voice V2 Bangladesh ledger semantics', () => {
   });
 
   it.each([
+    ['রহিম বাকি নিল ৫০০ টাকা', 'CREATE_DUE', 'রহিম', 500],
+    ['রহিম ৫০০ টাকা বাকিতে নিল', 'CREATE_DUE', 'রহিম', 500],
+    ['Rahim baki nilo 500 tk', 'CREATE_DUE', 'Rahim', 500],
+    ['Rahim took 500 on credit', 'CREATE_DUE', 'Rahim', 500],
+    ['রহিম ৫০০ টাকা দিল', 'RECEIVE_PAYMENT', 'রহিম', 500],
+    ['Rahim 500 taka dilo', 'RECEIVE_PAYMENT', 'Rahim', 500],
+  ])('%s → regression ledger direction', async (text, action, name, amount) => {
+    const command = await parseVoiceV2(text);
+    expect(command.action).toBe(action);
+    expect(command.entityName).toBe(name);
+    expect(command.amount).toBe(amount);
+  });
+
+  it.each([
     ['রহিমের বাকি কত', 'READ_BALANCE', 'রহিম'],
     ['Rahim er baki koto', 'READ_BALANCE', 'Rahim'],
   ])('%s → balance query', async (text, action, name) => {
