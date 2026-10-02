@@ -383,107 +383,27 @@ export default function VoiceControl() {
   return (
     <LazyMotion features={domAnimation} strict>
     <>
-      {result?.command?.action === 'READ_BALANCE' && (
-        <motion.div
-          initial={{ opacity: 0, y: 8 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="fixed bottom-[calc(7.25rem+env(safe-area-inset-bottom))] left-4 right-4 z-50 mx-auto max-w-md rounded-2xl border border-black/[0.07] bg-white p-5 shadow-[0_20px_60px_rgba(15,23,42,0.16)] md:bottom-[90px]"
-        >
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-xs text-slate-500">বর্তমান হিসাব</p>
-              <h3 className="text-lg font-bold">{result.result?.party?.name}</h3>
+
+      {!voiceModalOpen && (
+        <div className="fixed bottom-[calc(0.5rem+env(safe-area-inset-bottom))] left-2 right-2 z-50 mx-auto max-w-3xl sm:left-3 sm:right-3 md:bottom-5">
+          <div className="mb-2.5 flex min-h-8 justify-center px-2">
+            <div className="flex min-h-8 items-center gap-2 rounded-full border border-white/10 bg-slate-950/70 px-3.5 py-1 shadow-[0_6px_24px_rgba(0,0,0,0.18)] backdrop-blur-xl">
+              <span className={`h-2 w-2 rounded-full ${state === 'Listening' ? 'bg-red-500 animate-pulse' : state === 'Processing' ? 'bg-blue-500 animate-pulse' : state === 'Error' ? 'bg-red-500' : 'bg-emerald-500'}`} />
+              <span className="text-[11px] font-semibold leading-4 text-white/70">
+                {state === 'Listening' ? 'শুনছি... আপনার কমান্ড বলুন' : state === 'Processing' ? 'কমান্ড প্রক্রিয়াভুক্ত হচ্ছে...' : state === 'Success' ? 'কাজ সফল হয়েছে' : state === 'Error' ? 'Voice input সমস্যা' : ''}
+              </span>
             </div>
-            <button type="button" onClick={() => setResult(null)} aria-label="Close balance result">
-              <X size={18} />
+          </div>
+          <form onSubmit={submit} className="flex h-[58px] items-center gap-2 rounded-[30px] border border-white/10 bg-slate-950/75 px-1.5 shadow-[0_12px_40px_rgba(0,0,0,0.28)] backdrop-blur-2xl sm:h-[64px] sm:px-2">
+            <button type="button" aria-label="New voice command" onClick={() => { setText(''); setError(''); setResult(null); setPending(null); setState('Idle'); }} className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-[28px] font-light leading-none text-white transition hover:bg-white/10 active:scale-95">+</button>
+            <input ref={inputRef} value={text} onChange={(event) => setText(event.target.value)} aria-label="Voice command or text input" placeholder="আপনার হিসাবের কথা লিখুন বা বলুন…" className="min-w-0 flex-1 bg-transparent px-1.5 text-[14px] leading-6 text-white outline-none placeholder:text-white/35 sm:px-2 sm:text-[15px]" />
+            <button type="button" onClick={start} disabled={state === 'Listening' || state === 'Processing'} aria-label={state === 'Listening' ? 'Listening' : 'Start voice input'} className={'group relative flex h-10 w-10 shrink-0 items-center justify-center rounded-full transition-all duration-200 ease-out hover:scale-[1.04] active:scale-[0.92] sm:h-11 sm:w-11 ' + (state === 'Listening' ? 'bg-red-500 text-white shadow-[0_5px_18px_rgba(239,68,68,0.30)]' : state === 'Error' ? 'text-red-400 hover:bg-red-500/10' : state === 'Success' ? 'text-emerald-400 hover:bg-emerald-500/10' : 'text-white/75 hover:bg-white/10')}>
+              {state === 'Processing' ? <Loader2 size={22} className="animate-spin" /> : state === 'Success' ? <Check size={22} /> : state === 'Error' ? <AlertCircle size={22} /> : <Mic size={22} className="relative z-10 transition-transform duration-200 group-hover:scale-105 group-active:scale-90" />}
             </button>
-          </div>
-          <div className="mt-4 grid gap-3 sm:grid-cols-2">
-            <div className="rounded-xl bg-slate-50 p-4">
-              <p className="text-sm text-slate-500">আপনি পাবেন</p>
-              <p className="text-3xl font-bold">৳ {Number(result.result?.receivable || 0).toLocaleString('bn-BD')}</p>
-            </div>
-            <div className="rounded-xl bg-slate-50 p-4">
-              <p className="text-sm text-slate-500">আপনাকে দিতে হবে</p>
-              <p className="text-3xl font-bold">৳ {Number(result.result?.payable || 0).toLocaleString('bn-BD')}</p>
-            </div>
-          </div>
-        </motion.div>
-      )}
-
-
-
-      <div className="fixed bottom-[calc(0.5rem+env(safe-area-inset-bottom))] left-2 right-2 z-50 mx-auto max-w-3xl sm:left-3 sm:right-3 md:bottom-5">
-        <div className="mb-2.5 flex min-h-8 justify-center px-2">
-          <div className="flex min-h-8 items-center gap-2 rounded-full border border-white/90 bg-white/85 px-3.5 py-1 shadow-[0_6px_24px_rgba(15,23,42,0.10)] backdrop-blur-xl">
-            <span className={`h-2 w-2 rounded-full ${state === 'Listening' ? 'bg-red-500 animate-pulse' : state === 'Processing' ? 'bg-blue-500 animate-pulse' : state === 'Error' ? 'bg-red-500' : 'bg-emerald-500 animate-pulse'}`} />
-            <span className="text-[11px] font-semibold leading-4 text-slate-700">
-              {state === 'Listening' ? 'শুনছি... আপনার কমান্ড বলুন' : state === 'Processing' ? 'কমান্ড প্রক্রিয়াভুক্ত হচ্ছে...' : state === 'Success' ? 'কাজ সফল হয়েছে' : state === 'Error' ? 'Voice input সমস্যা' : ''}
-            </span>
-          </div>
+            <button type="submit" aria-label="Send command" className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#1b2cc1] text-white shadow-md transition hover:bg-[#2a3ddd] active:scale-95 disabled:opacity-40 sm:h-11 sm:w-11" disabled={!text.trim() || state === 'Processing'}><Send size={18} /></button>
+          </form>
         </div>
-        <form onSubmit={submit} className="flex h-[58px] items-center gap-2 rounded-[30px] border border-black/[0.06] bg-white/90 px-1.5 shadow-[0_12px_40px_rgba(0,0,0,0.12)] backdrop-blur-2xl sm:h-[64px] sm:px-2">
-          <button
-            type="button"
-            aria-label="New voice command"
-            onClick={() => {
-              setText('');
-              setError('');
-              setResult(null);
-              setPending(null);
-              setState('Idle');
-                    }}
-            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-[28px] font-light leading-none text-slate-900 transition hover:bg-black/5 active:scale-95"
-          >
-            +
-          </button>
-
-          <input
-            ref={inputRef}
-            value={text}
-            onChange={(event) => setText(event.target.value)}
-            aria-label="Voice command or text input"
-            placeholder="আপনার হিসাবের কথা লিখুন বা বলুন…"
-            className="min-w-0 flex-1 bg-transparent px-1.5 text-[14px] leading-6 text-slate-800 outline-none placeholder:text-slate-400 sm:px-2 sm:text-[15px]"
-          />
-
-          <button
-            type="button"
-            onClick={start}
-            disabled={state === 'Listening' || state === 'Processing'}
-            aria-label={state === 'Listening' ? 'Listening' : 'Start voice input'}
-            className={
-              'group relative flex h-10 w-10 shrink-0 items-center justify-center rounded-full transition-all duration-200 ease-out hover:scale-[1.04] active:scale-[0.92] sm:h-11 sm:w-11 ' +
-              (state === 'Listening'
-                ? 'bg-red-500 text-white shadow-[0_5px_18px_rgba(239,68,68,0.30)]'
-                : state === 'Error'
-                  ? 'text-red-600 hover:bg-red-50 tk-voice-error'
-                  : state === 'Success'
-                    ? 'text-emerald-600 hover:bg-emerald-50 tk-voice-success'
-                    : 'text-slate-700 hover:bg-slate-100')
-            }
-          >
-            {state === 'Processing' ? (
-              <Loader2 size={22} className="animate-spin" />
-            ) : state === 'Success' ? (
-              <Check size={22} />
-            ) : state === 'Error' ? (
-              <AlertCircle size={22} />
-            ) : (
-              <Mic size={22} className="relative z-10 transition-transform duration-200 group-hover:scale-105 group-active:scale-90" />
-            )}
-          </button>
-
-          <button
-            type="submit"
-            aria-label="Send command"
-            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-slate-900 text-white shadow-md transition hover:bg-black active:scale-95 disabled:opacity-40 sm:h-11 sm:w-11"
-            disabled={!text.trim() || state === 'Processing'}
-          >
-            <Send size={18} />
-          </button>
-        </form>
-      </div>
+      )
 
       <AnimatePresence>
         {voiceModalOpen && (
@@ -498,7 +418,7 @@ export default function VoiceControl() {
             >
               <div className="flex items-center justify-between">
                 <div><p className="text-xs text-white/50">TaliKhata Voice AI</p><h2 id="voice-ai-title" className="mt-1 text-xl font-semibold">Voice command</h2></div>
-                <button type="button" onClick={() => setVoiceModalOpen(false)} aria-label="Close voice result" className="rounded-full p-2 text-white/60 hover:bg-white/10"><X size={18} /></button>
+                <button type="button" onClick={() => { recognition.current?.stop?.(); setVoiceModalOpen(false); }} aria-label="Close voice result" className="rounded-full p-2 text-white/60 hover:bg-white/10"><X size={18} /></button>
               </div>
               <div className="mt-5 rounded-[14px] border border-white/10 bg-white/[0.04] p-4">
                 <p className="text-xs font-medium text-white/45">আপনি বলেছেন</p>
@@ -511,7 +431,25 @@ export default function VoiceControl() {
                 {state === 'Error' && <AlertCircle size={20} className="text-red-400" />}
                 <div><p className="text-xs text-white/45">Status</p><p className="mt-1 text-sm font-semibold">{state === 'Listening' ? 'শুনছি…' : state === 'Processing' ? 'কমান্ড প্রক্রিয়াকরণ হচ্ছে…' : state === 'Success' ? 'কাজ সফল হয়েছে' : state === 'Error' ? 'কাজটি সম্পন্ন হয়নি' : 'প্রস্তুত'}</p></div>
               </div>
-              {state === 'Success' && result && <div className="mt-3 rounded-[14px] border border-emerald-400/20 bg-emerald-400/10 p-4 text-sm text-emerald-100">{message(result.command, result.result)}</div>}
+              {state === 'Success' && result && (
+                <div className="mt-3 space-y-3">
+                  <div className="rounded-[14px] border border-emerald-400/20 bg-emerald-400/10 p-4 text-sm leading-6 text-emerald-100">
+                    {message(result.command, result.result)}
+                  </div>
+                  {result.command?.action === 'READ_BALANCE' && (
+                    <div className="grid grid-cols-2 gap-2">
+                      <div className="rounded-[14px] border border-white/10 bg-white/[0.035] p-3">
+                        <p className="text-[11px] text-white/45">আপনি পাবেন</p>
+                        <p className="mt-1 text-lg font-bold text-white">৳ {Number(result.result?.receivable || 0).toLocaleString('bn-BD')}</p>
+                      </div>
+                      <div className="rounded-[14px] border border-white/10 bg-white/[0.035] p-3">
+                        <p className="text-[11px] text-white/45">আপনাকে দিতে হবে</p>
+                        <p className="mt-1 text-lg font-bold text-white">৳ {Number(result.result?.payable || 0).toLocaleString('bn-BD')}</p>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
               {state === 'Error' && error && <div className="mt-3 rounded-[14px] border border-red-400/20 bg-red-400/10 p-4 text-sm leading-6 text-red-100">{error}</div>}
             </motion.div>
           </motion.div>
