@@ -36,24 +36,24 @@ describe('bangla banglish english command matrix', () => {
 
 describe('actual parser direction regression', () => {
   const cases = [
-    { text: 'রহিম বাকি নিল ৫০০ টাকা', action: 'CREATE_DUE', partyType: 'CUSTOMER' },
-    { text: 'রহিমের কাছে ৫০০ টাকা পাবো', action: 'CREATE_DUE', partyType: 'CUSTOMER' },
-    { text: 'কাজল দেবে ১০০০ টাকা', action: 'CREATE_DUE', partyType: 'CUSTOMER' },
-    { text: 'রহিম ৫০০ টাকা দিল', action: 'RECEIVE_PAYMENT', partyType: 'CUSTOMER' },
-    { text: 'রহিমের কাছ থেকে ৫০০ টাকা পেলাম', action: 'RECEIVE_PAYMENT', partyType: 'CUSTOMER' },
-    { text: 'রহিমের কাছ থেকে ৫০০ টাকা নিলাম', action: 'RECEIVE_PAYMENT', partyType: 'CUSTOMER' },
-    { text: 'kajol debe 1000', action: 'CREATE_DUE', partyType: 'CUSTOMER' },
-    { text: 'kajol er kache pabo 1000', action: 'CREATE_DUE', partyType: 'CUSTOMER' },
-    { text: 'kajol theke 1000 taka pelam', action: 'RECEIVE_PAYMENT', partyType: 'CUSTOMER' },
-    { text: 'করিম supplier কে ১০০০ টাকা দিতে হবে', action: 'CREATE_DUE', partyType: 'SUPPLIER' },
-    { text: 'supplier করিমকে ১০০০ টাকা দিলাম', action: 'RECEIVE_PAYMENT', partyType: 'SUPPLIER' },
+    { text: 'রহিম বাকি নিল ৫০০ টাকা', action: 'CREATE_DUE', partyType: 'CUSTOMER', amount: 500 },
+    { text: 'রহিমের কাছে ৫০০ টাকা পাবো', action: 'CREATE_DUE', partyType: 'CUSTOMER', amount: 500 },
+    { text: 'কাজল দেবে ১০০০ টাকা', action: 'CREATE_DUE', partyType: 'CUSTOMER', amount: 1000 },
+    { text: 'রহিম ৫০০ টাকা দিল', action: 'RECEIVE_PAYMENT', partyType: 'CUSTOMER', amount: 500 },
+    { text: 'রহিমের কাছ থেকে ৫০০ টাকা পেলাম', action: 'RECEIVE_PAYMENT', partyType: 'CUSTOMER', amount: 500 },
+    { text: 'রহিমের কাছ থেকে ৫০০ টাকা নিলাম', action: 'RECEIVE_PAYMENT', partyType: 'CUSTOMER', amount: 500 },
+    { text: 'kajol debe 1000', action: 'CREATE_DUE', partyType: 'CUSTOMER', amount: 1000 },
+    { text: 'kajol er kache pabo 1000', action: 'CREATE_DUE', partyType: 'CUSTOMER', amount: 1000 },
+    { text: 'kajol theke 1000 taka pelam', action: 'RECEIVE_PAYMENT', partyType: 'CUSTOMER', amount: 1000 },
+    { text: 'করিম supplier কে ১০০০ টাকা দিতে হবে', action: 'CREATE_DUE', partyType: 'SUPPLIER', amount: 1000 },
+    { text: 'supplier করিমকে ১০০০ টাকা দিলাম', action: 'RECEIVE_PAYMENT', partyType: 'SUPPLIER', amount: 1000 },
   ];
 
   it.each(cases)('parses "$text" with the correct ledger direction', async ({ text, action, partyType }) => {
     const parsed = await parseVoiceV2(text);
     expect(parsed.action).toBe(action);
     expect(parsed.partyType).toBe(partyType);
-    expect(parsed.amount).toBe(1000);
+    expect(parsed.amount).toBe(amount);
   });
 });
 
