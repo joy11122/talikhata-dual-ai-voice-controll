@@ -118,6 +118,19 @@ describe('Voice V2 Bangladesh ledger semantics', () => {
   });
 
   it.each([
+    ['রহিম ২ কেজি চাল নিল ১৪০ টাকা', 'CREATE_SALE', 'রহিম', 'চাল', 2, 70, 140],
+    ['Rahim took 2 kg rice for 140 taka', 'CREATE_SALE', 'Rahim', 'rice', 2, 70, 140],
+  ])('%s → natural total sale', async (text, action, party, product, quantity, unitPrice, amount) => {
+    const command = await parseVoiceV2(text);
+    expect(command.action).toBe(action);
+    expect(command.query).toBe(party);
+    expect(command.entityName).toBe(product);
+    expect(command.quantity).toBe(quantity);
+    expect(command.unitPrice).toBe(unitPrice);
+    expect(command.amount).toBe(amount);
+  });
+
+  it.each([
     ['করিমের কাছ থেকে ২০ কেজি চাল ৭০ টাকা দরে কিনলাম', 'CREATE_PURCHASE'],
     ['২০ কেজি চাল ১৪০০ টাকায় কিনলাম', 'CREATE_PURCHASE'],
     ['করিমের কাছ থেকে ২০ কেজি চাল বাকিতে কিনলাম', 'CREATE_PURCHASE'],
