@@ -392,7 +392,12 @@ function parseShopFinanceCommand(text: string): VoiceV2Command | null {
   // Explicit supplier wording makes the party direction unambiguous.
   if (/(?:supplier|সরবরাহকারী|সাপ্লায়ার|supplier\s+er)/iu.test(value)) {
     const name = value.match(/(?:supplier|সরবরাহকারী|সাপ্লায়ার)\s+(.+?)(?:\s+(?:দিতে|pay|কে|এর|র))/iu)?.[1] || null;
-    if (name && /(?:দিতে|pay|পাওনা|বাকি|due)/iu.test(value)) return result('CREATE_DUE', name);
+    if (name && /(?:দিতে|pay|পাওনা|বাকি|due)/iu.test(value)) {
+      const command = result('CREATE_DUE', name);
+      command.entityType = 'SUPPLIER';
+      command.partyType = 'SUPPLIER';
+      return command;
+    }
   }
 
   // Expenses.
@@ -670,40 +675,24 @@ function normalizeLedgerSemantics(
   const value = norm(text);
   const name = partyName(text);
   const amount = extractNumber(text);
+  if (!name || amount === null) return command;
 
-  if (!name || amount === null) {
-    return command;
+  if (command.partyType === 'SUPPLIER' || command.entityType === 'SUPPLIER') {
+    return { ...command, entityType: 'SUPPLIER', partyType: 'SUPPLIER', entityName: command.entityName || name, amount };
   }
 
   const outgoingToParty =
-    /(?:কে|ke)\s*\d[\d,]*(?:\.\d+)?\s*(?:টাকা|tk|taka)?\s*(?:দিলাম|দিল|দিয়েছি|দিয়েছি|দেব|দিব|রাখলাম|dilam|dil|dilo|diyechi|dibo)/iu.test(value);
-
+    /(?:কে|ke)s*\d[\d,]*(?:\.\d+)?s*(?:টাকা|tk|taka)?s*(?:দিলাম|দিল|দিয়েছি|দিয়েছি|দেব|দিব|রাখলাম|dilam|dil|dilo|diyechi|dibo)/iu.test(value);
   const incomingFromParty =
-    /(?:কাছ থেকে|কাছথেকে|থেকে)\s*\d[\d,]*(?:\.\d+)?\s*(?:টাকা|tk|taka)?\s*(?:পেলাম|পেয়েছি|পেয়েছি|নিলাম|নিয়েছি|নিয়েছি|আদায়|আদায়|পরিশোধ|জমা)/iu.test(value) ||
-    /^(?:.+?)\s+\d[\d,]*(?:\.\d+)?\s*(?:টাকা|tk|taka)?\s*(?:দিল|দিলো|দিয়েছে|দিয়েছে|পরিশোধ করেছে|paid|received)$/iu.test(value);
+    /(?:কাছ থেকে|কাছথেকে|থেকে)s*\d[\d,]*(?:\.\d+)?s*(?:টাকা|tk|taka)?s*(?:পেলাম|পেয়েছি|পেয়েছি|নিলাম|নিয়েছি|নিয়েছি|আদায়|আদায়|পরিশোধ|জমা)/iu.test(value) ||
+    /^(?:.+?)s+\d[\d,]*(?:\.\d+)?s*(?:টাকা|tk|taka)?s*(?:দিল|দিলো|দিয়েছে|দিয়েছে|পরিশোধ করেছে|paid|received)$/iu.test(value);
 
   if (outgoingToParty && ['RECEIVE_PAYMENT', 'CREATE_DUE'].includes(command.action)) {
-    return {
-      ...command,
-      action: 'CREATE_DUE',
-      entityType: 'CUSTOMER',
-      partyType: 'CUSTOMER',
-      entityName: command.entityName || name,
-      amount,
-    };
+    return { ...command, action: 'CREATE_DUE', entityType: 'CUSTOMER', partyType: 'CUSTOMER', entityName: command.entityName || name, amount };
   }
-
   if (incomingFromParty && ['CREATE_DUE', 'RECEIVE_PAYMENT'].includes(command.action)) {
-    return {
-      ...command,
-      action: 'RECEIVE_PAYMENT',
-      entityType: 'CUSTOMER',
-      partyType: 'CUSTOMER',
-      entityName: command.entityName || name,
-      amount,
-    };
+    return { ...command, action: 'RECEIVE_PAYMENT', entityType: 'CUSTOMER', partyType: 'CUSTOMER', entityName: command.entityName || name, amount };
   }
-
   return command;
 }
 
@@ -2318,15 +2307,39 @@ export async function executeVoiceV2(
             );
           }
 
-          const resolved = await findOrCreateParty(
-            userId,
-            command.entityName,
-            session,
-            'CUSTOMER',
-          );
+          let party;
+          let partyCreated = false;
 
-          const party = resolved.party;
-          const customerCreated = resolved.created;
+          if (command.partyType === 'SUPPLIER' || command.entityType === 'SUPPLIER') {
+            const resolved = await findOrCreateParty(
+              userId,
+              command.entityName,
+              session,
+              'SUPPLIER',
+            );
+            party = resolved.party;
+            partyCreated = resolved.created;
+          } else {
+            const existingSupplier = await Party.findOne({
+              userId: new Types.ObjectId(userId),
+              name: command.entityName,
+              partyType: 'SUPPLIER',
+            }).session(session);
+
+            if (existingSupplier) {
+              party = existingSupplier;
+            } else {
+              const resolved = await findOrCreateParty(
+                userId,
+                command.entityName,
+                session,
+                'CUSTOMER',
+              );
+              party = resolved.party;
+              partyCreated = resolved.created;
+            }
+          }
+
           const transaction =
             await createTransaction(
               {
@@ -2361,7 +2374,7 @@ export async function executeVoiceV2(
             party: {
               id: String(party._id),
               name: party.name,
-              created: customerCreated,
+              created: partyCreated,
             },
 
             transaction,
