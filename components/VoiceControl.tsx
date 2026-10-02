@@ -353,13 +353,22 @@ export default function VoiceControl() {
       setText(displayTranscript);
     };
 
-    recognitionInstance.onerror = () => {
+    recognitionInstance.onerror = (event: any) => {
       if (sessionId !== activeSessionId.current) return;
-      setState('Error');
 
-      const message = 'Voice input নেওয়া যায়নি। Text command চেষ্টা করুন।';
-      setError(message);
-      toast(message, 'error');
+      const code = String(event?.error || '').toLowerCase();
+      const detail =
+        code === 'not-allowed' || code === 'service-not-allowed'
+          ? 'মাইক্রোফোন permission দেওয়া হয়নি। Browser-এর microphone permission Allow করে আবার চেষ্টা করুন।'
+          : code === 'audio-capture'
+            ? 'মাইক্রোফোন পাওয়া যাচ্ছে না। Microphone connection ও device permission পরীক্ষা করুন।'
+            : code === 'no-speech'
+              ? 'কোনো কথা শোনা যায়নি। আবার স্পষ্টভাবে বলুন।'
+              : 'Voice input নেওয়া যায়নি। আবার চেষ্টা করুন বা text command ব্যবহার করুন।';
+
+      setState('Error');
+      setError(detail);
+      toast(detail, 'error');
     };
 
     recognitionInstance.onend = () => {
@@ -375,13 +384,32 @@ export default function VoiceControl() {
       }
     };
 
-    recognitionInstance.start();
+    try {
+      // Keep start() inside the original user-gesture call path.
+      // Chrome/Android can reject SpeechRecognition when start() is deferred.
+      recognitionInstance.start();
+    } catch (err: any) {
+      if (sessionId !== activeSessionId.current) return;
+
+      const code = String(err?.name || '').toLowerCase();
+      const detail =
+        code === 'notallowederror' || code === 'securityerror'
+          ? 'মাইক্রোফোন permission বা browser security-এর কারণে voice input শুরু হয়নি। Permission Allow করে আবার চেষ্টা করুন।'
+          : 'Voice input শুরু করা যায়নি। আবার চেষ্টা করুন।';
+
+      setState('Error');
+      setError(detail);
+      toast(detail, 'error');
+    }
   };
 
   useEffect(() => {
     const onVoiceOpen = () => {
       if (state === 'Listening' || state === 'Processing') return;
-      window.setTimeout(() => start(), 0);
+
+      // Do not defer start with setTimeout: on mobile Chrome this can
+      // break the browser's user-activation requirement for microphone input.
+      start();
     };
     window.addEventListener('talikhata:voice-open', onVoiceOpen);
     return () => window.removeEventListener('talikhata:voice-open', onVoiceOpen);
