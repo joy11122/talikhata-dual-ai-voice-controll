@@ -459,6 +459,39 @@ function parseLedgerDirectionCommand(text: string): VoiceV2Command | null {
   const amount = extractNumber(text);
   if (amount === null || amount <= 0) return null;
 
+  // Explicit supplier wording always wins over generic verbs such as
+  // "dilam", "nilam", "debe", or "pabo". A supplier payable/payment must
+  // never be silently recorded on the customer ledger.
+  const explicitSupplier = /(?:supplier|সরবরাহকারী|সাপ্লায়ার|সাপ্লায়ার)/iu.test(value);
+  if (explicitSupplier) {
+    const supplierName =
+      value
+        .replace(/(?:supplier|সরবরাহকারী|সাপ্লায়ার|সাপ্লায়ার)/giu, ' ')
+        .replace(/\s+/g, ' ')
+        .trim()
+        .replace(/(?:এর|ের|র|কে|দের|ে)$/u, '')
+        .replace(/\s+(?:er|r|ke|der|e)$/i, '')
+        .trim();
+
+    if (/(?:দিতে হবে|পাওনা|বাকি|due|payable|দেব|দিলাম|paid|pay)/iu.test(value)) {
+      const result = blank('CREATE_DUE');
+      result.entityType = 'SUPPLIER';
+      result.entityName = supplierName || null;
+      result.partyType = 'SUPPLIER';
+      result.amount = amount;
+      return result;
+    }
+
+    if (/(?:দিলাম|দিয়ে দিলাম|পরিশোধ করলাম|paid|pay|পেমেন্ট)/iu.test(value)) {
+      const result = blank('RECEIVE_PAYMENT');
+      result.entityType = 'SUPPLIER';
+      result.entityName = supplierName || null;
+      result.partyType = 'SUPPLIER';
+      result.amount = amount;
+      return result;
+    }
+  }
+
   const numberPattern = '(?:\\d[\\d,]*(?:\\.\\d+)?|[০-৯]+|(?:[^\\d\\s]+)(?:\\s+[^\\d\\s]+){0,3})';
 
   const command = (action: VoiceV2Command['action'], rawName: string): VoiceV2Command => {
