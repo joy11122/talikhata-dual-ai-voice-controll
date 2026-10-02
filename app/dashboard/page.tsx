@@ -19,6 +19,7 @@ const time=(v:string)=>new Date(v).toLocaleTimeString('en-US',{hour:'numeric',mi
 
 export default function DashboardPage(){
  const[data,setData]=useState<DashboardData|null>(null);
+ const[shopName,setShopName]=useState('');
  const[loading,setLoading]=useState(true);
  const[query,setQuery]=useState('');
  const[assistantQ,setAssistantQ]=useState('');
@@ -27,7 +28,7 @@ export default function DashboardPage(){
  const[assistantListening,setAssistantListening]=useState(false);
  const[assistantError,setAssistantError]=useState('');
  const load=async()=>{try{setData(await apiRequest<DashboardData>('/api/dashboard'))}catch{setData(null)}finally{setLoading(false)}};
- useEffect(()=>{void load();const r=()=>void load();window.addEventListener('talikhata:refresh',r);return()=>window.removeEventListener('talikhata:refresh',r)},[]);
+ useEffect(()=>{void load();void fetch('/api/shop').then(r=>r.ok?r.json():null).then(x=>{if(x?.shopName)setShopName(x.shopName)}).catch(()=>{});const r=()=>{void load();void fetch('/api/shop').then(x=>x.ok?x.json():null).then(x=>{if(x?.shopName)setShopName(x.shopName)}).catch(()=>{})};window.addEventListener('talikhata:refresh',r);return()=>window.removeEventListener('talikhata:refresh',r)},[]);
  const recent=useMemo(()=>data?.recent?.filter(x=>{const q=query.trim().toLowerCase();return !q||txTitle(x).toLowerCase().includes(q)||txStatus(x).toLowerCase().includes(q)}).slice(0,5)??[],[data,query]);
  const chart=data?.weeklySales??[];
  const max=Math.max(...chart.map(x=>x.total),1);
@@ -39,7 +40,7 @@ export default function DashboardPage(){
  return <div className="tk-new-dashboard mx-auto w-full max-w-6xl px-4 pb-36 pt-3 md:px-8 md:pb-10">
    <section className="tk-dash-welcome">
      <div className="min-w-0">
-       <p className="tk-dash-kicker">GOOD DAY · JALAL STORE</p>
+       <p className="tk-dash-kicker">GOOD DAY · {shopName || 'YOUR STORE'}</p>
        <h1>আজকের হিসাব এক নজরে</h1>
        <p className="tk-dash-subtitle">আপনার দোকানের গুরুত্বপূর্ণ হিসাব ও খাতা এখানে।</p>
      </div>
