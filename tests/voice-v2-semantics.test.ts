@@ -49,7 +49,7 @@ describe('actual parser direction regression', () => {
     { text: 'supplier করিমকে ১০০০ টাকা দিলাম', action: 'RECEIVE_PAYMENT', partyType: 'SUPPLIER', amount: 1000 },
   ];
 
-  it.each(cases)('parses "$text" with the correct ledger direction', async ({ text, action, partyType }) => {
+  it.each(cases)('parses "$text" with the correct ledger direction', async ({ text, action, partyType, amount }) => {
     const parsed = await parseVoiceV2(text);
     expect(parsed.action).toBe(action);
     expect(parsed.partyType).toBe(partyType);
