@@ -2478,14 +2478,8 @@ export async function executeVoiceV2(
               command.unitPrice,
           );
 
-          const paid = money(
-            command.paidAmount ??
-              ((command.action === 'CREATE_SALE' || command.action === 'CREATE_PURCHASE') &&
-              command.amount !== null &&
-              command.amount > 0 &&
-              !command.paidAmount
-                ? command.amount
-                : 0),
+          const paid = num(
+            command.paidAmount,
           );
 
           if (paid > total) {
