@@ -329,6 +329,55 @@ function parseInventoryPurchaseCommand(text: string): VoiceV2Command | null {
   return null;
 }
 /* -------------------------------------------------------------------------- */
+/* Deterministic shop-finance parser                                         */
+/* -------------------------------------------------------------------------- */
+
+function parseShopFinanceCommand(text: string): VoiceV2Command | null {
+  const value = replaceSpokenNumberWords(norm(text));
+  const amount = extractNumber(text);
+  if (amount === null || amount <= 0) return null;
+
+  const result = (action: VoiceV2Command['action'], name: string | null = null): VoiceV2Command => {
+    const command = blank(action);
+    command.entityType = name ? (/supplier|সরবরাহকারী|সাপ্লায়ার|করিম/iu.test(value) ? 'SUPPLIER' : 'CUSTOMER') : 'NONE';
+    command.entityName = name ? name.trim().replace(/(?:এর|ের|র|কে|দের|ে)$/u, '').replace(/\s+(?:er|r|ke|der|e)$/i, '').trim() : null;
+    command.partyType = command.entityType === 'SUPPLIER' ? 'SUPPLIER' : command.entityType === 'CUSTOMER' ? 'CUSTOMER' : null;
+    command.amount = amount;
+    return command;
+  };
+
+  // Supplier payable/payment: keep this before the customer-only ledger parser.
+  let m = value.match(/^(.+?)\s+(?:কে|কে\s+|er\s+kache\s+)?(?:দিতে হবে|দিতে হবে|পাওনা)\s*[^\d০-৯]*$/iu)
+    || value.match(/^(.+?)\s+(?:কে|ke)\s*[^\d০-৯]*(?:দিতে হবে|pay করতে হবে|pay|dewa hobe)$/iu);
+  if (m?.[1] && /(?:supplier|সরবরাহকারী|সাপ্লায়ার)/iu.test(value)) {
+    return result('CREATE_DUE', m[1]);
+  }
+
+  // Explicit supplier wording makes the party direction unambiguous.
+  if (/(?:supplier|সরবরাহকারী|সাপ্লায়ার|supplier\s+er)/iu.test(value)) {
+    const name = value.match(/(?:supplier|সরবরাহকারী|সাপ্লায়ার)\s+(.+?)(?:\s+(?:দিতে|pay|কে|এর|র))/iu)?.[1] || null;
+    if (name && /(?:দিতে|pay|পাওনা|বাকি|due)/iu.test(value)) return result('CREATE_DUE', name);
+  }
+
+  // Expenses.
+  if (/(?:খরচ|ব্যয়|ব্যয়|expense|spent|cost)/iu.test(value)) {
+    const command = result('CREATE_EXPENSE');
+    command.notes = text.trim();
+    return command;
+  }
+
+  // Other income, explicitly excluding ordinary customer payment wording.
+  if (/(?:অতিরিক্ত আয়|অতিরিক্ত আয়|অন্যান্য আয়|অন্যান্য আয়|কমিশন|other income|extra income|commission)/iu.test(value)
+      && !/(?:কাস্টমার|customer|কাছ থেকে|received|payment|পেলাম|পেয়েছি)/iu.test(value)) {
+    const command = result('CREATE_INCOME');
+    command.notes = text.trim();
+    return command;
+  }
+
+  return null;
+}
+
+/* -------------------------------------------------------------------------- */
 /* Deterministic ledger direction parser                                      */
 /* -------------------------------------------------------------------------- */
 
@@ -457,6 +506,9 @@ function localParse(text: string): VoiceV2Command | null {
 
   const sale = parseSaleCommand(text);
   if (sale) return sale;
+
+  const shopFinance = parseShopFinanceCommand(text);
+  if (shopFinance) return shopFinance;
 
   // Resolve high-confidence party-money direction before generic heuristics or AI.
   const ledgerDirection = parseLedgerDirectionCommand(text);
@@ -629,7 +681,7 @@ const SYSTEM = [
   'Extract intent and preserve names exactly; remove Bengali/Banglish case endings such as কে, এর, র, er, ke when they are grammatical suffixes.',
   'Return exactly one emit_voice_command tool call. Never invent names, IDs, amounts, quantities, prices, phone numbers or database facts.',
   'Party: CREATE_PARTY, READ_PARTY, LIST_PARTIES, UPDATE_PARTY, DELETE_PARTY. Destructive actions require confirmation.',
-  'Ledger: CREATE_DUE means the customer owes the shop or the shop owes a supplier; RECEIVE_PAYMENT means money received from a party. Direction matters: “করিমকে 300 দিলাম” = CREATE_DUE; “করিমের কাছ থেকে 300 পেলাম” = RECEIVE_PAYMENT.',
+  'Ledger: CREATE_DUE means a customer owes the shop or the shop owes a supplier; RECEIVE_PAYMENT means money received from a customer/supplier. Direction and party type matter. Supplier payable/payment must use partyType SUPPLIER.',
   'READ_BALANCE answers how much a named party owes/is owed. CREATE_SALE/PURCHASE/EXPENSE and STOCK_IN/OUT represent the corresponding shop operations.',
   'Products: CREATE_PRODUCT, READ_PRODUCT, LIST_PRODUCTS, UPDATE_PRODUCT, DELETE_PRODUCT. Transactions: LIST_TRANSACTIONS or DELETE_TRANSACTION.',
   'Users are admin-only: CREATE_USER, READ_USER, LIST_USERS, UPDATE_USER, DELETE_USER. Never expose or invent passwords.',
@@ -1213,6 +1265,7 @@ function confirm(
       'CREATE_SALE',
       'CREATE_PURCHASE',
       'CREATE_EXPENSE',
+      'CREATE_INCOME',
     ].includes(command.action);
 
   const needsConfirmation =
@@ -2624,6 +2677,40 @@ export async function executeVoiceV2(
             type: 'CREATE_EXPENSE',
             amount:
               command.amount,
+            transaction,
+          };
+        }
+
+        /* ---------------------------------------------------------------- */
+        /* OTHER INCOME                                                     */
+        /* ---------------------------------------------------------------- */
+
+        else if (
+          command.action ===
+          'CREATE_INCOME'
+        ) {
+          if (!command.amount || command.amount <= 0) {
+            throw new VoiceV2Error(
+              'INVALID_INCOME',
+              'Positive income amount is required',
+            );
+          }
+
+          const transaction =
+            await createTransaction(
+              {
+                type: 'OTHER_INCOME',
+                amount: command.amount,
+                quantity: 0,
+                notes: command.notes || transcript,
+              },
+              userId,
+              session,
+            );
+
+          result = {
+            type: 'CREATE_INCOME',
+            amount: command.amount,
             transaction,
           };
         }
