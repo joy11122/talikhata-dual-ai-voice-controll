@@ -110,7 +110,7 @@ function extractCreatePartyName(text: string): { name: string; partyType: 'CUSTO
     .trim();
 
   const patterns = [
-    /^(.*?)\s+(?:name|নামে)\s+নতুন\s+(customer|কাস্টমার|গ্রাহক|supplier|সাপ্লায়ার|সরবরাহকারী)\s+(?:যোগ করো|যোগ করুন|যোগ|add|create|করো|করুন)$/iu,
+    /^(.*?)\s+(?:name|নামে)\s+নতুন\s+(customer|কাস্টমার|গ্রাহক|supplier|সাপ্লায়ার|সরবরাহকারী)\s+(?:যোগ করো|যোগ করুন|যোগ|add|create|করো|করুন|কর)$/iu,
     /^(.*?)\s+(?:name|নামে)\s+(customer|কাস্টমার|গ্রাহক|supplier|সাপ্লায়ার|সরবরাহকারী)\s+(?:যোগ করো|যোগ করুন|যোগ|add|create|করো|করুন)$/iu,
     /^(.*?)\s+নতুন\s+(customer|কাস্টমার|গ্রাহক|supplier|সাপ্লায়ার|সরবরাহকারী)\s+(?:যোগ করো|যোগ করুন|যোগ|add|create|করো|করুন)$/iu,
   ];
