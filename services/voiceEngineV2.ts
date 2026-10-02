@@ -271,7 +271,7 @@ function parseInventoryPurchaseCommand(text: string): VoiceV2Command | null {
   // Examples:
   // “20 kg wheat 50 taka dore kinlam”
   // “50 taka dore 20 kg alu kinlam”
-  const purchasePatterns = [
+  const purchasePatterns: Array<{ pattern: RegExp; quantityIndex: number; priceIndex: number; nameIndex: number }> = [
     {
       pattern: new RegExp('^' + number + '\\s*' + units + '\\s+(.+?)\\s+' + number + '\\s*(?:টাকা|taka|tk)?\\s*' + rateWords + '\\s*' + purchaseWords + '
 
@@ -2590,7 +2590,8 @@ export async function executeVoiceV2(
 }
 , 'iu'),
       quantityIndex: 1,
-      priceIndex: 2,
+      priceIndex: 4,
+      nameIndex: 3,
     },
     {
       pattern: new RegExp('^' + number + '\\s*(?:টাকা|taka|tk)?\\s*' + rateWords + '\\s+' + number + '\\s*' + units + '\\s+(.+?)\\s*' + purchaseWords + '
@@ -4911,6 +4912,7 @@ export async function executeVoiceV2(
 , 'iu'),
       quantityIndex: 2,
       priceIndex: 1,
+      nameIndex: 4,
     },
     {
       pattern: new RegExp('^(?:আজ|today)\\s+(.+?)\\s+' + number + '\\s*' + units + '\\s+' + number + '\\s*(?:টাকা|taka|tk)?\\s*' + rateWords + '\\s*' + purchaseWords + '
@@ -7231,6 +7233,7 @@ export async function executeVoiceV2(
 , 'iu'),
       quantityIndex: 2,
       priceIndex: 3,
+      nameIndex: 1,
     },
   ];
 
@@ -7241,7 +7244,7 @@ export async function executeVoiceV2(
     const quantity = Number((m[quantityIndex] || '').replace(/,/g, ''));
     const unit = value.match(new RegExp(units, 'iu'))?.[1] || null;
     const unitPrice = Number((m[priceIndex] || '').replace(/,/g, ''));
-    const name = (m[m.length - 1] || '').replace(/^(?:আজ|today)\s+/iu, '').trim();
+    const name = (m[nameIndex] || '').replace(/^(?:আজ|today)\s+/iu, '').trim();
 
     if (!name || !unit || !Number.isFinite(quantity) || !Number.isFinite(unitPrice)) continue;
 
