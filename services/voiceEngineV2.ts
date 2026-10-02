@@ -111,9 +111,10 @@ function extractCreatePartyName(text: string): { name: string; partyType: 'CUSTO
 
   const partyCreateVerb = '(?:যোগ করো|যোগ করুন|যোগ|এড করো|এড করুন|অ্যাড করো|অ্যাড করুন|add|add koro|add korun|add করো|add করুন|create|create koro|create korun|করো|করুন|jog koro|jog korun)';
   const patterns = [
-    new RegExp('^(.*?)\\s+(?:name|নামে)\\s+নতুন\\s+(customer|কাস্টমার|গ্রাহক|supplier|সাপ্লায়ার|সরবরাহকারী)\\s+' + partyCreateVerb + '
-
-  for (const pattern of patterns) {
+    new RegExp('^(.*?)\\s+(?:name|নামে)\\s+নতুন\\s+(customer|কাস্টমার|গ্রাহক|supplier|সাপ্লায়ার|সরবরাহকারী)\\s+' + partyCreateVerb + '$', 'iu'),
+    new RegExp('^(.*?)\\s+(?:name|নামে)\\s+(customer|কাস্টমার|গ্রাহক|supplier|সাপ্লায়ার|সরবরাহকারী)\\s+' + partyCreateVerb + '$', 'iu'),
+    new RegExp('^(.*?)\\s+নতুন\\s+(customer|কাস্টমার|গ্রাহক|supplier|সাপ্লায়ার|সরবরাহকারী)\\s+' + partyCreateVerb + '$', 'iu'),
+  ];
     const match = value.match(pattern);
     if (!match) continue;
     const name = match[1]?.trim();
