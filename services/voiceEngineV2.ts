@@ -2537,7 +2537,10 @@ export async function executeVoiceV2(
                     session,
                     {
                       unit: command.unit,
-                      quantity: command.quantity!,
+                      // Inventory quantity is applied exactly once by the
+                      // STOCK_IN transaction below. Do not seed the new
+                      // product with the purchase quantity here.
+                      quantity: 0,
                       unitPrice: command.unitPrice!,
                     },
                   )
