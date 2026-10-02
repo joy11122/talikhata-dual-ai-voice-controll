@@ -2607,46 +2607,6 @@ export async function executeVoiceV2(
 
   return result;
 }
-, 'iu'),
-      quantityIndex: 1,
-      priceIndex: 4,
-      nameIndex: 3,
-    },
-    {
-      pattern: new RegExp('^' + number + '\\s*(?:টাকা|taka|tk)?\\s*' + rateWords + '\\s+' + number + '\\s*' + units + '\\s+(.+?)\\s*' + purchaseWords + '
-
-  // Stock/product add: “70 taka rate-e 10 kg wheat jog koro”
-  const addPatterns = [
-    new RegExp('^' + number + '\\s*(?:টাকা|taka|tk)?\\s*' + rateWords + '\\s+' + number + '\\s*' + units + '\\s+(.+?)\\s+' + addWords + '$', 'iu'),
-    new RegExp('^' + number + '\\s*' + units + '\\s+(.+?)\\s+' + number + '\\s*(?:টাকা|taka|tk)?\\s*' + rateWords + '\\s+' + addWords + '$', 'iu'),
-    new RegExp('^(.+?)\\s+' + number + '\\s*' + units + '\\s+' + number + '\\s*(?:টাকা|taka|tk)?\\s*' + rateWords + '\\s+' + addWords + '$', 'iu'),
-    new RegExp('^(.+?)\\s+' + number + '\\s*' + units + '\\s+' + addWords + '\\s+' + number + '\\s*(?:টাকা|taka|tk)?\\s*' + rateWords + '$', 'iu'),
-  ];
-
-  for (const pattern of addPatterns) {
-    const m = value.match(pattern);
-    if (!m) continue;
-    const nums = [...value.matchAll(new RegExp(number, 'g'))].map(x => Number(x[1].replace(/,/g, '')));
-    const unit = value.match(new RegExp(units, 'iu'))?.[1] || null;
-    if (nums.length < 2 || !unit) continue;
-    const candidates = m.slice(1).filter(Boolean);
-    const name = candidates.find(x => !new RegExp('^' + number + '$').test(x.trim()) && !new RegExp('^' + units + '$','iu').test(x.trim()))?.trim() || '';
-    if (!name) continue;
-    const command = blank('CREATE_PRODUCT');
-    command.entityType = 'PRODUCT';
-    command.entityName = name;
-    const firstNumberIsPrice = new RegExp(
-      '^' + number + '\\s*(?:টাকা|taka|tk)?\\s*' + rateWords,
-      'iu',
-    ).test(value);
-
-    command.quantity = firstNumberIsPrice ? nums[1] : nums[0];
-    command.unit = unit;
-    command.unitPrice = firstNumberIsPrice ? nums[0] : nums[1];
-    return command;
-  }
-  return null;
-}
 
 /* -------------------------------------------------------------------------- */
 /* Local parser                                                               */
