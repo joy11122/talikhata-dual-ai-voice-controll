@@ -2692,6 +2692,9 @@ export async function executeVoiceV2(
             }
 
             const supplierResolved = await findOrCreateParty(userId, command.query, session, 'SUPPLIER');
+            if (supplierResolved.created) {
+              throw new VoiceV2Error('SUPPLIER_NOT_FOUND', `Supplier "${command.query}" পাওয়া যায়নি। আগে supplier হিসেবে যোগ করুন।`);
+            }
             const supplier = supplierResolved.party;
 
             const transaction =
