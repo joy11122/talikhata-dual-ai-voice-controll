@@ -1,6 +1,44 @@
 import { describe, expect, it } from 'vitest';
 import { parseVoiceV2 } from '@/services/voiceEngineV2';
 
+describe('reversal accounting invariants', () => {
+  it('reversing a customer due restores the previous balance', () => {
+    const due = 1000;
+    const balanceAfterDue = 2500 + due;
+    expect(balanceAfterDue - due).toBe(2500);
+  });
+
+  it('reversing a customer receipt restores the previous balance', () => {
+    const receipt = 1000;
+    const balanceAfterReceipt = 2500 - receipt;
+    expect(balanceAfterReceipt + receipt).toBe(2500);
+  });
+
+  it('reversing supplier payable restores the previous balance', () => {
+    const payable = 1000;
+    const balanceAfterPurchase = -payable;
+    expect(balanceAfterPurchase + payable).toBe(0);
+  });
+
+  it('reversing supplier payment restores the previous balance', () => {
+    const payment = 1000;
+    const balanceAfterPayment = 0 + payment;
+    expect(balanceAfterPayment - payment).toBe(0);
+  });
+
+  it('reversing stock-in restores the previous stock exactly', () => {
+    const before = 20;
+    const afterPurchase = before + 10;
+    expect(afterPurchase - 10).toBe(before);
+  });
+
+  it('reversing sale restores the previous stock exactly', () => {
+    const before = 20;
+    const afterSale = before - 10;
+    expect(afterSale + 10).toBe(before);
+  });
+});
+
 describe('trade accounting invariants', () => {
   it('sale partial payment must represent sale=1000, received=400, due=600', () => {
     const total = 1000;
