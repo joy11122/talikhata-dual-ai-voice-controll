@@ -230,11 +230,81 @@ function parseCreateProductCommand(text: string): VoiceV2Command | null {
   return null;
 }
 
+function parseInventoryPurchaseCommand(text: string): VoiceV2Command | null {
+  const value = normalizeVoiceText(text)
+    .replace(/[।,!?;:]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+
+  const units = '(কেজি|kg|কিলো|কিলোগ্রাম|গ্রাম|gram|g|লিটার|liter|litre|l|পিস|পিছ|পিসে|টা|টি|piece|pieces|pcs|unit|ইউনিট|ডজন|dozen)';
+  const number = '(\\d[\\d,]*(?:\\.\\d+)?)';
+
+  const purchaseWords = '(?:কিনলাম|কিনেছি|কিনেছে|কেনা হলো|কেনা করলাম|ক্রয় করলাম|ক্রয় করেছি|ক্রয়|purchase|purchased|bought|buy|kinlam|kinechi|kinechi)';
+  const addWords = '(?:যোগ করো|যোগ করুন|যোগ|দাও|দিয়ে রাখো|স্টকে রাখো|স্টক করো|add|create|put|stock in|stock-in)';
+  const rateWords = '(?:দরে|দাম(?:এ|তে)?|প্রতি|per|rate|at|দর)';
+
+  // Purchase: “20 kg wheat 50 taka rate-e kinlam”
+  const purchasePatterns = [
+    new RegExp('^' + number + '\\s*' + units + '\\s+(.+?)\\s+' + number + '\\s*(?:টাকা|taka|tk)?\\s*' + rateWords + '\\s*' + purchaseWords + '$', 'iu'),
+    new RegExp('^' + number + '\\s*' + units + '\\s+(.+?)\\s+' + number + '\\s*(?:টাকা|taka|tk)?\\s*' + rateWords + '\\s*' + purchaseWords + '$', 'iu'),
+    new RegExp('^(.+?)\\s+' + number + '\\s*' + units + '\\s+' + number + '\\s*(?:টাকা|taka|tk)?\\s*' + rateWords + '\\s*' + purchaseWords + '$', 'iu'),
+    new RegExp('^(.+?)\\s+' + number + '\\s*(?:টাকা|taka|tk)?\\s*' + rateWords + '\\s+' + number + '\\s*' + units + '\\s*' + purchaseWords + '$', 'iu'),
+    new RegExp('^(?:আজ|today)\\s+(.+?)\\s+' + number + '\\s*' + units + '\\s+' + number + '\\s*(?:টাকা|taka|tk)?\\s*' + rateWords + '\\s*' + purchaseWords + '$', 'iu'),
+  ];
+
+  for (const pattern of purchasePatterns) {
+    const m = value.match(pattern);
+    if (!m) continue;
+    const nums = [...value.matchAll(new RegExp(number, 'g'))].map(x => Number(x[1].replace(/,/g, '')));
+    const unit = value.match(new RegExp(units, 'iu'))?.[1] || null;
+    if (nums.length < 2 || !unit) continue;
+    const name = (m[1] || '').replace(/^(?:আজ|today)\s+/iu, '').trim();
+    if (!name || /^(?:আজ|today)$/iu.test(name)) continue;
+    const command = blank('CREATE_PURCHASE');
+    command.entityType = 'PRODUCT';
+    command.entityName = name;
+    command.quantity = nums[0];
+    command.unit = unit;
+    command.unitPrice = nums[1];
+    return command;
+  }
+
+  // Stock/product add: “70 taka rate-e 10 kg wheat jog koro”
+  const addPatterns = [
+    new RegExp('^' + number + '\\s*(?:টাকা|taka|tk)?\\s*' + rateWords + '\\s+' + number + '\\s*' + units + '\\s+(.+?)\\s+' + addWords + '$', 'iu'),
+    new RegExp('^' + number + '\\s*' + units + '\\s+(.+?)\\s+' + number + '\\s*(?:টাকা|taka|tk)?\\s*' + rateWords + '\\s+' + addWords + '$', 'iu'),
+    new RegExp('^(.+?)\\s+' + number + '\\s*' + units + '\\s+' + number + '\\s*(?:টাকা|taka|tk)?\\s*' + rateWords + '\\s+' + addWords + '$', 'iu'),
+    new RegExp('^(.+?)\\s+' + number + '\\s*' + units + '\\s+' + addWords + '\\s+' + number + '\\s*(?:টাকা|taka|tk)?\\s*' + rateWords + '$', 'iu'),
+  ];
+
+  for (const pattern of addPatterns) {
+    const m = value.match(pattern);
+    if (!m) continue;
+    const nums = [...value.matchAll(new RegExp(number, 'g'))].map(x => Number(x[1].replace(/,/g, '')));
+    const unit = value.match(new RegExp(units, 'iu'))?.[1] || null;
+    if (nums.length < 2 || !unit) continue;
+    const candidates = m.slice(1).filter(Boolean);
+    const name = candidates.find(x => !new RegExp('^' + number + '$').test(x.trim()) && !new RegExp('^' + units + '$','iu').test(x.trim()))?.trim() || '';
+    if (!name) continue;
+    const command = blank('CREATE_PRODUCT');
+    command.entityType = 'PRODUCT';
+    command.entityName = name;
+    command.quantity = nums[0] === nums[1] ? nums[0] : (value.indexOf(String(nums[0])) < value.indexOf(String(nums[1])) ? nums[0] : nums[1]);
+    command.unit = unit;
+    command.unitPrice = value.indexOf(String(command.quantity)) < value.lastIndexOf(String(nums[1])) ? nums[1] : nums[0];
+    return command;
+  }
+  return null;
+}
+
 /* -------------------------------------------------------------------------- */
 /* Local parser                                                               */
 /* -------------------------------------------------------------------------- */
 
 function localParse(text: string): VoiceV2Command | null {
+  const inventory = parseInventoryPurchaseCommand(text);
+  if (inventory) return inventory;
+
   const createProduct = parseCreateProductCommand(text);
   if (createProduct) return createProduct;
 
