@@ -565,7 +565,8 @@ export default function VoiceControl() {
           </motion.div>
         )}
       </AnimatePresence>
+      </AnimatePresence>
     </>
     </LazyMotion>
-  )
+  );
 }
