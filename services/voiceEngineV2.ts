@@ -453,6 +453,10 @@ function localParse(text: string): VoiceV2Command | null {
   const sale = parseSaleCommand(text);
   if (sale) return sale;
 
+  // Resolve high-confidence party-money direction before generic heuristics or AI.
+  const ledgerDirection = parseLedgerDirectionCommand(text);
+  if (ledgerDirection) return ledgerDirection;
+
   const value = norm(text);
   const amount = extractNumber(text);
   const name = partyName(text);
