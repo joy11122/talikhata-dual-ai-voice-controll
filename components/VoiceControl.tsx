@@ -113,6 +113,7 @@ export default function VoiceControl() {
   const [error, setError] = useState('');
   const [result, setResult] = useState<any>(null);
   const [pending, setPending] = useState<Pending | null>(null);
+  const [voiceModalOpen, setVoiceModalOpen] = useState(false);
   const { toast } = useToast();
 
   const latest = useRef('');
@@ -170,6 +171,7 @@ export default function VoiceControl() {
     }
 
     setState('Processing');
+    setVoiceModalOpen(true);
     setError('');
 
     try {
@@ -236,6 +238,7 @@ export default function VoiceControl() {
       setPending(null);
       setResult(data);
       setState('Success');
+      setVoiceModalOpen(true);
 
       const spoken = message(
         data.command,
@@ -253,6 +256,7 @@ export default function VoiceControl() {
       }, 1800);
     } catch (err: any) {
       setState('Error');
+      setVoiceModalOpen(true);
 
       const message = err?.message || 'Voice command failed';
       setError(message);
@@ -294,6 +298,7 @@ export default function VoiceControl() {
 
     recognitionInstance.onstart = () => {
       setState('Listening');
+      setVoiceModalOpen(true);
     };
 
     recognitionInstance.onresult = (event: any) => {
@@ -413,7 +418,7 @@ export default function VoiceControl() {
           <div className="flex min-h-8 items-center gap-2 rounded-full border border-white/90 bg-white/85 px-3.5 py-1 shadow-[0_6px_24px_rgba(15,23,42,0.10)] backdrop-blur-xl">
             <span className={`h-2 w-2 rounded-full ${state === 'Listening' ? 'bg-red-500 animate-pulse' : state === 'Processing' ? 'bg-blue-500 animate-pulse' : state === 'Error' ? 'bg-red-500' : 'bg-emerald-500 animate-pulse'}`} />
             <span className="text-[11px] font-semibold leading-4 text-slate-700">
-              {state === 'Listening' ? 'শুনছি... আপনার কমান্ড বলুন' : state === 'Processing' ? 'কমান্ড প্রক্রিয়াভুক্ত হচ্ছে...' : state === 'Success' ? 'কাজ সফল হয়েছে' : state === 'Error' ? 'Voice input সমস্যা' : 'Voice ready • মাইক্রোফোন টিপুন'}
+              {state === 'Listening' ? 'শুনছি... আপনার কমান্ড বলুন' : state === 'Processing' ? 'কমান্ড প্রক্রিয়াভুক্ত হচ্ছে...' : state === 'Success' ? 'কাজ সফল হয়েছে' : state === 'Error' ? 'Voice input সমস্যা' : ''}
             </span>
           </div>
         </div>
@@ -479,6 +484,38 @@ export default function VoiceControl() {
           </button>
         </form>
       </div>
+
+      <AnimatePresence>
+        {voiceModalOpen && (
+          <motion.div
+            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[70] flex items-center justify-center bg-slate-950/40 px-4 backdrop-blur-[16px]"
+            role="dialog" aria-modal="true" aria-labelledby="voice-ai-title"
+          >
+            <motion.div
+              initial={{ opacity: 0, scale: 0.96, y: 8 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.96 }}
+              className="w-full max-w-md rounded-[20px] border border-white/10 bg-transparent p-6 text-white shadow-[0_24px_80px_rgba(0,0,0,.35)] backdrop-blur-[18px]"
+            >
+              <div className="flex items-center justify-between">
+                <div><p className="text-xs text-white/50">TaliKhata Voice AI</p><h2 id="voice-ai-title" className="mt-1 text-xl font-semibold">Voice command</h2></div>
+                <button type="button" onClick={() => setVoiceModalOpen(false)} aria-label="Close voice result" className="rounded-full p-2 text-white/60 hover:bg-white/10"><X size={18} /></button>
+              </div>
+              <div className="mt-5 rounded-[14px] border border-white/10 bg-white/[0.04] p-4">
+                <p className="text-xs font-medium text-white/45">আপনি বলেছেন</p>
+                <p className="mt-2 min-h-12 text-base leading-7 text-white">{text || 'শুনছি…'}</p>
+              </div>
+              <div className="mt-3 flex items-center gap-3 rounded-[14px] border border-white/10 bg-white/[0.04] p-4">
+                {state === 'Listening' && <Mic size={20} className="text-red-400" />}
+                {state === 'Processing' && <Loader2 size={20} className="animate-spin text-blue-400" />}
+                {state === 'Success' && <Check size={20} className="text-emerald-400" />}
+                {state === 'Error' && <AlertCircle size={20} className="text-red-400" />}
+                <div><p className="text-xs text-white/45">Status</p><p className="mt-1 text-sm font-semibold">{state === 'Listening' ? 'শুনছি…' : state === 'Processing' ? 'কমান্ড প্রক্রিয়াকরণ হচ্ছে…' : state === 'Success' ? 'কাজ সফল হয়েছে' : state === 'Error' ? 'কাজটি সম্পন্ন হয়নি' : 'প্রস্তুত'}</p></div>
+              </div>
+              {state === 'Success' && result && <div className="mt-3 rounded-[14px] border border-emerald-400/20 bg-emerald-400/10 p-4 text-sm text-emerald-100">{message(result.command, result.result)}</div>}
+              {state === 'Error' && error && <div className="mt-3 rounded-[14px] border border-red-400/20 bg-red-400/10 p-4 text-sm leading-6 text-red-100">{error}</div>}
+            </motion.div>
+          </motion.div>
+        )}
 
       <AnimatePresence>
         {pending && (
