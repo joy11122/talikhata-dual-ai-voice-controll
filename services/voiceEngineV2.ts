@@ -337,7 +337,7 @@ function parseLedgerDirectionCommand(text: string): VoiceV2Command | null {
   const amount = extractNumber(text);
   if (amount === null || amount <= 0) return null;
 
-  const numberPattern = '(?:\\d[\\d,]*(?:\\.\\d+)?|[০-৯]+|(?:[\\p{L}]+)(?:\\s+[\\p{L}]+){0,3})';
+  const numberPattern = '(?:\\d[\\d,]*(?:\\.\\d+)?|[০-৯]+|(?:[^\\d\\s]+)(?:\\s+[^\\d\\s]+){0,3})';
 
   const command = (action: VoiceV2Command['action'], rawName: string): VoiceV2Command => {
     const name = rawName
