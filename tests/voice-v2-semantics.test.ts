@@ -28,6 +28,23 @@ describe('Voice V2 Bangladesh ledger semantics', () => {
     expect(command.entityName).toBe(name);
   });
 
+
+
+  it.each([
+    ['৭০ টাকা দরে বিশ কেজি গম যোগ করো', 'গম', 20, 'কেজি', 70],
+    ['70 টাকা দরে 20 কেজি গম যোগ করো', 'গম', 20, 'কেজি', 70],
+    ['20 কেজি গম 70 টাকা দরে যোগ করো', 'গম', 20, 'কেজি', 70],
+  ])('%s → product add', async (text, name, quantity, unit, unitPrice) => {
+    const command = await parseVoiceV2(text);
+
+    expect(command.action).toBe('CREATE_PRODUCT');
+    expect(command.entityType).toBe('PRODUCT');
+    expect(command.entityName).toBe(name);
+    expect(command.quantity).toBe(quantity);
+    expect(command.unit).toBe(unit);
+    expect(command.unitPrice).toBe(unitPrice);
+  });
+
   it('supports Bengali word amounts in ledger commands', async () => {
     const command = await parseVoiceV2('রহিমকে পাঁচশ টাকা দিলাম');
 
