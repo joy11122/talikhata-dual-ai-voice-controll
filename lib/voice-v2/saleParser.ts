@@ -74,11 +74,12 @@ export function parseSaleCommand(text: string): VoiceV2Command | null {
     }
   }
 
-  // Compound/partial-payment sales:
+  // Amount-only/compound sale:
   // "রহিমকে ১০০০ টাকার মাল বিক্রি করলাম, ৪০০ টাকা দিল"
   // "রহিমকে ১০০০ টাকার মাল বিক্রি করলাম ৪০০ টাকা বাকি"
+  // No product/quantity is stated, so this is recorded as a non-inventory sale.
   const compoundSale = value.match(
-    /^(?:আজ\s+)?(.+?)\s*(?:কে)?\s+(\d[\d,]*(?:\.\d+)?)\s*টাকার?\s+(?:মাল|পণ্য|product|item)\s+(?:বিক্রি|বেচা|বেচে|sell|sold)\b.*?(?:(\d[\d,]*(?:\.\d+)?)\s*(?:টাকা|tk|taka)\s+(?:দিল|দিলাম|দিয়েছে|দিয়েছে|দিয়েছি|paid|pay)|([\d,]+(?:\.\d+)?)\s*(?:টাকা|tk|taka)\s+(?:বাকি|due))$/iu,
+    /^(?:আজ\s+)?(.+?)\s*(?:কে|ke)\s+(\d[\d,]*(?:\.\d+)?)\s*টাকার?\s+(?:মাল|পণ্য|product|item)\s+(?:বিক্রি|বেচা|বেচে|sell|sold)\b.*?(?:(\d[\d,]*(?:\.\d+)?)\s*(?:টাকা|tk|taka)\s+(?:দিল|দিলাম|দিয়েছে|দিয়েছে|দিয়েছি|paid|pay)|([\d,]+(?:\.\d+)?)\s*(?:টাকা|tk|taka)\s+(?:বাকি|due))$/iu,
   );
   if (compoundSale) {
     const party = compoundSale[1].trim();
@@ -88,13 +89,12 @@ export function parseSaleCommand(text: string): VoiceV2Command | null {
       : Math.max(0, total - Number(compoundSale[4].replace(/,/g, '')));
     if (party && total > 0 && paid >= 0 && paid <= total) {
       const command = blank('CREATE_SALE');
-      command.entityType = 'PRODUCT';
-      command.entityName = 'মাল';
+      command.entityType = 'NONE';
       command.query = party;
       command.partyType = 'CUSTOMER';
       command.amount = money(total);
       command.paidAmount = money(paid);
-      command.notes = 'Compound sale with partial payment';
+      command.notes = 'Non-inventory compound sale';
       return command;
     }
   }
