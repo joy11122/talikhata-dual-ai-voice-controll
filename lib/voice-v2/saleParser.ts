@@ -43,6 +43,37 @@ export function parseSaleCommand(text: string): VoiceV2Command | null {
   const ending = '(?:করলাম|করেছি|করল|করলেন|করো|করুন|করেছে|করেছিলাম|দিলাম|দিয়েছি|দিয়ে ফেলেছি|করছি|করলাম)?';
   const credit = /(?:বাকি|বাকিতে|ক্রেডিট|credit|due)/iu.test(value);
 
+  // Natural total-price sale:
+  // "রহিম ২ কেজি চাল নিল ১৪০ টাকা"
+  // "Rahim took 2 kg rice for 140 taka"
+  const namedTotalPattern = new RegExp(
+    '^(?:আজ\\s+)?(.+?)\\s*(?:কে|ke)?\\s+(\\d[\\d,]*(?:\\.\\d+)?)\\s*' +
+      units + '\\s+(.+?)\\s+(?:নিল|নিলো|নিয়েছে|নিয়েছে|নেবে|নিবে|took|take|bought)\\s+' +
+      '(\\d[\\d,]*(?:\\.\\d+)?)\\s*(?:টাকায়|টাকাতে|টাকা|tk|taka)?$',
+    'iu',
+  );
+  const namedTotal = value.match(namedTotalPattern);
+  if (namedTotal) {
+    const party = namedTotal[1].trim();
+    const quantity = Number(namedTotal[2].replace(/,/g, ''));
+    const unit = namedTotal[3];
+    const product = namedTotal[4].trim();
+    const total = Number(namedTotal[5].replace(/,/g, ''));
+    if (party && product && quantity > 0 && total > 0) {
+      const command = blank('CREATE_SALE');
+      command.entityType = 'PRODUCT';
+      command.entityName = product;
+      command.quantity = quantity;
+      command.unit = unit;
+      command.unitPrice = money(total / quantity);
+      command.query = party;
+      command.partyType = 'CUSTOMER';
+      command.amount = money(total);
+      command.paidAmount = money(total);
+      return command;
+    }
+  }
+
   // Named customer: "রহিমকে ২ কেজি চাল ৭০ টাকা দরে বিক্রি করলাম"
   const namedPattern = new RegExp(
     '^(?:আজ\\s+)?(.+?)\\s*(?:কে|ke)\\s+(\\d[\\d,]*(?:\\.\\d+)?)\\s*' +
