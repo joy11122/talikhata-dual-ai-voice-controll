@@ -230,11 +230,35 @@ function parseCreateProductCommand(text: string): VoiceV2Command | null {
   return null;
 }
 
+function replaceSpokenNumberWords(text: string): string {
+  const words: Record<string, number> = {
+    'শূন্য': 0, 'এক': 1, 'দুই': 2, 'তিন': 3, 'চার': 4, 'পাঁচ': 5, 'ছয়': 6, 'ছয়': 6,
+    'সাত': 7, 'আট': 8, 'নয়': 9, 'নয়': 9, 'দশ': 10, 'এগারো': 11, 'বারো': 12,
+    'তেরো': 13, 'চৌদ্দ': 14, 'পনেরো': 15, 'ষোল': 16, 'সতেরো': 17, 'আঠারো': 18,
+    'উনিশ': 19, 'বিশ': 20, 'একুশ': 21, 'বাইশ': 22, 'তেইশ': 23, 'চব্বিশ': 24,
+    'পঁচিশ': 25, 'ছাব্বিশ': 26, 'সাতাশ': 27, 'আটাশ': 28, 'উনত্রিশ': 29,
+    'ত্রিশ': 30, 'চল্লিশ': 40, 'পঞ্চাশ': 50, 'ষাট': 60, 'সত্তর': 70, 'আশি': 80,
+    'নব্বই': 90, 'একশ': 100, 'একশো': 100, 'দুইশ': 200, 'দুইশো': 200,
+    'তিনশ': 300, 'তিনশো': 300, 'চারশ': 400, 'চারশো': 400, 'পাঁচশ': 500,
+    'পাঁচশো': 500, 'ছয়শ': 600, 'ছয়শ': 600, 'সাতশ': 700, 'সাতশো': 700,
+    'আটশ': 800, 'আটশো': 800, 'নয়শ': 900, 'নয়শ': 900,
+  };
+
+  return text.split(/(\\s+)/).map((token) => {
+    const key = token.trim();
+    return key && Object.prototype.hasOwnProperty.call(words, key)
+      ? String(words[key])
+      : token;
+  }).join('');
+}
+
 function parseInventoryPurchaseCommand(text: string): VoiceV2Command | null {
-  const value = normalizeVoiceText(text)
-    .replace(/[।,!?;:]/g, ' ')
-    .replace(/\s+/g, ' ')
-    .trim();
+  const value = replaceSpokenNumberWords(
+    normalizeVoiceText(text)
+      .replace(/[।,!?;:]/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim(),
+  );
 
   const units = '(কেজি|kg|কিলো|কিলোগ্রাম|গ্রাম|gram|g|লিটার|liter|litre|l|পিস|পিছ|পিসে|টা|টি|piece|pieces|pcs|unit|ইউনিট|ডজন|dozen)';
   const number = '(\\d[\\d,]*(?:\\.\\d+)?)';
@@ -289,9 +313,14 @@ function parseInventoryPurchaseCommand(text: string): VoiceV2Command | null {
     const command = blank('CREATE_PRODUCT');
     command.entityType = 'PRODUCT';
     command.entityName = name;
-    command.quantity = nums[0] === nums[1] ? nums[0] : (value.indexOf(String(nums[0])) < value.indexOf(String(nums[1])) ? nums[0] : nums[1]);
+    const firstNumberIsPrice = new RegExp(
+      '^' + number + '\\s*(?:টাকা|taka|tk)?\\s*' + rateWords,
+      'iu',
+    ).test(value);
+
+    command.quantity = firstNumberIsPrice ? nums[1] : nums[0];
     command.unit = unit;
-    command.unitPrice = value.indexOf(String(command.quantity)) < value.lastIndexOf(String(nums[1])) ? nums[1] : nums[0];
+    command.unitPrice = firstNumberIsPrice ? nums[0] : nums[1];
     return command;
   }
   return null;
@@ -666,13 +695,16 @@ async function aiParse(
         VoiceV2Schema.safeParse(parsed);
 
       if (!validated.success) {
-        console.error(
-          '[VoiceV2] Invalid AI command:',
-          validated.error.flatten(),
-        );
+        const issues = validated.error.issues.map((issue) => ({
+          path: issue.path.join('.'),
+          code: issue.code,
+          message: issue.message,
+        }));
+
+        console.error('[VoiceV2] Invalid AI command:', issues);
 
         throw new Error(
-          'Provider returned a command that failed TaliKhata validation.',
+          `Provider returned a command that failed TaliKhata validation: ${issues.map((issue) => `${issue.path || 'command'}: ${issue.message}`).join('; ')}`,
         );
       }
 
