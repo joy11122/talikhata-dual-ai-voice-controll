@@ -2340,27 +2340,37 @@ export async function executeVoiceV2(
             }
           }
 
+          const isSupplier =
+            party.partyType === 'SUPPLIER' ||
+            command.partyType === 'SUPPLIER' ||
+            command.entityType === 'SUPPLIER';
+
+          // Balance convention:
+          // CUSTOMER: DUE_GIVEN +, DUE_RECEIVED -
+          // SUPPLIER: DUE_RECEIVED -, DUE_GIVEN +
+          // Therefore a supplier payable increases with CREATE_DUE,
+          // while a supplier payment uses DUE_GIVEN to reduce the payable.
+          const transactionType =
+            isSupplier
+              ? command.action === 'CREATE_DUE'
+                ? 'DUE_RECEIVED'
+                : 'DUE_GIVEN'
+              : command.action === 'CREATE_DUE'
+                ? 'DUE_GIVEN'
+                : 'DUE_RECEIVED';
+
           const transaction =
             await createTransaction(
               {
-                type:
-                  command.action ===
-                  'CREATE_DUE'
-                    ? 'DUE_GIVEN'
-                    : 'DUE_RECEIVED',
+                type: transactionType,
 
-                partyId: String(
-                  party._id,
-                ),
+                partyId: String(party._id),
 
-                amount:
-                  command.amount,
+                amount: command.amount,
 
                 quantity: 0,
 
-                notes:
-                  command.notes ||
-                  undefined,
+                notes: command.notes || undefined,
               },
               userId,
               session,
@@ -2368,6 +2378,8 @@ export async function executeVoiceV2(
 
           result = {
             type: command.action,
+            ledgerType: transactionType,
+            partyType: party.partyType,
             amount:
               command.amount,
 
