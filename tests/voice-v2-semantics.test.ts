@@ -170,6 +170,22 @@ describe('Voice V2 Bangladesh ledger semantics', () => {
   });
 
   it.each([
+    ['কাজল এর কাছে ১০০০ টাকা পাবো', 'CREATE_DUE'],
+    ['কাজল ১০০০ টাকা দেবে', 'CREATE_DUE'],
+    ['কাজল বাকি নিল ১০০০ টাকা', 'CREATE_DUE'],
+    ['Kajol 1000 taka debe', 'CREATE_DUE'],
+    ['Kajol baki nilo 1000 taka', 'CREATE_DUE'],
+    ['কাজলের কাছ থেকে ১০০০ টাকা পেলাম', 'RECEIVE_PAYMENT'],
+    ['কাজল ১০০০ টাকা দিল', 'RECEIVE_PAYMENT'],
+    ['কাজলের কাছে বাকি ১০০০ টাকা', 'CREATE_DUE'],
+    ['Kajol er kache pabo 1000 taka', 'CREATE_DUE'],
+    ['Kajol er kach theke pelam 1000 taka', 'RECEIVE_PAYMENT'],
+  ])('%s → deterministic direction', async (text, action) => {
+    const command = await parseVoiceV2(text);
+    expect(command.action).toBe(action);
+  });
+
+  it.each([
     ['করিমের কাছ থেকে ১০০০ টাকার মাল বাকিতে নিলাম', 'CREATE_PURCHASE'],
     ['করিমকে ১০০০ টাকা দিতে হবে', 'CREATE_DUE'],
     ['করিমের পাওনা ১০০০ টাকা', 'CREATE_DUE'],
