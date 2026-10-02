@@ -63,7 +63,7 @@ S.index({name:'text',category:'text',brand:'text',sku:'text',barcode:'text'});
 S.index({userId:1,name:1},{unique:true});
 S.index({userId:1,lowStockThreshold:1,stockQuantity:1});
 S.index({userId:1,sku:1},{unique:true,partialFilterExpression:{sku:{$type:'string'}}});
-S.index({userId:1,barcode:1},{unique:true,sparse:true});
+S.index({userId:1,barcode:1},{unique:true,partialFilterExpression:{barcode:{$type:'string'}}});
 
 const Product=(mongoose.models.Product as mongoose.Model<IProduct>)||mongoose.model<IProduct>('Product',S);
 export default Product;
