@@ -263,7 +263,7 @@ function parseInventoryPurchaseCommand(text: string): VoiceV2Command | null {
   const units = '(কেজি|kg|কিলো|কিলোগ্রাম|গ্রাম|gram|g|লিটার|liter|litre|l|পিস|পিছ|পিসে|টা|টি|piece|pieces|pcs|unit|ইউনিট|ডজন|dozen)';
   const number = '(\\d[\\d,]*(?:\\.\\d+)?)';
   const purchaseWords = '(?:কিনলাম|কিনেছি|কিনেছে|কেনা হলো|কেনা করলাম|ক্রয় করলাম|ক্রয় করেছি|ক্রয়|purchase|purchased|bought|buy|kinlam|kinechi)';
-  const addWords = '(?:যোগ করো|যোগ করুন|যোগ|দাও|দিয়ে রাখো|স্টকে রাখো|স্টক করো|add|create|put|stock in|stock-in)';
+  const addWords = '(?:যোগ করো|যোগ কর|যোগ করুন|যোগ|এড করো|এড কর|এড করুন|এড|অ্যাড করো|অ্যাড কর|অ্যাড করুন|অ্যাড|দাও|দিয়ে রাখো|স্টকে রাখো|স্টক করো|add করো|add কর|add|create|put|stock in|stock-in|jog koro|jog korun|jog kor|ed koro|ed kor|add koro|add kor)';
   const rateWords = '(?:দরে|ধরে|দাম(?:এ|তে)?|প্রতি|দর|dore|dhore|dam|dame|proti|per|rate|at)';
 
   const purchasePatterns = [
