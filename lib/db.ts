@@ -47,6 +47,42 @@ export async function connectDB(): Promise<typeof mongoose> {
 
   try {
     cached.conn = await cached.promise;
+
+    // Keep the Product SKU uniqueness rule aligned with the schema.
+    // The legacy userId_1_sku_1 index may already exist without the
+    // partial filter, which would still reject multiple null SKUs.
+    const db = cached.conn.connection.db;
+    if (db) {
+      const products = db.collection('products');
+      const indexName = 'userId_1_sku_1';
+
+      try {
+        const indexes = await products.indexes();
+        const skuIndex = indexes.find((index) => index.name === indexName);
+
+        if (skuIndex && !skuIndex.partialFilterExpression) {
+          await products.dropIndex(indexName);
+        }
+      } catch {
+        // Index inspection/migration must not hide an otherwise healthy DB connection.
+      }
+
+      try {
+        await products.createIndex(
+          { userId: 1, sku: 1 },
+          {
+            name: indexName,
+            unique: true,
+            partialFilterExpression: { sku: { $type: 'string' } },
+          },
+        );
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        if (!message.includes('already exists')) {
+          throw error;
+        }
+      }
+    }
   } catch (error) {
     cached.promise = null;
     throw error;
