@@ -53,7 +53,7 @@ describe('actual parser direction regression', () => {
     const parsed = await parseVoiceV2(text);
     expect(parsed.action).toBe(action);
     expect(parsed.partyType).toBe(partyType);
-    expect(parsed.amount).toBe(1000 === parsed.amount ? parsed.amount : parsed.amount);
+    expect(parsed.amount).toBe(1000);
   });
 });
 
