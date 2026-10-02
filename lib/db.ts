@@ -56,30 +56,39 @@ export async function connectDB(): Promise<typeof mongoose> {
       const products = db.collection('products');
       const indexName = 'userId_1_sku_1';
 
-      try {
-        const indexes = await products.indexes();
-        const skuIndex = indexes.find((index) => index.name === indexName);
+      const indexMigrations = [
+        {
+          name: 'userId_1_sku_1',
+          key: { userId: 1, sku: 1 },
+          partialFilterExpression: { sku: { $type: 'string' } },
+        },
+        {
+          name: 'userId_1_barcode_1',
+          key: { userId: 1, barcode: 1 },
+          partialFilterExpression: { barcode: { $type: 'string' } },
+        },
+      ];
 
-        if (skuIndex && !skuIndex.partialFilterExpression) {
-          await products.dropIndex(indexName);
+      const indexes = await products.indexes();
+
+      for (const migration of indexMigrations) {
+        const existing = indexes.find((index) => index.name === migration.name);
+
+        if (existing && !existing.partialFilterExpression) {
+          await products.dropIndex(migration.name);
         }
-      } catch {
-        // Index inspection/migration must not hide an otherwise healthy DB connection.
-      }
 
-      try {
-        await products.createIndex(
-          { userId: 1, sku: 1 },
-          {
-            name: indexName,
+        try {
+          await products.createIndex(migration.key, {
+            name: migration.name,
             unique: true,
-            partialFilterExpression: { sku: { $type: 'string' } },
-          },
-        );
-      } catch (error) {
-        const message = error instanceof Error ? error.message : String(error);
-        if (!message.includes('already exists')) {
-          throw error;
+            partialFilterExpression: migration.partialFilterExpression,
+          });
+        } catch (error) {
+          const message = error instanceof Error ? error.message : String(error);
+          if (!message.includes('already exists')) {
+            throw error;
+          }
         }
       }
     }
