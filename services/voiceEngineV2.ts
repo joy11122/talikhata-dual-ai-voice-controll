@@ -2541,6 +2541,13 @@ export async function executeVoiceV2(
 
           const product = resolvedProduct.product;
 
+          if (!product) {
+            throw new VoiceV2Error(
+              'PRODUCT_NOT_FOUND',
+              `Product "${command.entityName}" পাওয়া যায়নি।`,
+            );
+          }
+
           const transaction =
             await createTransaction(
               {
