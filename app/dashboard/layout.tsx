@@ -1,5 +1,6 @@
 'use client';
 
+import dynamic from 'next/dynamic';
 import Link from 'next/link';
 import { useState } from 'react';
 import { usePathname } from 'next/navigation';
@@ -10,7 +11,7 @@ import {
   Plus, PanelLeftClose, PanelLeftOpen, type LucideIcon,
 } from 'lucide-react';
 import UserMenu from '@/components/UserMenu';
-import VoiceControl from '@/components/VoiceControl';
+const VoiceControl = dynamic(() => import('@/components/VoiceControl'), { ssr: false, loading: () => null });
 import NotificationBell from '@/components/NotificationBell';
 import OwnerProfile from '@/components/OwnerProfile';
 
