@@ -273,10 +273,10 @@ TransactionSchema.index({
   timestamp: -1,
 });
 
-TransactionSchema.index({
-  userId: 1,
-  commandId: 1,
-});
+TransactionSchema.index(
+  { userId: 1, commandId: 1 },
+  { unique: true, partialFilterExpression: { commandId: { $exists: true } } },
+);
 
 /* -------------------------------------------------------------------------- */
 /* Model                                                                      */
