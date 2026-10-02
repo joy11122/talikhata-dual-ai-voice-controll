@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
 import {
   ArrowUpRight, ChevronRight, Mic, Plus,
-  Search, ShoppingCart, Users, WalletCards, Package, Sparkles,
+  Search, ShoppingCart, Users, WalletCards, Package, Sparkles, Send, Loader2, X,
 } from 'lucide-react';
 import { apiRequest } from '@/lib/api-client';
 
@@ -21,6 +21,11 @@ export default function DashboardPage(){
  const[data,setData]=useState<DashboardData|null>(null);
  const[loading,setLoading]=useState(true);
  const[query,setQuery]=useState('');
+ const[assistantQ,setAssistantQ]=useState('');
+ const[assistantA,setAssistantA]=useState('');
+ const[assistantBusy,setAssistantBusy]=useState(false);
+ const[assistantListening,setAssistantListening]=useState(false);
+ const[assistantError,setAssistantError]=useState('');
  const load=async()=>{try{setData(await apiRequest<DashboardData>('/api/dashboard'))}catch{setData(null)}finally{setLoading(false)}};
  useEffect(()=>{void load();const r=()=>void load();window.addEventListener('talikhata:refresh',r);return()=>window.removeEventListener('talikhata:refresh',r)},[]);
  const recent=useMemo(()=>data?.recent?.filter(x=>{const q=query.trim().toLowerCase();return !q||txTitle(x).toLowerCase().includes(q)||txStatus(x).toLowerCase().includes(q)}).slice(0,5)??[],[data,query]);
@@ -41,11 +46,44 @@ export default function DashboardPage(){
      <div className="tk-dash-date">আজকের হিসাব</div>
    </section>
 
-   <section className="tk-dash-command">
+   <section className="tk-dash-command" aria-label="AI Assistant">
      <Link href="/dashboard/assistant" className="tk-command-icon" aria-label="Open AI Assistant" title="Open AI Assistant"><Sparkles size={18}/></Link>
      <div className="min-w-0 flex-1">
-       <p>VOICE AI</p><strong>কথা বলেই দোকানের হিসাব করুন</strong>
-       <span>কাস্টমার, বিক্রি, পেমেন্ট, পণ্য ও খাতা—সবকিছু ভয়েসে।</span>
+       <p>AI ASSISTANT</p><strong>কথা বলেই দোকানের হিসাব জানুন</strong>
+       <span>বিক্রি, বাকি, পেমেন্ট, লাভ বা স্টক সম্পর্কে প্রশ্ন করুন।</span>
+       <form className="mt-3 flex items-center gap-2" onSubmit={async e=>{
+         e.preventDefault();
+         if(!assistantQ.trim()||assistantBusy)return;
+         setAssistantBusy(true);setAssistantError('');
+         try{
+           const res=await fetch('/api/assistant',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({question:assistantQ.trim()})});
+           const d=await res.json();
+           if(!res.ok)throw new Error(d.error||'Assistant request failed');
+           setAssistantA(d.answer||'No answer');
+         }catch(err){setAssistantError(err instanceof Error?err.message:'Assistant unavailable')}
+         finally{setAssistantBusy(false)}
+       }}>
+         <input value={assistantQ} onChange={e=>setAssistantQ(e.target.value)} className="min-w-0 flex-1 border-0 bg-transparent px-3 py-2 text-sm outline-none" placeholder="যেমন: আজকের বিক্রি কেমন?" aria-label="Ask AI Assistant"/>
+         <button type="button" onClick={()=>{
+           setAssistantError('');
+           if(!('SpeechRecognition' in window||'webkitSpeechRecognition' in window)){setAssistantError('Voice input is not supported in this browser.');return;}
+           const C=(window as any).SpeechRecognition||(window as any).webkitSpeechRecognition;
+           const recognition=new C();
+           recognition.lang='bn-BD';recognition.continuous=false;recognition.interimResults=true;
+           recognition.onstart=()=>setAssistantListening(true);
+           recognition.onresult=(e:any)=>{let value='';for(let i=0;i<e.results.length;i++)value+=e.results[i][0].transcript;setAssistantQ(value)};
+           recognition.onerror=()=>{setAssistantListening(false);setAssistantError('Voice input could not be captured. Please try again.')};
+           recognition.onend=()=>setAssistantListening(false);
+           recognition.start();
+         }} disabled={assistantListening||assistantBusy} aria-label="Speak your assistant question" title="Speak your assistant question" className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl transition ${assistantListening?'bg-emerald-600 text-white':'bg-slate-100 text-emerald-700 hover:bg-emerald-50'} disabled:opacity-50`}>
+           {assistantListening?<Mic className="animate-pulse" size={18}/>:<Mic size={18}/>}
+         </button>
+         <button type="submit" disabled={assistantBusy||!assistantQ.trim()} aria-label="Send assistant question" title="Send assistant question" className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-slate-900 text-white transition hover:bg-slate-800 disabled:opacity-40">
+           {assistantBusy?<Loader2 className="animate-spin" size={17}/>:<Send size={17}/>}
+         </button>
+       </form>
+       {assistantA&&!assistantBusy&&<div className="mt-2 flex items-start gap-2 text-sm text-white/75"><span className="min-w-0 flex-1">{assistantA}</span><button type="button" onClick={()=>setAssistantA('')} aria-label="Clear assistant answer"><X size={15}/></button></div>}
+       {assistantError&&<p className="mt-2 text-xs text-red-300" role="alert">{assistantError}</p>}
      </div>
      <button type="button" className="tk-command-button" aria-label="Open Voice AI" onClick={()=>window.dispatchEvent(new CustomEvent('talikhata:voice-open'))}><Mic size={19}/><span>Voice AI</span></button>
    </section>
