@@ -119,6 +119,107 @@ button:disabled{cursor:not-allowed;opacity:.65}
 .field-with-icon{padding-left:2.625rem!important}
 .relative > svg + .field{padding-left:2.625rem!important}
 
+
+
+/* TaliKhata Dashboard — new voice-first workspace */
+.tk-new-dashboard{color:#f8fafc;font-family:var(--tk-dash-sans)}
+.tk-dash-welcome{display:flex;align-items:flex-end;justify-content:space-between;gap:1rem;padding:1rem 0 .75rem}
+.tk-dash-kicker{margin:0;font-size:.64rem;font-weight:800;letter-spacing:.14em;color:#9bb8ff}
+.tk-dash-welcome h1{margin:.35rem 0 0;font-size:clamp(1.35rem,3vw,2rem);font-weight:800;letter-spacing:-.035em}
+.tk-dash-subtitle{margin:.35rem 0 0;color:rgba(255,255,255,.52);font-size:.78rem}
+.tk-dash-date{flex:none;color:rgba(255,255,255,.42);font-size:.72rem;text-align:right}
+
+.tk-dash-command{display:flex;align-items:center;gap:.85rem;padding:1rem;border:1px solid rgba(118,146,255,.28);border-radius:18px;background:linear-gradient(105deg,rgba(27,44,193,.20),rgba(118,146,255,.06));box-shadow:0 12px 32px rgba(0,0,0,.12)}
+.tk-command-icon{display:flex;align-items:center;justify-content:center;width:42px;height:42px;flex:none;border-radius:13px;background:rgba(118,146,255,.14);color:#abd2fa}
+.tk-dash-command p{margin:0;color:#9bb8ff;font-size:.6rem;font-weight:800;letter-spacing:.12em}
+.tk-dash-command strong{display:block;margin-top:.15rem;font-size:.92rem}
+.tk-dash-command span{display:block;margin-top:.18rem;color:rgba(255,255,255,.48);font-size:.7rem}
+.tk-command-button{display:flex;align-items:center;gap:.45rem;min-height:42px;flex:none;border:1px solid rgba(171,210,250,.22);border-radius:12px;padding:.55rem .8rem;background:rgba(118,146,255,.12);color:#fff;font-size:.75rem;font-weight:800;cursor:pointer}
+.tk-command-button:hover{background:rgba(118,146,255,.20)}
+
+.tk-dash-stats{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:.75rem;margin-top:.85rem}
+.tk-stat-card{display:block;min-width:0;padding:1rem;border:1px solid rgba(171,210,250,.13);border-radius:18px;background:rgba(255,255,255,.025);text-decoration:none;box-shadow:0 8px 26px rgba(0,0,0,.10);transition:transform .16s ease,border-color .16s ease,background .16s ease}
+.tk-stat-card:hover{transform:translateY(-2px);border-color:rgba(118,146,255,.34);background:rgba(118,146,255,.05)}
+.tk-stat-top{display:flex;align-items:center;justify-content:space-between;gap:.5rem}
+.tk-stat-label{font-size:.75rem;font-weight:700;color:rgba(255,255,255,.62)}
+.tk-stat-icon{display:flex;align-items:center;justify-content:center;width:32px;height:32px;border-radius:10px;background:rgba(118,146,255,.11);color:#abd2fa}
+.tk-stat-card strong{display:block;margin-top:.7rem;color:#fff;font-family:var(--tk-dash-mono);font-size:clamp(1.35rem,4vw,1.9rem);letter-spacing:-.045em}
+.tk-stat-meta{display:flex;align-items:center;gap:.15rem;margin-top:.4rem;color:#9bb8ff;font-size:.66rem;font-weight:700}
+.tk-stat-due .tk-stat-icon{background:rgba(171,210,250,.10);color:#abd2fa}
+
+.tk-quick-actions,.tk-new-insight,.tk-ledger-new{margin-top:1.35rem}
+.tk-new-section-head{display:flex;align-items:flex-end;justify-content:space-between;gap:1rem;margin-bottom:.65rem}
+.tk-new-section-head h2{margin-top:.22rem;font-size:1.08rem;font-weight:800;letter-spacing:-.025em}
+.tk-new-section-head>a{display:flex;align-items:center;gap:.15rem;color:#9bb8ff;font-size:.7rem;font-weight:700;text-decoration:none}
+
+.tk-action-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:.6rem}
+.tk-action-grid>a{display:flex;align-items:center;gap:.65rem;min-width:0;padding:.75rem;border:1px solid rgba(255,255,255,.09);border-radius:15px;background:rgba(255,255,255,.018);color:#fff;text-decoration:none;transition:border-color .16s ease,background .16s ease}
+.tk-action-grid>a:hover{border-color:rgba(118,146,255,.28);background:rgba(118,146,255,.045)}
+.tk-action-grid>a>svg:first-child{width:19px;color:#9bb8ff;flex:none}
+.tk-action-grid>a>svg:last-child{margin-left:auto;color:rgba(255,255,255,.28);flex:none}
+.tk-action-grid span{display:block;min-width:0}
+.tk-action-grid b,.tk-action-grid small{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.tk-action-grid b{font-size:.72rem}
+.tk-action-grid small{margin-top:.12rem;color:rgba(255,255,255,.40);font-size:.59rem}
+
+.tk-new-insight{padding:1rem;border:1px solid rgba(171,210,250,.12);border-radius:19px;background:linear-gradient(145deg,rgba(27,44,193,.14),rgba(9,21,64,.20));box-shadow:0 10px 30px rgba(0,0,0,.10)}
+.tk-insight-grid-new{display:grid;grid-template-columns:180px minmax(0,1fr);gap:1rem;align-items:stretch}
+.tk-insight-number{display:flex;flex-direction:column;justify-content:center;padding:.9rem;border:1px solid rgba(255,255,255,.08);border-radius:14px;background:rgba(255,255,255,.018)}
+.tk-insight-number span{font-size:.65rem;color:rgba(255,255,255,.42)}
+.tk-insight-number strong{margin:.25rem 0;font-family:var(--tk-dash-mono);font-size:1.35rem;color:#fff}
+.tk-insight-number p{margin:0;color:rgba(255,255,255,.43);font-size:.66rem;line-height:1.45}
+.tk-chart-new{display:flex;align-items:flex-end;justify-content:space-between;gap:.45rem;height:170px;padding:.5rem .2rem 0;border-bottom:1px solid rgba(118,146,255,.16)}
+.tk-chart-new-col{display:flex;align-items:center;justify-content:flex-end;flex:1;height:100%;min-width:0;flex-direction:column;gap:.3rem}
+.tk-chart-new-col span{height:15px;overflow:hidden;color:rgba(255,255,255,.35);font-size:7px;white-space:nowrap}
+.tk-chart-new-col i{display:block;width:min(30px,65%);min-height:3px;border-radius:6px 6px 2px 2px;background:linear-gradient(to top,#1b2cc1,#7692ff);box-shadow:0 0 14px rgba(118,146,255,.18)}
+.tk-chart-new-col small{margin-top:auto;color:rgba(255,255,255,.42);font-size:.58rem}
+
+.tk-ledger-search{display:flex;align-items:center;gap:.6rem;height:46px;padding:0 .75rem;margin-bottom:.65rem;border:1px solid rgba(255,255,255,.09);border-radius:13px;background:rgba(255,255,255,.018);color:rgba(255,255,255,.42)}
+.tk-ledger-search input{min-width:0;flex:1;border:0;outline:0;background:transparent;color:#fff;font-size:.75rem}
+.tk-ledger-search input::placeholder{color:rgba(255,255,255,.35)}
+.tk-ledger-list{overflow:hidden;border:1px solid rgba(255,255,255,.08);border-radius:17px;background:rgba(255,255,255,.012)}
+.tk-ledger-row{position:relative;display:flex;align-items:center;gap:.7rem;min-height:68px;padding:.7rem .8rem;border-bottom:1px solid rgba(255,255,255,.055);color:#fff;text-decoration:none}
+.tk-ledger-row:last-child{border-bottom:0}
+.tk-ledger-row:hover{background:rgba(118,146,255,.035)}
+.tk-ledger-dot{width:8px;height:8px;flex:0 0 8px;border-radius:999px;background:#7692ff}
+.tk-ledger-dot.paid{background:#4ade80;box-shadow:0 0 8px rgba(74,222,128,.32)}
+.tk-ledger-dot.due{background:#fb7185;box-shadow:0 0 8px rgba(251,113,133,.25)}
+.tk-ledger-row h3{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:.76rem;font-weight:800}
+.tk-ledger-row p{margin-top:.2rem;color:rgba(255,255,255,.40);font-size:.61rem}
+.tk-ledger-row em{border:1px solid rgba(118,146,255,.20);border-radius:999px;padding:.1rem .35rem;color:#9bb8ff;font-size:.46rem;font-style:normal;font-weight:800}
+.tk-ledger-row>strong{flex:none;color:#f8fafc;font-family:var(--tk-dash-mono);font-size:.76rem}
+.tk-ledger-row>strong.positive{color:#4ade80}
+.tk-ledger-chevron{flex:none;color:rgba(255,255,255,.24)}
+
+.tk-floating-voice{display:none}
+
+@media(max-width:700px){
+ .tk-dash-welcome{align-items:flex-start;padding-top:.25rem}
+ .tk-dash-date{display:none}
+ .tk-dash-command{padding:.8rem;gap:.65rem}
+ .tk-command-icon{width:36px;height:36px;border-radius:11px}
+ .tk-dash-command span{display:none}
+ .tk-command-button{padding:.5rem .65rem}
+ .tk-action-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+ .tk-insight-grid-new{grid-template-columns:1fr;gap:.7rem}
+ .tk-insight-number{min-height:88px}
+ .tk-chart-new{height:155px}
+}
+@media(max-width:480px){
+ .tk-dash-stats{gap:.6rem}
+ .tk-stat-card{padding:.85rem}
+ .tk-stat-card strong{font-size:1.25rem}
+ .tk-action-grid{gap:.5rem}
+ .tk-action-grid>a{padding:.7rem .65rem}
+ .tk-ledger-row{padding:.65rem .7rem}
+ .tk-ledger-row>strong{font-size:.68rem}
+}
+@media(max-width:360px){
+ .tk-dash-command strong{font-size:.8rem}
+ .tk-command-button span{display:none}
+ .tk-action-grid>a>svg:last-child{display:none}
+}
+
 /* Dashboard v2 — receipt/ledger inspired visual system */
 :root{
   --tk-dash-bg:#091540;
