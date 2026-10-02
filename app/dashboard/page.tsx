@@ -48,20 +48,7 @@ export default function DashboardPage(){
 
    <section className="tk-dash-command relative overflow-hidden" aria-label="AI Assistant">
      <div className="pointer-events-none absolute -right-20 -top-24 h-48 w-48 rounded-full bg-[#7692ff]/10 blur-3xl" />
-     <Link href="/dashboard/assistant" className="group relative flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-white/10 bg-white/[.04] text-[#abd2fa] transition hover:border-white/20 hover:bg-white/[.07]" aria-label="Open AI Assistant" title="Open AI Assistant">
-       <Sparkles size={18} className="transition-transform group-hover:rotate-12" />
-     </Link>
-     <div className="relative min-w-0 flex-1">
-       <div className="flex items-start justify-between gap-3">
-         <div className="min-w-0">
-           <div className="flex items-center gap-2">
-             <p>AI ASSISTANT</p>
-             <span className="inline-flex items-center gap-1 rounded-full border border-white/10 bg-white/[.035] px-2 py-0.5 text-[10px] font-medium text-white/55"><span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />READY</span>
-           </div>
-           <strong>দোকানের হিসাব জানতে সরাসরি জিজ্ঞেস করুন</strong>
-           <span>বিক্রি, বাকি, পেমেন্ট বা স্টক—টাইপ করুন অথবা মাইকে বলুন।</span>
-         </div>
-       </div>
+          <div className="relative min-w-0 flex-1">
        <form className="mt-4 flex w-full items-center gap-1.5 rounded-2xl border border-white/10 bg-white/[.035] p-1.5 shadow-[inset_0_1px_0_rgba(255,255,255,.04)]" onSubmit={async e=>{
          e.preventDefault();
          if(!assistantQ.trim()||assistantBusy)return;
@@ -97,7 +84,6 @@ export default function DashboardPage(){
        {assistantA&&!assistantBusy&&<div className="mt-3 rounded-xl border border-white/10 bg-white/[.025] px-3.5 py-3 text-sm text-white/75"><div className="flex items-start gap-2"><span className="min-w-0 flex-1 leading-6">{assistantA}</span><button type="button" onClick={()=>setAssistantA('')} aria-label="Clear assistant answer" className="shrink-0 rounded-lg p-1 text-white/35 transition hover:bg-white/[.06] hover:text-white/70"><X size={15}/></button></div></div>}
        {assistantError&&<p className="mt-2 px-1 text-xs text-red-300/90" role="alert">{assistantError}</p>}
      </div>
-     <button type="button" className="tk-command-button relative shrink-0" aria-label="Open Voice AI" onClick={()=>window.dispatchEvent(new CustomEvent('talikhata:voice-open'))}><Mic size={18}/><span>Voice AI</span></button>
    </section>
 
    <section className="tk-dash-stats">
