@@ -346,14 +346,13 @@ function parseInventoryPurchaseCommand(text: string): VoiceV2Command | null {
  * RECEIVE_PAYMENT is an amount actually received by the shop.
  */
 function parseLedgerDirectionCommand(text: string): VoiceV2Command | null {
-  const value = norm(replaceSpokenNumberWords(text));
-  const amountMatch = value.match(/(?:^|\s)(\d[\d,]*(?:\.\d+)?)(?=\s*(?:টাকা|tk|taka)?(?:\s|$))/i);
-  if (!amountMatch) return null;
+  const value = norm(text);
+  const amount = extractNumber(text);
+  if (amount === null || amount <= 0) return null;
 
-  const amount = Number(amountMatch[1].replace(/,/g, ''));
-  if (!Number.isFinite(amount) || amount <= 0) return null;
-
-  const amountText = amountMatch[1];
+  // Covers Arabic/Bengali digits and short Bengali number phrases such as
+  // "এক হাজার", while the final amount is always taken from extractNumber().
+  const amountPattern = '(?:\\d[\\d,]*(?:\\.\\d+)?|[০-৯]+|(?:[\\p{L}]+)(?:\\s+[\\p{L}]+){0,3})';
 
   const make = (action: VoiceV2Command['action'], name: string): VoiceV2Command => {
     const command = blank(action);
@@ -366,16 +365,16 @@ function parseLedgerDirectionCommand(text: string): VoiceV2Command | null {
 
   const cleanParty = (raw: string): string => raw
     .trim()
-    .replace(/^(?:আমি|আমরা|i|we)\s+/iu, '')
-    .replace(/\s+(?:আমাকে|আমার কাছে|me|to me)$/iu, '')
-    .replace(/(?:এর|র|কে|দের)$/u, '')
-    .replace(/\s+(?:er|r|ke|der)$/i, '')
+    .replace(/^(?:আমি|আমরা|i|we)\\s+/iu, '')
+    .replace(/\\s+(?:আমাকে|আমার কাছে|me|to me)$/iu, '')
+    .replace(/(?:의|এর|র|কে|দের)$/u, '')
+    .replace(/\\s+(?:er|r|ke|der)$/i, '')
     .trim();
 
   // Actual money received from the party.
   let m = value.match(new RegExp(
     '^(.+?)\\s*(?:এর|র)?\\s*(?:কাছ থেকে|কাছথেকে|থেকে)\\s*' +
-    amountText +
+    amountPattern +
     '\\s*(?:টাকা|tk|taka)?\\s*(?:পেলাম|পেয়েছি|পেয়েছি|নিলাম|নিয়েছি|নিয়েছি|আদায় করলাম|আদায় করলাম|received|got|nilam|pelam|peyechi)$',
     'iu',
   ));
@@ -384,28 +383,27 @@ function parseLedgerDirectionCommand(text: string): VoiceV2Command | null {
   // "কাজল 1000 দিল" / "কাজল আমাকে 1000 দিল".
   m = value.match(new RegExp(
     '^(.+?)(?:\\s+(?:আমাকে|আমার কাছে|me|to me))?\\s*' +
-    amountText +
+    amountPattern +
     '\\s*(?:টাকা|tk|taka)?\\s*(?:দিল|দিলো|দিয়েছে|দিয়েছে|জমা দিল|জমা দিয়েছে|জমা দিয়েছে|পরিশোধ করল|পরিশোধ করেছে|paid|received|dilo|diyeche)$',
     'iu',
   ));
   if (m?.[1]) return make('RECEIVE_PAYMENT', cleanParty(m[1]));
 
-  // Customer will pay later: "কাজল দেবে 1000", "কাজল 1000 দেবে".
+  // Customer will pay later: "কাজল দেবে 1000", "কাজল 1000 দেবে",
+  // and "কাজলের কাছে পাবো 1000".
   m = value.match(new RegExp(
-    '^(.+?)\\s*(?:আমাকে|আমার কাছে)?\\s*দেবে\\s*' +
-    amountText +
+    '^(.+?)\\s*(?:আমাকে|আমার কাছে)?\\s*দেবে\\s*' + amountPattern +
     '\\s*(?:টাকা|tk|taka)?$',
     'iu',
   ))
     || value.match(new RegExp(
-      '^(.+?)\\s*' + amountText +
+      '^(.+?)\\s*' + amountPattern +
       '\\s*(?:টাকা|tk|taka)?\\s*দেবে$',
       'iu',
     ))
     || value.match(new RegExp(
       '^(.+?)\\s*(?:এর|র)\\s*(?:কাছে)\\s*(?:পাবো|পাব|পাবে|পাও|pabo|pabe)\\s*' +
-      amountText +
-      '\\s*(?:টাকা|tk|taka)?$',
+      amountPattern + '\\s*(?:টাকা|tk|taka)?$',
       'iu',
     ));
   if (m?.[1]) return make('CREATE_DUE', cleanParty(m[1]));
@@ -413,28 +411,25 @@ function parseLedgerDirectionCommand(text: string): VoiceV2Command | null {
   // Existing due wording.
   m = value.match(new RegExp(
     '^(.+?)\\s*(?:এর|র)\\s*(?:কাছে\\s*)?(?:বাকি|পাওনা|দেনা|due|baki)\\s*' +
-    amountText +
-    '\\s*(?:টাকা|tk|taka)?$',
+    amountPattern + '\\s*(?:টাকা|tk|taka)?$',
     'iu',
   ))
     || value.match(new RegExp(
       '^(.+?)\\s*(?:এর|র)\\s*(?:কাছে\\s*)?' +
-      amountText +
-      '\\s*(?:টাকা|tk|taka)?\\s*(?:বাকি|পাওনা|দেনা|due|baki)$',
+      amountPattern + '\\s*(?:টাকা|tk|taka)?\\s*(?:বাকি|পাওনা|দেনা|due|baki)$',
       'iu',
     ));
   if (m?.[1]) return make('CREATE_DUE', cleanParty(m[1]));
 
   // Outgoing: "কাজলকে দিলাম 1000", "কাজলকে 1000 দিলাম",
-  // "কাজলকে দেবো 1000", and their Banglish forms.
+  // "কাজলকে দেবো 1000", and Banglish variants.
   m = value.match(new RegExp(
     '^(.+?)\\s*(?:কে|ke)\\s*(?:দিলাম|দিল|দিয়েছি|দিয়েছি|দেবো|দেব|দিবো|দিব|dilam|dil|diyechi|debo|deb|dibo)\\s*' +
-    amountText +
-    '\\s*(?:টাকা|tk|taka)?(?:\\s+.*)?$',
+    amountPattern + '\\s*(?:টাকা|tk|taka)?(?:\\s+.*)?$',
     'iu',
   ))
     || value.match(new RegExp(
-      '^(.+?)\\s*(?:কে|ke)\\s*' + amountText +
+      '^(.+?)\\s*(?:কে|ke)\\s*' + amountPattern +
       '\\s*(?:টাকা|tk|taka)?\\s*(?:বাকি\\s*)?(?:দিলাম|দিল|দিয়েছি|দিয়েছি|দেবো|দেব|দিবো|দিব|dilam|dil|diyechi|debo|deb|dibo)(?:\\s+.*)?$',
       'iu',
     ));
@@ -443,22 +438,20 @@ function parseLedgerDirectionCommand(text: string): VoiceV2Command | null {
   // Credit-taking: "কাজল নিল 500 বাকি" / "কাজল নেবে 500 বাকি".
   m = value.match(new RegExp(
     '^(.+?)\\s*(?:নিল|নিয়েছে|নিয়েছে|নেবে|নিবে|nil|nilo|nibe|nebe)\\s*' +
-    amountText +
-    '\\s*(?:টাকা|tk|taka)?\\s*(?:বাকি|ধারে|উধারে|credit|baki|due)(?:\\s+.*)?$',
+    amountPattern + '\\s*(?:টাকা|tk|taka)?\\s*(?:বাকি|ধারে|উধারে|credit|baki|due)(?:\\s+.*)?$',
     'iu',
   ))
     || value.match(new RegExp(
-      '^(.+?)\\s*' + amountText +
+      '^(.+?)\\s*' + amountPattern +
       '\\s*(?:টাকা|tk|taka)?\\s*(?:বাকি|ধারে|উধারে|credit|baki|due)\\s*(?:নিল|নিয়েছে|নিয়েছে|নেবে|নিবে|nil|nilo|nibe|nebe)$',
       'iu',
     ));
   if (m?.[1]) return make('CREATE_DUE', cleanParty(m[1]));
 
-  // Explicit "আমি কাজলের কাছ থেকে নেবো/পাবো" is treated as receipt.
+  // Explicit "আমি কাজলের কাছ থেকে নেবো/পাবো" means a receipt.
   m = value.match(new RegExp(
     '^(?:আমি|আমরা|i|we)\\s+(.+?)\\s*(?:এর|র)?\\s*(?:কাছ থেকে|কাছথেকে|থেকে)\\s*' +
-    amountText +
-    '\\s*(?:টাকা|tk|taka)?\\s*(?:নেবো|নেব|নিবো|নিব|পাবো|পাব|nebo|nibo|pabo)$',
+    amountPattern + '\\s*(?:টাকা|tk|taka)?\\s*(?:নেবো|নেব|নিবো|নিব|পাবো|পাব|nebo|nibo|pabo)$',
     'iu',
   ));
   if (m?.[1]) return make('RECEIVE_PAYMENT', cleanParty(m[1]));
