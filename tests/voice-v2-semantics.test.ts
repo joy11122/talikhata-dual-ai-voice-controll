@@ -144,6 +144,20 @@ describe('Voice V2 Bangladesh ledger semantics', () => {
   });
 
   it.each([
+    ['করিমের কাছ থেকে ২০ কেজি চাল ৭০ টাকা দরে কিনলাম, ৫০০ টাকা দিলাম', 'করিম', 20, 70, 1400, 500],
+    ['করিমের কাছ থেকে ২০ কেজি চাল ৭০ টাকা দরে কিনলাম ৯০০ টাকা বাকি', 'করিম', 20, 70, 1400, 500],
+    ['Karim er kach theke 20 kg chal 70 taka dore kinlam, 500 taka dilam', 'Karim', 20, 70, 1400, 500],
+  ])('%s → compound purchase', async (text, supplier, quantity, unitPrice, amount, paid) => {
+    const command = await parseVoiceV2(text);
+    expect(command.action).toBe('CREATE_PURCHASE');
+    expect(command.query).toBe(supplier);
+    expect(command.quantity).toBe(quantity);
+    expect(command.unitPrice).toBe(unitPrice);
+    expect(command.amount).toBe(amount);
+    expect(command.paidAmount).toBe(paid);
+  });
+
+  it.each([
     ['করিমের কাছ থেকে ২০ কেজি চাল ৭০ টাকা দরে কিনলাম', 'CREATE_PURCHASE'],
     ['২০ কেজি চাল ১৪০০ টাকায় কিনলাম', 'CREATE_PURCHASE'],
     ['করিমের কাছ থেকে ২০ কেজি চাল বাকিতে কিনলাম', 'CREATE_PURCHASE'],
