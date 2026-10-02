@@ -42,7 +42,7 @@ export default function DashboardPage(){
    </section>
 
    <section className="tk-dash-command">
-     <div className="tk-command-icon"><Sparkles size={18}/></div>
+     <button type="button" className="tk-command-icon" aria-label="Open AI Assistant" onClick={()=>window.dispatchEvent(new CustomEvent('talikhata:assistant-open'))}><Sparkles size={18}/></button>
      <div className="min-w-0 flex-1">
        <p>VOICE AI</p><strong>কথা বলেই দোকানের হিসাব করুন</strong>
        <span>কাস্টমার, বিক্রি, পেমেন্ট, পণ্য ও খাতা—সবকিছু ভয়েসে।</span>
