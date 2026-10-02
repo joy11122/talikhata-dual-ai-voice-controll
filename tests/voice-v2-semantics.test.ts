@@ -41,11 +41,33 @@ describe('Voice V2 Bangladesh ledger semantics', () => {
   it.each([
     ['রহিম বাকি নিল ৫০০ টাকা', 'CREATE_DUE', 'রহিম', 500],
     ['রহিম ৫০০ টাকা বাকিতে নিল', 'CREATE_DUE', 'রহিম', 500],
+    ['রহিমের কাছে ৫০০ টাকা পাবো', 'CREATE_DUE', 'রহিম', 500],
+    ['রহিম ৫০০ টাকা দেবে', 'CREATE_DUE', 'রহিম', 500],
+    ['রহিম বাকি নিল এক হাজার টাকা', 'CREATE_DUE', 'রহিম', 1000],
     ['Rahim baki nilo 500 tk', 'CREATE_DUE', 'Rahim', 500],
+    ['Rahim 500 taka baki nilo', 'CREATE_DUE', 'Rahim', 500],
     ['Rahim took 500 on credit', 'CREATE_DUE', 'Rahim', 500],
+    ['Rahim owes me 500', 'CREATE_DUE', 'Rahim', 500],
     ['রহিম ৫০০ টাকা দিল', 'RECEIVE_PAYMENT', 'রহিম', 500],
+    ['রহিম ৫০০ টাকা পরিশোধ করল', 'RECEIVE_PAYMENT', 'রহিম', 500],
+    ['রহিমের কাছ থেকে ৫০০ টাকা পেলাম', 'RECEIVE_PAYMENT', 'রহিম', 500],
+    ['রহিমের কাছ থেকে ৫০০ টাকা নিলাম', 'RECEIVE_PAYMENT', 'রহিম', 500],
     ['Rahim 500 taka dilo', 'RECEIVE_PAYMENT', 'Rahim', 500],
-  ])('%s → regression ledger direction', async (text, action, name, amount) => {
+    ['Rahim paid 500', 'RECEIVE_PAYMENT', 'Rahim', 500],
+    ['I received 500 from Rahim', 'RECEIVE_PAYMENT', 'Rahim', 500],
+  ])('%s → customer ledger direction', async (text, action, name, amount) => {
+    const command = await parseVoiceV2(text);
+    expect(command.action).toBe(action);
+    expect(command.entityName).toBe(name);
+    expect(command.amount).toBe(amount);
+  });
+
+  it.each([
+    ['করিমের কাছ থেকে ১০০০ টাকার মাল বাকিতে নিলাম', 'CREATE_DUE', 'করিম', 1000],
+    ['করিমকে ৫০০ টাকা দিতে হবে', 'CREATE_DUE', 'করিম', 500],
+    ['Karim supplier ke 1000 taka due ache', 'CREATE_DUE', 'Karim', 1000],
+    ['করিমের কাছ থেকে ৫০০ টাকা নিলাম', 'RECEIVE_PAYMENT', 'করিম', 500],
+  ])('%s → supplier/payment direction', async (text, action, name, amount) => {
     const command = await parseVoiceV2(text);
     expect(command.action).toBe(action);
     expect(command.entityName).toBe(name);
