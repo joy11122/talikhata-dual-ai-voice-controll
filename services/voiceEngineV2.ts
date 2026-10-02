@@ -244,7 +244,7 @@ function replaceSpokenNumberWords(text: string): string {
     'আটশ': 800, 'আটশো': 800, 'নয়শ': 900, 'নয়শ': 900,
   };
 
-  return text.split(/(\\s+)/).map((token) => {
+  return text.split(/(\s+)/).map((token) => {
     const key = token.trim();
     return key && Object.prototype.hasOwnProperty.call(words, key)
       ? String(words[key])
