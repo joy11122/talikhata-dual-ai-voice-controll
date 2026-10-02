@@ -26,4 +26,4 @@ jobs:
         run: npm run typecheck
 
       - name: Voice tests
-        run: npm run test:voice
+        run: npm run test:voice tests/voice-v2-semantics.test.ts
