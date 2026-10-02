@@ -291,33 +291,56 @@ function parseNaturalPurchaseCommand(text: string): VoiceV2Command | null {
   );
   const n = '(\\d[\\d,]*(?:\\.\\d+)?)';
   const units = '(কেজি|kg|কিলো|কিলোগ্রাম|গ্রাম|gram|g|লিটার|liter|litre|l|পিস|পিছ|টা|টি|piece|pieces|pcs|unit|ইউনিট)';
-  const supplier = '(.+?)\\s+(?:এর\\s+কাছ\\s+থেকে|এর\\s+কাছথেকে|এর\\s+থেকে|er\\s+kach\\s+theke|er\\s+theke)\\s+';
-  const buy = '(?:কিনলাম|কিনেছি|কিনেছে|কেনা হলো|ক্রয় করলাম|ক্রয় করেছি|bought|buy|purchased|purchase|kinlam|kinechi)';
+  const supplierPrefix = '(.+?)\\s+(?:এর\\s+কাছ\\s+থেকে|এর\\s+কাছথেকে|এর\\s+থেকে|er\\s+kach\\s+theke|er\\s+theke)\\s+';
+  const purchaseVerb = '(?:কিনলাম|কিনেছি|কিনেছে|কেনা হলো|ক্রয় করলাম|ক্রয় করেছি|bought|buy|purchased|purchase|kinlam|kinechi)';
   const rate = '(?:টাকা|taka|tk)?\\s*(?:দরে|ধরে|প্রতি|দর|rate|per|dore|dhore|proti)';
   const paid = '(?:দিলাম|দিল|দিয়েছি|দিয়েছি|দিয়েছে|দিয়েছে|paid|pay|dilam|dil|diyechi|diyeche)';
   const due = '(?:বাকি|বাকিতে|due|credit)';
+
   const patterns = [
-    new RegExp('^'+supplier+n+'\\s*'+units+'\\s+(.+?)\\s+'+n+'\\s*'+rate+'\\s*'+buy+'(?:\\s*[, ]+)(?:'+n+')\\s*(?:টাকা|taka|tk)?\\s+'+paid+'$','iu'),
-    new RegExp('^'+supplier+n+'\\s*'+units+'\\s+(.+?)\\s+'+n+'\\s*'+rate+'\\s*'+buy+'\\s+(?:'+n+')\\s*(?:টাকা|taka|tk)?\\s+'+due+'$','iu'),
+    new RegExp(
+      '^' + supplierPrefix + n + '\\s*' + units + '\\s+(.+?)\\s+' + n +
+      '\\s*' + rate + '\\s*' + purchaseVerb +
+      '(?:\\s*[, ]+|\\s+)' + n + '\\s*(?:টাকা|taka|tk)?\\s+' + paid + '$',
+      'iu',
+    ),
+    new RegExp(
+      '^' + supplierPrefix + n + '\\s*' + units + '\\s+(.+?)\\s+' + n +
+      '\\s*' + rate + '\\s*' + purchaseVerb +
+      '\\s+' + due + '$',
+      'iu',
+    ),
   ];
-  for(const pattern of patterns){
-    const m=value.match(pattern); if(!m) continue;
-    const supplierName=m[1]?.trim();
-    const quantity=Number(m[2].replace(/,/g,''));
-    const unit=m[3];
-    const product=m[4]?.trim();
-    const unitPrice=Number(m[5].replace(/,/g,''));
-    const finalAmount=Number(m[6].replace(/,/g,''));
-    const total=money(quantity*unitPrice);
-    if(!supplierName||!product||!unit||quantity<=0||unitPrice<=0||total<=0) continue;
-    const isPaid=/\s(?:দিলাম|দিল|দিয়েছি|দিয়েছি|দিয়েছে|দিয়েছে|paid|pay|dilam|dil|diyechi|diyeche)$/iu.test(value);
-    const command=blank('CREATE_PURCHASE');
-    command.entityType='PRODUCT'; command.entityName=product; command.query=supplierName;
-    command.partyType='SUPPLIER'; command.quantity=quantity; command.unit=unit; command.unitPrice=unitPrice;
-    command.amount=total; command.paidAmount=money(isPaid?finalAmount:total-finalAmount);
-    if(command.paidAmount! < 0 || command.paidAmount! > total) return null;
+
+  for (const pattern of patterns) {
+    const match = value.match(pattern);
+    if (!match) continue;
+
+    const supplierName = match[1]?.trim();
+    const quantity = Number(match[2]?.replace(/,/g, ''));
+    const unit = match[3];
+    const product = match[4]?.trim();
+    const unitPrice = Number(match[5]?.replace(/,/g, ''));
+    const paidAmount = match[6] ? Number(match[6].replace(/,/g, '')) : 0;
+    const total = money(quantity * unitPrice);
+
+    if (!supplierName || !product || !unit || quantity <= 0 || unitPrice <= 0 || total <= 0) continue;
+    if (paidAmount < 0 || paidAmount > total) continue;
+
+    const isExplicitDue = new RegExp('(?:' + due + ')$', 'iu').test(value);
+    const command = blank('CREATE_PURCHASE');
+    command.entityType = 'PRODUCT';
+    command.entityName = product;
+    command.query = supplierName;
+    command.partyType = 'SUPPLIER';
+    command.quantity = quantity;
+    command.unit = unit;
+    command.unitPrice = unitPrice;
+    command.amount = total;
+    command.paidAmount = isExplicitDue ? 0 : money(paidAmount);
     return command;
   }
+
   return null;
 }
 
