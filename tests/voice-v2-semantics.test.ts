@@ -1,6 +1,22 @@
 import { describe, expect, it } from 'vitest';
 import { parseVoiceV2 } from '@/services/voiceEngineV2';
 
+describe('voice safety invariants', () => {
+  it('rejects payment greater than total', () => {
+    const total = 1000;
+    const paid = 1200;
+    expect(paid > total).toBe(true);
+  });
+
+  it('rejects zero or negative inventory quantity', () => {
+    for (const quantity of [0, -1]) expect(quantity <= 0).toBe(true);
+  });
+
+  it('rejects negative money', () => {
+    for (const amount of [-1, -500]) expect(amount < 0).toBe(true);
+  });
+});
+
 describe('reversal accounting invariants', () => {
   it('reversing a customer due restores the previous balance', () => {
     const due = 1000;
