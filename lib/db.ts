@@ -56,7 +56,11 @@ export async function connectDB(): Promise<typeof mongoose> {
       const products = db.collection('products');
       const indexName = 'userId_1_sku_1';
 
-      const indexMigrations = [
+      const indexMigrations: Array<{
+        name: string;
+        key: Record<string, 1 | -1>;
+        partialFilterExpression: Record<string, unknown>;
+      }> = [
         {
           name: 'userId_1_sku_1',
           key: { userId: 1, sku: 1 },
