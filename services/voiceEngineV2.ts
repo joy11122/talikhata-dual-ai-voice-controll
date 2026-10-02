@@ -308,12 +308,14 @@ function parseNaturalPurchaseCommand(text: string): VoiceV2Command | null {
     const name = (m[nameIndex] || '').replace(/^(?:আজ|today)\s+/iu, '').trim();
     if (!name || !unit || !Number.isFinite(quantity) || !Number.isFinite(unitPrice)) continue;
 
-    const command = blank('STOCK_IN');
+    const command = blank('CREATE_PURCHASE');
     command.entityType = 'PRODUCT';
     command.entityName = name;
     command.quantity = quantity;
     command.unit = unit;
     command.unitPrice = unitPrice;
+    command.amount = money(quantity * unitPrice);
+    command.paidAmount = command.amount;
     return command;
   }
 
@@ -2583,28 +2585,33 @@ export async function executeVoiceV2(
               transaction,
             };
           } else {
-            if (!command.query) {
+            let supplier: any = null;
+            let supplierCreated = false;
+
+            if (command.query) {
+              const supplierResolved = await findOrCreateParty(
+                userId,
+                command.query,
+                session,
+                'SUPPLIER',
+              );
+              supplier = supplierResolved.party;
+              supplierCreated = supplierResolved.created;
+            } else if (paid < total) {
               throw new VoiceV2Error(
                 'PARTY_REQUIRED',
-                'Supplier name is required for a purchase',
+                'A supplier name is required for an unpaid purchase.',
               );
             }
-
-            const supplierResolved = await findOrCreateParty(userId, command.query, session, 'SUPPLIER');
-            const supplier = supplierResolved.party;
 
             const transaction =
               await createTransaction(
                 {
                   type: 'STOCK_IN',
 
-                  partyId: String(
-                    supplier._id,
-                  ),
+                  partyId: supplier ? String(supplier._id) : undefined,
 
-                  productId: String(
-                    product._id,
-                  ),
+                  productId: String(product._id),
 
                   amount: total,
 
@@ -2628,17 +2635,15 @@ export async function executeVoiceV2(
               total - paid,
             );
 
-            if (due > 0) {
+            if (due > 0 && supplier) {
               await Party.updateOne(
                 {
-                  _id:
-                    supplier._id,
+                  _id: supplier._id,
                   userId: uid,
                 },
                 {
                   $inc: {
-                    currentBalance:
-                      -due,
+                    currentBalance: -due,
                   },
                 },
                 {
@@ -2650,11 +2655,10 @@ export async function executeVoiceV2(
             result = {
               type: 'CREATE_PURCHASE',
 
-              product:
-                product.name,
+              product: product.name,
 
-              supplier: supplier.name,
-              supplierCreated: supplierResolved.created,
+              supplier: supplier?.name ?? null,
+              supplierCreated,
               total,
 
               paidAmount: paid,
