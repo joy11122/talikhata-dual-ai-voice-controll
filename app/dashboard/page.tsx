@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
 import {
-  ArrowUpRight, ChevronRight, Download, Mic, Plus,
+  ArrowUpRight, ChevronRight, Mic, Plus,
   Search, ShoppingCart, Users, WalletCards, Package, Sparkles,
 } from 'lucide-react';
 import { apiRequest } from '@/lib/api-client';
@@ -38,7 +38,7 @@ export default function DashboardPage(){
        <h1>আজকের হিসাব এক নজরে</h1>
        <p className="tk-dash-subtitle">আপনার দোকানের গুরুত্বপূর্ণ হিসাব ও খাতা এখানে।</p>
      </div>
-     <div className="tk-dash-date">{new Date().toLocaleDateString('bn-BD',{weekday:'long',day:'numeric',month:'long'})}</div>
+     <div className="tk-dash-date">আজকের হিসাব</div>
    </section>
 
    <section className="tk-dash-command">
