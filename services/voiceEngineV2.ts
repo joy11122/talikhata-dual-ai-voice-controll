@@ -345,6 +345,7 @@ function parseLedgerDirectionCommand(text: string): VoiceV2Command | null {
       .replace(/^(?:আমি|আমরা|i|we)\\s+/iu, '')
       .replace(/\\s+(?:আমাকে|আমার কাছে|me|to me)$/iu, '')
       .replace(/(?:এর|ের|র|কে|দের)$/u, '')
+      .replace(/ে$/u, '')
       .replace(/\\s+(?:er|r|ke|der)$/i, '')
       .trim();
 
