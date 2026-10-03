@@ -664,7 +664,7 @@ export default function Page() {
             {rows.map((purchase) => (
               <div
                 key={purchase._id}
-                className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-white/10 bg-transparent backdrop-blur-[8px] px-4 py-3 transition hover:bg-white/[0.04]"
+                className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-white/10 bg-transparent backdrop-blur-[8px] px-4 py-3 transition hover:bg-transparent/[0.04]"
               >
                 <div>
                   <p className="font-medium">
