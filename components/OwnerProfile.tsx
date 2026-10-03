@@ -56,7 +56,7 @@ export default function OwnerProfile({name,email,image}:{name?:string|null;email
      <div
        role="menu"
        aria-label="Profile menu"
-       className="absolute right-0 top-[calc(100%+10px)] z-[80] w-[min(280px,calc(100vw-24px))] overflow-hidden rounded-2xl border border-white/10 bg-[#091540]/95 p-2 shadow-[0_18px_50px_rgba(0,0,0,0.35)] backdrop-blur-[24px]"
+       className="absolute right-0 top-[calc(100%+10px)] z-[80] w-[min(280px,calc(100vw-24px))] max-h-[calc(100vh-90px)] overflow-y-auto overscroll-contain rounded-2xl border border-white/10 bg-[#091540]/95 p-2 shadow-[0_18px_50px_rgba(0,0,0,0.35)] backdrop-blur-[24px]"
      >
        <div className="flex items-center gap-3 border-b border-white/[0.08] px-3 py-3">
          <div className="h-10 w-10 shrink-0 overflow-hidden rounded-full border border-white/10 bg-transparent">
