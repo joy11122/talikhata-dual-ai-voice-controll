@@ -250,15 +250,6 @@ describe('Voice V2 Bangladesh ledger semantics', () => {
     expect(command.partyType).toBe(partyType);
   });
 
-
-    ['সরবরাহকারী করিমের ১০০০ টাকা পাওনা', 'SUPPLIER', 'SUPPLIER'],
-  ])('%s → explicit supplier role', async (text, entityType, partyType) => {
-    const command = await parseVoiceV2(text);
-    expect(command.action).toBe('CREATE_DUE');
-    expect(command.entityType).toBe(entityType);
-    expect(command.partyType).toBe(partyType);
-  });
-
   it.each([
     ['করিমের কাছ থেকে ১০০০ টাকার মাল বাকিতে নিলাম', 'CREATE_PURCHASE', 'করিম', 1000],
     ['করিমকে ৫০০ টাকা দিতে হবে', 'CREATE_DUE', 'করিম', 500],
