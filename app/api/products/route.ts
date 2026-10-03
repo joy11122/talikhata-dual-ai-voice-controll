@@ -14,7 +14,7 @@ export async function GET(req:Request){
   await connectDB();
   const url=new URL(req.url);
   const q=url.searchParams.get('q');
-  const filter:any={userId:new Types.ObjectId(s.user.id)};
+  const filter:any={userId:new Types.ObjectId(s.user.id),isDeleted:false};
   if(q){
     const rx=new RegExp(escapeRegex(q),'i');
     filter.$or=[{name:rx},{category:rx},{brand:rx},{sku:rx},{barcode:rx}];
@@ -50,14 +50,14 @@ export async function POST(req:Request){
     if(!data.sellPrice)data.sellPrice=data.variants[0]?.sellPrice||0;
     if(!data.buyPrice)data.buyPrice=data.variants[0]?.buyPrice||0;
   }
-  const duplicate=await Product.findOne({userId:uid,name:new RegExp('^'+escapeRegex(data.name)+'$','i')});
+  const duplicate=await Product.findOne({userId:uid,isDeleted:false,name:new RegExp('^'+escapeRegex(data.name)+'$','i')});
   if(duplicate)return NextResponse.json({error:'Product already exists'},{status:409});
   if(data.sku){
-    const duplicateSku=await Product.findOne({userId:uid,sku:data.sku});
+    const duplicateSku=await Product.findOne({userId:uid,isDeleted:false,sku:data.sku});
     if(duplicateSku)return NextResponse.json({error:'SKU already exists'},{status:409});
   }
   if(data.barcode){
-    const duplicateBarcode=await Product.findOne({userId:uid,barcode:data.barcode});
+    const duplicateBarcode=await Product.findOne({userId:uid,isDeleted:false,barcode:data.barcode});
     if(duplicateBarcode)return NextResponse.json({error:'Barcode already exists'},{status:409});
   }
   const session=await Product.startSession();
