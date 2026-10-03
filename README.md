@@ -79,3 +79,5 @@ For Android/Capacitor:
 npm run cap:sync
 npm run cap:android
 ```
+
+<!-- deployment sync check -->
