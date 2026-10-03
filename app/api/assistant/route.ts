@@ -64,7 +64,7 @@ export async function POST(req:Request){
   const productMatches=assistantProducts.filter(p=>q.includes(normalizeBangla(p.name))||(p.sku&&q.includes(normalizeBangla(p.sku)))||(p.barcode&&q.includes(normalizeBangla(p.barcode))));
   if(productMatches.length>1)return NextResponse.json({mode:'normal',answer:productMatches.map(p=>p.name).join(' ও ')+' নামে একাধিক product আছে। নির্দিষ্ট product-এর নাম বলুন।'});
   const product=productMatches[0];
-  const tx=assistantTransactions.filter(x=>!party||String(x.partyId)===String(party._id)).filter(x=>!product||String(x.productId)===String(product._id));
+  const txRows=assistantTransactions.filter(x=>!party||String(x.partyId)===String(party._id)).filter(x=>!product||String(x.productId)===String(product._id));
   const total=(type:string,rows=txRows)=>rows.filter(x=>x.type===type).reduce((a,x)=>a+Number(x.amount||0),0);
 
   if(intent==='CUSTOMERS'){
@@ -103,7 +103,7 @@ export async function POST(req:Request){
     return NextResponse.json({mode:'normal',answer:range.label+'-এর হিসাব:\nSales '+money(sales)+'\nCOGS '+money(cogs)+'\nGross profit '+money(sales-cogs)+'\nExpense '+money(expense)+'\nNet profit '+money(sales-cogs-expense)});
   }
   if(intent==='TOP_SALES'){
-    const map=new Map<string,number>();tx.filter(x=>x.type==='SALE').forEach(x=>map.set(String(x.productId),Number(map.get(String(x.productId))||0)+Number(x.amount||0)));
+    const map=new Map<string,number>();txRows.filter(x=>x.type==='SALE').forEach(x=>map.set(String(x.productId),Number(map.get(String(x.productId))||0)+Number(x.amount||0)));
     const top=[...map.entries()].sort((a,b)=>b[1]-a[1]).slice(0,5).map(([id,v])=>(assistantProducts.find(p=>String(p._id)===id)?.name||'অজানা')+': '+money(v));
     return NextResponse.json({mode:'normal',answer:range.label+'-এর top sales:\n'+(top.map(x=>'- '+x).join('\n')||'কোনো sale নেই')});
   }
@@ -122,14 +122,14 @@ export async function POST(req:Request){
     const now=new Date();
     const window=getSalesWindow(q,now);
     const query:any={userId:uid,type:'SALE',isDeleted:false,timestamp:{$gte:window.start,$lte:window.end||now}};
-    const txRows=await Transaction.find(query).sort({timestamp:1}).lean();
+    const saleTxRows=await Transaction.find(query).sort({timestamp:1}).lean();
     const [parties,products]=await Promise.all([
       Party.find({userId:uid}).select('_id name').lean(),
       Product.find({userId:uid}).select('_id name unit').lean(),
     ]);
     const productMap=new Map(products.map(p=>[String(p._id),p]));
     const partyMap=new Map(parties.map(p=>[String(p._id),p]));
-    const items=tx.map((x:any)=>({
+    const items=saleTxRows.map((x:any)=>({
       description:productMap.get(String(x.productId))?.name||'Sale',
       quantity:x.quantity||1,
       unit:productMap.get(String(x.productId))?.unit||'unit',
@@ -146,14 +146,14 @@ export async function POST(req:Request){
     });
   }
 
-  const tx=await Transaction.find({userId:uid,timestamp:{$gte:new Date(Date.now()-7*86_400_000)},isDeleted:false}).lean();
+  const recentTx=await Transaction.find({userId:uid,timestamp:{$gte:new Date(Date.now()-7*86_400_000)},isDeleted:false}).lean();
   const [parties,products]=await Promise.all([
     Party.find({userId:uid}).lean(),
     Product.find({userId:uid}).lean(),
   ]);
   let answer='আপনার প্রশ্নটি বুঝতে পারিনি। বিক্রি, লাভ, পাওনা, দেনা বা স্টক সম্পর্কে জিজ্ঞেস করুন।';
   if(q.includes('লাভ')||q.includes('profit')){
-    const sales=tx.filter(x=>x.type==='SALE').reduce((a,x)=>a+x.amount,0),cogs=txRows.filter(x=>x.type==='SALE').reduce((a,x)=>a+(x.costAmount||0),0),exp=tx.filter(x=>x.type==='EXPENSE').reduce((a,x)=>a+x.amount,0);
+    const sales=recentTx.filter(x=>x.type==='SALE').reduce((a,x)=>a+Number(x.amount||0),0),cogs=recentTx.filter(x=>x.type==='SALE').reduce((a,x)=>a+Number(x.costAmount||0),0),exp=recentTx.filter(x=>x.type==='EXPENSE').reduce((a,x)=>a+Number(x.amount||0),0);
     answer=`গত ৭ দিনের আনুমানিক নিট লাভ ৳${(sales-cogs-exp).toLocaleString()}।`;
   }else if(q.includes('পাওনা')||q.includes('receivable'))
     answer=`আপনার মোট পাওনা ৳${parties.filter(x=>x.partyType==='CUSTOMER'&&x.currentBalance>0).reduce((a,x)=>a+x.currentBalance,0).toLocaleString()}।`;
@@ -169,7 +169,7 @@ export async function POST(req:Request){
           model:getModel(provider),temperature:.2,
           messages:[
             {role:'system',content:'You are TaliKhata shop assistant. Answer in Bengali when the user asks in Bengali. Use ONLY the supplied shop data; never invent financial facts. Give a concise, organized answer. Use short headings and bullet-like lines when useful. Do not format as a receipt; sales questions are handled separately.'},
-            {role:'user',content:JSON.stringify({question,transactions:tx,parties,products})}
+            {role:'user',content:JSON.stringify({question,transactions:recentTx,parties,products})}
           ]
         });
         answer=completion.choices[0]?.message?.content||answer;break;
