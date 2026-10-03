@@ -48,7 +48,6 @@ export async function POST(req:Request){
     label:String(body.label||'Manual backup').slice(0,120),
     snapshot:clean({parties,products,transactions}),
   });
-  await Backup.deleteMany({userId:uid,_id:{$ne:backup._id}}).sort({createdAt:1}).limit(0);
   await Backup.deleteMany({userId:uid,createdAt:{$lt:new Date(Date.now()-90*86400000)}});
   return NextResponse.json({ok:true,backup:{_id:backup._id,source:backup.source,label:backup.label,createdAt:backup.createdAt}},{status:201});
 }
@@ -64,9 +63,9 @@ export async function PATCH(req:Request){
   const session=await mongooseStart();
   try{
     const snap:any=backup.snapshot;
-    for(const raw of snap.parties||[]){const row={...raw};delete row._id;await Party.updateOne({_id:raw._id,userId:uid},{$set:{...row,isDeleted:false,deletedAt:null,deletedBy:null}},{upsert:true,session});}
-    for(const raw of snap.products||[]){const row={...raw};delete row._id;await Product.updateOne({_id:raw._id,userId:uid},{$set:{...row,isDeleted:false,deletedAt:null,deletedBy:null}},{upsert:true,session});}
-    for(const raw of snap.transactions||[]){const row={...raw};delete row._id;await Transaction.updateOne({_id:raw._id,userId:uid},{$set:{...row,isDeleted:false,deletedAt:null,deletedBy:null}},{upsert:true,session});}
+    for(const raw of snap.parties||[]){const row={...raw};delete row._id;delete row.createdAt;delete row.updatedAt;await Party.updateOne({_id:raw._id,userId:uid},{$set:{...row,isDeleted:false},$unset:{deletedAt:1,deletedBy:1},$setOnInsert:{_id:raw._id}},{upsert:true,session});}
+    for(const raw of snap.products||[]){const row={...raw};delete row._id;delete row.createdAt;delete row.updatedAt;await Product.updateOne({_id:raw._id,userId:uid},{$set:{...row,isDeleted:false},$unset:{deletedAt:1,deletedBy:1},$setOnInsert:{_id:raw._id}},{upsert:true,session});}
+    for(const raw of snap.transactions||[]){const row={...raw};delete row._id;delete row.createdAt;delete row.updatedAt;await Transaction.updateOne({_id:raw._id,userId:uid},{$set:{...row,isDeleted:false},$unset:{deletedAt:1,deletedBy:1},$setOnInsert:{_id:raw._id}},{upsert:true,session});}
     await session.commitTransaction();
     return NextResponse.json({ok:true});
   }catch(e){await session.abortTransaction();return NextResponse.json({error:e instanceof Error?e.message:'Restore failed'},{status:400});}
