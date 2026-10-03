@@ -110,7 +110,7 @@ export async function POST(req:Request){
   if(intent==='TRANSACTIONS'){
     const n=Math.min(Number(q.match(/(?:শেষ|last|recent)\s*(\d+)/)?.[1]||10),50);
     const pm=new Map(assistantParties.map(p=>[String(p._id),p.name])),xm=new Map(assistantProducts.map(p=>[String(p._id),p.name]));
-    const lines=tx.slice(0,n).map(x=>new Date(x.timestamp).toLocaleDateString('bn-BD')+' — '+x.type+' — '+(xm.get(String(x.productId))||'')+' — '+(pm.get(String(x.partyId))||'নগদ')+' — '+money(x.amount));
+    const lines=txRows.slice(0,n).map(x=>new Date(x.timestamp).toLocaleDateString('bn-BD')+' — '+x.type+' — '+(xm.get(String(x.productId))||'')+' — '+(pm.get(String(x.partyId))||'নগদ')+' — '+money(x.amount));
     return NextResponse.json({mode:'normal',answer:range.label+'-এর '+lines.length+'টি transaction:\n'+(lines.join('\n')||'কোনো transaction নেই')});
   }
   if(intent==='SUMMARY'){
