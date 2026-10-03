@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { parseVoiceV2 } from '../services/voiceEngineV2';
+import { parseVoiceV2Local } from '../services/voiceEngineV2';
 describe('bangla banglish english command matrix', () => {
   const cases = [
     ['রহিম বাকি নিল ৫০০ টাকা', 'CUSTOMER_DUE'],
@@ -49,7 +49,7 @@ describe('actual parser direction regression', () => {
   ];
 
   it.each(cases)('parses "$text" with the correct ledger direction', async ({ text, action, partyType, amount }) => {
-    const parsed = await parseVoiceV2(text);
+    const parsed = await parseVoiceV2Local(text);
     expect(parsed.action).toBe(action);
     expect(parsed.partyType).toBe(partyType);
     expect(parsed.amount).toBe(amount);
@@ -208,7 +208,7 @@ describe('Voice V2 Bangladesh ledger semantics', () => {
     ['কাজলের কাছে এক হাজার টাকা পাবো', 'CREATE_DUE', 'কাজল', 1000],
     ['Rahim ke 500 taka dilam', 'CREATE_DUE', 'Rahim', 500],
   ])('%s → %s', async (text, action, name, amount) => {
-    const command = await parseVoiceV2(text);
+    const command = await parseVoiceV2Local(text);
 
     expect(command.action).toBe(action);
     expect(command.entityName).toBe(name);
@@ -233,7 +233,7 @@ describe('Voice V2 Bangladesh ledger semantics', () => {
     ['Rahim paid 500', 'RECEIVE_PAYMENT', 'Rahim', 500],
     ['I received 500 from Rahim', 'RECEIVE_PAYMENT', 'Rahim', 500],
   ])('%s → customer ledger direction', async (text, action, name, amount) => {
-    const command = await parseVoiceV2(text);
+    const command = await parseVoiceV2Local(text);
     expect(command.action).toBe(action);
     expect(command.entityName).toBe(name);
     expect(command.amount).toBe(amount);
@@ -243,7 +243,7 @@ describe('Voice V2 Bangladesh ledger semantics', () => {
     ['supplier Karim ke 1000 taka dite hobe', 'SUPPLIER', 'SUPPLIER', 'CREATE_DUE'],
     ['সরবরাহকারী করিমের ১০০০ টাকা পাওনা', 'SUPPLIER', 'SUPPLIER', 'CREATE_DUE'],
   ])('%s → explicit supplier role', async (text, entityType, partyType, action) => {
-    const command = await parseVoiceV2(text);
+    const command = await parseVoiceV2Local(text);
     expect(command.action).toBe(action);
     expect(command.entityType).toBe(entityType);
     expect(command.partyType).toBe(partyType);
@@ -255,7 +255,7 @@ describe('Voice V2 Bangladesh ledger semantics', () => {
     ['Karim supplier ke 1000 taka due ache', 'CREATE_DUE', 'Karim', 1000],
     ['করিমের কাছ থেকে ৫০০ টাকা নিলাম', 'RECEIVE_PAYMENT', 'করিম', 500],
   ])('%s → supplier/payment direction', async (text, action, name, amount) => {
-    const command = await parseVoiceV2(text);
+    const command = await parseVoiceV2Local(text);
     expect(command.action).toBe(action);
     expect(command.entityName).toBe(name);
     expect(command.amount).toBe(amount);
@@ -265,7 +265,7 @@ describe('Voice V2 Bangladesh ledger semantics', () => {
     ['রহিমের বাকি কত', 'READ_BALANCE', 'রহিম'],
     ['Rahim er baki koto', 'READ_BALANCE', 'Rahim'],
   ])('%s → balance query', async (text, action, name) => {
-    const command = await parseVoiceV2(text);
+    const command = await parseVoiceV2Local(text);
 
     expect(command.action).toBe(action);
     expect(command.entityName).toBe(name);
@@ -278,7 +278,7 @@ describe('Voice V2 Bangladesh ledger semantics', () => {
     ['70 টাকা দরে 20 কেজি গম যোগ করো', 'গম', 20, 'কেজি', 70],
     ['20 কেজি গম 70 টাকা দরে যোগ করো', 'গম', 20, 'কেজি', 70],
   ])('%s → product add', async (text, name, quantity, unit, unitPrice) => {
-    const command = await parseVoiceV2(text);
+    const command = await parseVoiceV2Local(text);
 
     expect(command.action).toBe('CREATE_PRODUCT');
     expect(command.entityType).toBe('PRODUCT');
@@ -300,7 +300,7 @@ describe('Voice V2 Bangladesh ledger semantics', () => {
     ['রহিমকে ১০০০ টাকার মাল বিক্রি করলাম, ৪০০ টাকা দিল', 'CREATE_SALE'],
     ['রহিমকে ১০০০ টাকার মাল বিক্রি করলাম ৪০০ টাকা বাকি', 'CREATE_SALE'],
   ])('%s → sale command', async (text, action) => {
-    const command = await parseVoiceV2(text);
+    const command = await parseVoiceV2Local(text);
     expect(command.action).toBe(action);
   });
 
@@ -308,7 +308,7 @@ describe('Voice V2 Bangladesh ledger semantics', () => {
     ['রহিমকে ১০০০ টাকার মাল বিক্রি করলাম, ৪০০ টাকা দিল', 'রহিম', 1000, 400],
     ['রহিমকে ১০০০ টাকার মাল বিক্রি করলাম ৪০০ টাকা বাকি', 'রহিম', 1000, 600],
   ])('%s → amount-only compound sale', async (text, party, total, paid) => {
-    const command = await parseVoiceV2(text);
+    const command = await parseVoiceV2Local(text);
     expect(command.action).toBe('CREATE_SALE');
     expect(command.query).toBe(party);
     expect(command.amount).toBe(total);
@@ -321,7 +321,7 @@ describe('Voice V2 Bangladesh ledger semantics', () => {
     ['রহিম ২ কেজি চাল নিল ১৪০ টাকা', 'CREATE_SALE', 'রহিম', 'চাল', 2, 70, 140],
     ['Rahim took 2 kg rice for 140 taka', 'CREATE_SALE', 'Rahim', 'rice', 2, 70, 140],
   ])('%s → natural total sale', async (text, action, party, product, quantity, unitPrice, amount) => {
-    const command = await parseVoiceV2(text);
+    const command = await parseVoiceV2Local(text);
     expect(command.action).toBe(action);
     expect(command.query).toBe(party);
     expect(command.entityName).toBe(product);
@@ -335,7 +335,7 @@ describe('Voice V2 Bangladesh ledger semantics', () => {
     ['করিমের কাছ থেকে ২০ কেজি চাল ৭০ টাকা দরে কিনলাম ৯০০ টাকা বাকি', 'করিম', 20, 70, 1400, 500],
     ['Karim er kach theke 20 kg chal 70 taka dore kinlam, 500 taka dilam', 'Karim', 20, 70, 1400, 500],
   ])('%s → compound purchase', async (text, supplier, quantity, unitPrice, amount, paid) => {
-    const command = await parseVoiceV2(text);
+    const command = await parseVoiceV2Local(text);
     expect(command.action).toBe('CREATE_PURCHASE');
     expect(command.query).toBe(supplier);
     expect(command.quantity).toBe(quantity);
@@ -352,7 +352,7 @@ describe('Voice V2 Bangladesh ledger semantics', () => {
     ['Karim er kach theke 20 kg chal 70 taka dore kinlam', 'CREATE_PURCHASE'],
     ['I bought 20 kg rice from Karim for 1400 taka', 'CREATE_PURCHASE'],
   ])('%s → purchase command', async (text, action) => {
-    const command = await parseVoiceV2(text);
+    const command = await parseVoiceV2Local(text);
     expect(command.action).toBe(action);
   });
 
@@ -368,7 +368,7 @@ describe('Voice V2 Bangladesh ledger semantics', () => {
     ['Kajol er kache pabo 1000 taka', 'CREATE_DUE'],
     ['Kajol er kach theke pelam 1000 taka', 'RECEIVE_PAYMENT'],
   ])('%s → deterministic direction', async (text, action) => {
-    const command = await parseVoiceV2(text);
+    const command = await parseVoiceV2Local(text);
     expect(command.action).toBe(action);
   });
 
@@ -384,7 +384,7 @@ describe('Voice V2 Bangladesh ledger semantics', () => {
     ['Rahim 1000 taka baki nilo', 'CREATE_DUE'],
     ['Rahim 1000 taka paid', 'RECEIVE_PAYMENT'],
   ])('%s → cross-direction action', async (text, action) => {
-    const command = await parseVoiceV2(text);
+    const command = await parseVoiceV2Local(text);
     expect(command.action).toBe(action);
   });
 
@@ -397,13 +397,13 @@ describe('Voice V2 Bangladesh ledger semantics', () => {
     ['কমিশন হিসেবে ১০০০ টাকা পেলাম', 'CREATE_INCOME', 1000],
     ['অন্যান্য আয় ৫০০ টাকা যোগ করো', 'CREATE_INCOME', 500],
   ])('%s → finance action', async (text, action, amount) => {
-    const command = await parseVoiceV2(text);
+    const command = await parseVoiceV2Local(text);
     expect(command.action).toBe(action);
     expect(command.amount).toBe(amount);
   });
 
   it('supports Bengali word amounts in ledger commands', async () => {
-    const command = await parseVoiceV2('রহিমকে পাঁচশ টাকা দিলাম');
+    const command = await parseVoiceV2Local('রহিমকে পাঁচশ টাকা দিলাম');
 
     expect(command.action).toBe('CREATE_DUE');
     expect(command.entityName).toBe('রহিম');
