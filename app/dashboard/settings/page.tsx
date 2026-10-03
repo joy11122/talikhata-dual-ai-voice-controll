@@ -27,26 +27,32 @@ export default function SettingsPage(){
 
   useEffect(()=>{
     fetch('/api/shop').then(r=>r.ok?r.json():null).then(x=>{
-      if(x)setForm({
-        shopName:x.shopName||'',
-        currency:x.currency||'BDT / ৳',
-        businessType:x.businessType||'GENERAL_RETAIL',
-        address:x.address||'',
-      });
+      if(x)setForm({shopName:x.shopName||'',currency:x.currency||'BDT / ৳',businessType:x.businessType||'GENERAL_RETAIL',address:x.address||''});
     }).catch(()=>setError('সেটিংস লোড করা যায়নি।'));
   },[]);
 
   useEffect(()=>{
-    fetch('/api/daily-report/settings').then(r=>r.ok?r.json():null).then(x=>{if(x)setReport(x)}).catch(()=>{});
+    fetch('/api/daily-report/settings').then(r=>r.ok?r.json():null).then(x=>{
+      if(x)setReport(prev=>({...prev,...x,sendTime:typeof x.sendTime==='string'&&/^\d{2}:\d{2}$/.test(x.sendTime)?x.sendTime:prev.sendTime}));
+    }).catch(()=>{});
   },[]);
 
   async function saveReport(e:React.FormEvent){
-    e.preventDefault();setReportBusy(true);setReportMessage('');
+    e.preventDefault();
+    setReportBusy(true);setReportMessage('');
     try{
-      const r=await fetch('/api/daily-report/settings',{method:'PATCH',headers:{'content-type':'application/json'},body:JSON.stringify(report)});
+      const payload={
+        enabled:report.enabled,
+        sendTime:report.sendTime,
+        timezone:report.timezone,
+        emailEnabled:report.emailEnabled,
+        inAppEnabled:report.inAppEnabled,
+      };
+      const r=await fetch('/api/daily-report/settings',{method:'PATCH',headers:{'content-type':'application/json'},body:JSON.stringify(payload)});
       const d=await r.json().catch(()=>null);
       if(!r.ok)throw new Error(d?.error||'রিপোর্ট সেটিংস সংরক্ষণ করা যায়নি');
-      setReport(d);setReportMessage('Daily sales report settings saved.');
+      setReport(prev=>({...prev,...d,email:prev.email}));
+      setReportMessage('Daily sales report settings saved.');
     }catch(e){setReportMessage(e instanceof Error?e.message:'সেটিংস সংরক্ষণ করা যায়নি।')}
     finally{setReportBusy(false)}
   }
@@ -55,11 +61,7 @@ export default function SettingsPage(){
     e.preventDefault();
     setBusy(true);setMessage('');setError('');
     try{
-      const r=await fetch('/api/shop',{
-        method:'PATCH',
-        headers:{'content-type':'application/json'},
-        body:JSON.stringify(form),
-      });
+      const r=await fetch('/api/shop',{method:'PATCH',headers:{'content-type':'application/json'},body:JSON.stringify(form)});
       const d=await r.json().catch(()=>null);
       if(!r.ok){setError(typeof d?.error==='string'?d.error:'সেটিংস সংরক্ষণ করা যায়নি।');return}
       setForm({shopName:d.shopName||form.shopName,currency:d.currency||form.currency,businessType:d.businessType||form.businessType,address:d.address||form.address});
@@ -78,53 +80,22 @@ export default function SettingsPage(){
 
     <form onSubmit={save} className="space-y-5">
       <section className="tk-glass rounded-[28px] p-4 sm:p-6">
-        <div className="mb-5 flex items-start gap-3">
-          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-emerald-500/10 text-emerald-600"><BriefcaseBusiness size={19}/></span>
-          <div><h2 className="font-bold text-white">Business profile</h2><p className="mt-1 text-xs text-white/50">এই তথ্য আপনার ব্যবসার default workflow নির্ধারণের foundation।</p></div>
-        </div>
-
+        <div className="mb-5 flex items-start gap-3"><span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-emerald-500/10 text-emerald-600"><BriefcaseBusiness size={19}/></span><div><h2 className="font-bold text-white">Business profile</h2><p className="mt-1 text-xs text-white/50">এই তথ্য আপনার ব্যবসার default workflow নির্ধারণের foundation।</p></div></div>
         <div className="form-grid">
-          <div>
-            <label className="form-label">ব্যবসার নাম</label>
-            <input className="field" value={form.shopName} onChange={e=>setForm({...form,shopName:e.target.value})} placeholder="যেমন: রহিম স্টোর" aria-label="ব্যবসার নাম" required/>
-          </div>
-
-          <div>
-            <label className="form-label">ঠিকানা</label>
-            <input className="field" value={form.address} onChange={e=>setForm({...form,address:e.target.value})} placeholder="যেমন: ১২৩ মার্কেট রোড, খুলনা" aria-label="ঠিকানা" maxLength={240}/>
-          </div>
-
-          <div>
-            <label className="form-label">ব্যবসার ধরন</label>
-            <select className="field" value={form.businessType} onChange={e=>setForm({...form,businessType:e.target.value})} aria-label="ব্যবসার ধরন">
-              {businessTypes.map(([value,label,description])=><option key={value} value={value}>{label} — {description}</option>)}
-            </select>
-          </div>
-
-          <div>
-            <label className="form-label">Currency</label>
-            <input className="field" value={form.currency} onChange={e=>setForm({...form,currency:e.target.value})} placeholder="BDT / ৳" aria-label="Currency" required/>
-          </div>
+          <div><label className="form-label">ব্যবসার নাম</label><input className="field" value={form.shopName} onChange={e=>setForm({...form,shopName:e.target.value})} placeholder="যেমন: রহিম স্টোর" aria-label="ব্যবসার নাম" required/></div>
+          <div><label className="form-label">ঠিকানা</label><input className="field" value={form.address} onChange={e=>setForm({...form,address:e.target.value})} placeholder="যেমন: ১২৩ মার্কেট রোড, খুলনা" aria-label="ঠিকানা" maxLength={240}/></div>
+          <div><label className="form-label">ব্যবসার ধরন</label><select className="field" value={form.businessType} onChange={e=>setForm({...form,businessType:e.target.value})} aria-label="ব্যবসার ধরন">{businessTypes.map(([value,label,description])=><option key={value} value={value}>{label} — {description}</option>)}</select></div>
+          <div><label className="form-label">Currency</label><input className="field" value={form.currency} onChange={e=>setForm({...form,currency:e.target.value})} placeholder="BDT / ৳" aria-label="Currency" required/></div>
         </div>
-
-        <div className="mt-5 flex justify-end">
-          <button disabled={busy} aria-busy={busy} className="btn-primary w-full sm:w-auto">{busy?<span className="spinner"/>:<Save size={17}/>} {busy?'সংরক্ষণ হচ্ছে…':'সংরক্ষণ করুন'}</button>
-        </div>
-
+        <div className="mt-5 flex justify-end"><button disabled={busy} aria-busy={busy} className="btn-primary w-full sm:w-auto">{busy?<span className="spinner"/>:<Save size={17}/>} {busy?'সংরক্ষণ হচ্ছে…':'সংরক্ষণ করুন'}</button></div>
         {message&&<div className="mt-4 rounded-2xl border border-emerald-200 bg-emerald-500/10 px-4 py-3 text-sm font-medium text-emerald-300">{message}</div>}
         {error&&<div className="mt-4 rounded-2xl border border-red-200 bg-red-500/10 px-4 py-3 text-sm font-medium text-red-300">{error}</div>}
       </section>
 
       <section className="tk-glass rounded-[28px] p-4 sm:p-6">
-        <div className="mb-5 flex items-start gap-3">
-          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-emerald-500/10 text-emerald-600"><Bell size={19}/></span>
-          <div><h2 className="font-bold text-white">Daily sales report</h2><p className="mt-1 text-xs leading-5 text-white/50">দোকান বন্ধ হওয়ার সময় অনুযায়ী প্রতিদিনের sales summary automatically পাঠান।</p></div>
-        </div>
-        <form onSubmit={saveReport} className="space-y-5">
-          <div className="flex items-center justify-between tk-card px-4 py-3">
-            <div><div className="font-semibold text-white">Automatic report</div><div className="text-xs text-white/50">প্রতিদিন একবার পাঠানো হবে</div></div>
-            <button type="button" role="switch" aria-checked={report.enabled} onClick={()=>setReport({...report,enabled:!report.enabled})} className={`relative h-7 w-12 rounded-full transition ${report.enabled?'bg-emerald-500':'bg-slate-300'}`}><span className={`absolute top-1 h-5 w-5 rounded-full bg-transparent shadow transition ${report.enabled?'left-6':'left-1'}`}/></button>
-          </div>
+        <div className="mb-5 flex items-start gap-3"><span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-emerald-500/10 text-emerald-600"><Bell size={19}/></span><div><h2 className="font-bold text-white">Daily sales report</h2><p className="mt-1 text-xs leading-5 text-white/50">দোকান বন্ধ হওয়ার সময় অনুযায়ী প্রতিদিনের sales summary automatically পাঠান।</p></div></div>
+        <div className="space-y-5">
+          <div className="flex items-center justify-between tk-card px-4 py-3"><div><div className="font-semibold text-white">Automatic report</div><div className="text-xs text-white/50">প্রতিদিন একবার পাঠানো হবে</div></div><button type="button" role="switch" aria-checked={report.enabled} onClick={()=>setReport({...report,enabled:!report.enabled})} className={`relative h-7 w-12 rounded-full transition ${report.enabled?'bg-emerald-500':'bg-slate-300'}`}><span className={`absolute top-1 h-5 w-5 rounded-full bg-transparent shadow transition ${report.enabled?'left-6':'left-1'}`}/></button></div>
           <div className="form-grid">
             <div><label className="form-label flex items-center gap-2"><Clock size={15}/>Report time</label><input className="field" type="time" value={report.sendTime} onChange={e=>setReport({...report,sendTime:e.target.value})}/><p className="mt-1 text-xs text-white/50">আপনার দোকান বন্ধ হওয়ার সময় দিন।</p></div>
             <div><label className="form-label">Timezone</label><select className="field" value={report.timezone} onChange={e=>setReport({...report,timezone:e.target.value})}><option value="Asia/Dhaka">Bangladesh — Asia/Dhaka</option><option value="Asia/Kolkata">India — Asia/Kolkata</option><option value="Asia/Dubai">UAE — Asia/Dubai</option><option value="Europe/London">UK — Europe/London</option><option value="America/New_York">US Eastern — America/New_York</option></select></div>
@@ -133,17 +104,12 @@ export default function SettingsPage(){
             <label className="flex cursor-pointer items-center gap-3 tk-card p-4"><input type="checkbox" checked={report.inAppEnabled} onChange={e=>setReport({...report,inAppEnabled:e.target.checked})}/><Bell size={17}/><span><b className="block text-sm">In-app notification</b><small className="text-xs text-white/50">Free</small></span></label>
             <label className="flex cursor-pointer items-center gap-3 tk-card p-4"><input type="checkbox" checked={report.emailEnabled} onChange={e=>setReport({...report,emailEnabled:e.target.checked})}/><Mail size={17}/><span><b className="block text-sm">Email</b><small className="text-xs text-white/50">{report.email||'Your account email'}</small></span></label>
           </div>
-          <button disabled={reportBusy} className="btn-primary w-full sm:w-auto">{reportBusy?'Saving…':'Save report settings'}</button>
+          <button type="button" disabled={reportBusy} onClick={saveReport as any} className="btn-primary w-full sm:w-auto">{reportBusy?'Saving…':'Save report settings'}</button>
           {reportMessage&&<div className="rounded-2xl border border-emerald-200 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-300">{reportMessage}</div>}
-        </form>
-      </section>
-
-      <section className="tk-glass rounded-[28px] p-4 sm:p-5">
-        <div className="flex gap-3">
-          <ShieldCheck className="shrink-0 text-emerald-600"/>
-          <div><h2 className="font-semibold text-white">Privacy protection</h2><p className="mt-1 text-sm leading-6 text-white/50">আপনার business data authenticated user-এর scope-এর মধ্যেই থাকে। Voice execution-ও active session যাচাই করে তারপর data পরিবর্তন করে।</p></div>
         </div>
       </section>
+
+      <section className="tk-glass rounded-[28px] p-4 sm:p-5"><div className="flex gap-3"><ShieldCheck className="shrink-0 text-emerald-600"/><div><h2 className="font-semibold text-white">Privacy protection</h2><p className="mt-1 text-sm leading-6 text-white/50">আপনার business data authenticated user-এর scope-এর মধ্যেই থাকে। Voice execution-ও active session যাচাই করে তারপর data পরিবর্তন করে।</p></div></div></section>
     </form>
   </div>
 }
