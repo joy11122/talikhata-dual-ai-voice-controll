@@ -198,8 +198,7 @@ export const VoiceIntentSchema = z
       }
 
       if (
-        value.transaction_type !==
-          'DUE_RECEIVED' &&
+        value.transaction_type !== 'EXPENSE' &&
         value.amount === null
       ) {
         ctx.addIssue({
