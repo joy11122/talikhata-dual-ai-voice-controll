@@ -5,6 +5,7 @@ import Party from '@/models/Party';
 import Product from '@/models/Product';
 import Transaction from '@/models/Transaction';
 import Backup from '@/models/Backup';
+import Notification from '@/models/Notification';
 
 function clean(value:any){return JSON.parse(JSON.stringify(value));}
 
@@ -21,7 +22,9 @@ export async function GET(req:Request){
         Product.find({userId:uid,isDeleted:false}).lean(),
         Transaction.find({userId:uid,isDeleted:false}).lean(),
       ]);
-      await Backup.create({userId:uid,source:'SCHEDULED',label:`Automatic backup — ${new Date().toISOString().slice(0,10)}`,snapshot:clean({parties,products,transactions})});
+      const backupDate=new Date().toISOString().slice(0,10);
+      await Backup.create({userId:uid,source:'SCHEDULED',label:`Automatic backup — ${backupDate}`,snapshot:clean({parties,products,transactions})});
+      await Notification.create({userId:uid,type:'BACKUP_COMPLETED',title:'Automatic backup completed',message:`আজকের automatic backup সফলভাবে তৈরি হয়েছে।`,metadata:{date:backupDate}});
       await Backup.deleteMany({userId:uid,createdAt:{$lt:new Date(Date.now()-90*86400000)}});
       created++;
     }catch{}
