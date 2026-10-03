@@ -143,9 +143,9 @@ function extractCreatePartyName(text: string): { name: string; partyType: 'CUSTO
 
   const partyCreateVerb = '(?:যোগ করো|যোগ কর|যোগ করুন|যোগ করেন|যোগ|এড করো|এড কর|এড করুন|এড করেন|অ্যাড করো|অ্যাড কর|অ্যাড করুন|অ্যাড করেন|add|add koro|add kor|add korun|add করো|add কর|add করুন|create|create koro|create kor|create korun|ক্রিয়েট কর|ক্রিয়েট করো|ক্রিয়েট করুন|ক্রিয়েট|ক্রিয়েট কর|ক্রিয়েট করো|ক্রিয়েট করুন|ক্রিয়েট|তৈরি করো|তৈরি কর|তৈরি করুন|তৈরি|বানাও|বানিয়ে দাও|বানিয়ে দাও|হিসেবে যোগ করো|হিসেবে যোগ কর|হিসেবে রাখো|লিস্টে রাখো|তালিকায় যোগ করো|তালিকায় যোগ করো|অ্যাকাউন্ট খুলে দাও|অ্যাকাউন্ট খোলো|রেজিস্টার করো|register|register koro|register kor|make customer|open account|jog koro|jog kor|jog korun)';
   const patterns = [
-    new RegExp('^(.*?)\\s+(?:name|নামে)\\s+নতুন\\s+(customer|কাস্টমার|গ্রাহক|supplier|সাপ্লায়ার|সরবরাহকারী)\\s+' + partyCreateVerb + '$', 'iu'),
-    new RegExp('^(.*?)\\s+(?:name|নামে)\\s+(customer|কাস্টমার|গ্রাহক|supplier|সাপ্লায়ার|সরবরাহকারী)\\s+' + partyCreateVerb + '$', 'iu'),
-    new RegExp('^(.*?)\\s+নতুন\\s+(customer|কাস্টমার|গ্রাহক|supplier|সাপ্লায়ার|সরবরাহকারী)\\s+' + partyCreateVerb + '$', 'iu'),
+    new RegExp('^(.*?)\s+(?:name|নামে)\s+নতুন\s+(customer|কাস্টমার|গ্রাহক|supplier|সাপ্লায়ার|সরবরাহকারী)\s+' + partyCreateVerb + '$', 'iu'),
+    new RegExp('^(.*?)\s+(?:name|নামে)\s+(customer|কাস্টমার|গ্রাহক|supplier|সাপ্লায়ার|সরবরাহকারী)\s+' + partyCreateVerb + '$', 'iu'),
+    new RegExp('^(.*?)\s+নতুন\s+(customer|কাস্টমার|গ্রাহক|supplier|সাপ্লায়ার|সরবরাহকারী)\s+' + partyCreateVerb + '$', 'iu'),
   ];
 
   for (const pattern of patterns) {
@@ -218,14 +218,14 @@ function parseCreateProductCommand(text: string): VoiceV2Command | null {
 
   const createVerb = '(?:যোগ করো|যোগ করুন|যোগ|add|create|বানাও|তৈরি করো|করো|করুন)';
   const productWord = '(?:পণ্য|product|item|মাল)';
-  const price = '(\\d[\\d,]*(?:\\.\\d+)?)\\s*(?:টাকা|tk|taka)?\\s*(?:দরে|দাম(?:এ)?|rate|per)?';
+  const price = '(\\d[\\d,]*(?:\\.\\d+)?)\s*(?:টাকা|tk|taka)?\s*(?:দরে|দাম(?:এ)?|rate|per)?';
   const unitPattern = '(কেজি|kg|কিলো|কিলোগ্রাম|টা|টি|piece|pieces|pcs|লিটার|liter|litre|মিটার|meter|গ্রাম|gram|g|ml|বোতল|প্যাকেট|packet|box|unit|ইউনিট)';
 
   const patterns: RegExp[] = [
-    new RegExp('^(?:নতুন\\s+)?(.+?)\\s+' + price + '\\s+' + productWord + '(?:\\s+(?:হিসেবে|হিসাবে|as))?\\s+' + createVerb + '$', 'iu'),
-    new RegExp('^(?:নতুন\\s+)?' + productWord + '\\s+(.+?)\\s+' + price + '\\s*' + createVerb + '$', 'iu'),
-    new RegExp('^(?:নতুন\\s+)?(\\d[\\d,]*(?:\\.\\d+)?)\\s*' + unitPattern + '\\s+(.+?)\\s+' + price + '\\s+' + productWord + '(?:\\s+(?:হিসেবে|হিসাবে|as))?\\s+' + createVerb + '$', 'iu'),
-    new RegExp('^(?:নতুন\\s+)?(.+?)\\s+' + productWord + '(?:\\s+(?:হিসেবে|হিসাবে|as))?\\s+' + createVerb + '$', 'iu'),
+    new RegExp('^(?:নতুন\s+)?(.+?)\s+' + price + '\s+' + productWord + '(?:\s+(?:হিসেবে|হিসাবে|as))?\s+' + createVerb + '$', 'iu'),
+    new RegExp('^(?:নতুন\s+)?' + productWord + '\s+(.+?)\s+' + price + '\s*' + createVerb + '$', 'iu'),
+    new RegExp('^(?:নতুন\s+)?(\\d[\\d,]*(?:\\.\\d+)?)\s*' + unitPattern + '\s+(.+?)\s+' + price + '\s+' + productWord + '(?:\s+(?:হিসেবে|হিসাবে|as))?\s+' + createVerb + '$', 'iu'),
+    new RegExp('^(?:নতুন\s+)?(.+?)\s+' + productWord + '(?:\s+(?:হিসেবে|হিসাবে|as))?\s+' + createVerb + '$', 'iu'),
   ];
 
   for (const pattern of patterns) {
@@ -239,9 +239,9 @@ function parseCreateProductCommand(text: string): VoiceV2Command | null {
     let name = candidates[0]?.trim() || '';
 
     name = name
-      .replace(/^নতুন\\s+/iu, '')
-      .replace(/^\\d[\\d,]*(?:\\.\\d+)?\\s*(?:কেজি|kg|কিলো|কিলোগ্রাম|টা|টি|piece|pieces|pcs|লিটার|liter|litre|মিটার|meter|গ্রাম|gram|g|ml|বোতল|প্যাকেট|packet|box|unit|ইউনিট)\\s+/iu, '')
-      .replace(/\\s+(?:দরে|দাম(?:এ)?|rate|per)\\s*$/iu, '')
+      .replace(/^নতুন\s+/iu, '')
+      .replace(/^\\d[\\d,]*(?:\\.\\d+)?\s*(?:কেজি|kg|কিলো|কিলোগ্রাম|টা|টি|piece|pieces|pcs|লিটার|liter|litre|মিটার|meter|গ্রাম|gram|g|ml|বোতল|প্যাকেট|packet|box|unit|ইউনিট)\s+/iu, '')
+      .replace(/\s+(?:দরে|দাম(?:এ)?|rate|per)\s*$/iu, '')
       .trim();
 
     if (!name || /^(?:পণ্য|product|item|মাল)$/iu.test(name)) continue;
@@ -252,7 +252,7 @@ function parseCreateProductCommand(text: string): VoiceV2Command | null {
     command.unit = unit || 'unit';
     command.unitPrice = numeric ? Number(numeric.replace(/,/g, '')) : null;
 
-    const quantityMatch = value.match(new RegExp('^(?:নতুন\\s+)?(\\d[\\d,]*(?:\\.\\d+)?)\\s*' + unitPattern + '\\s+', 'iu'));
+    const quantityMatch = value.match(new RegExp('^(?:নতুন\s+)?(\\d[\\d,]*(?:\\.\\d+)?)\s*' + unitPattern + '\s+', 'iu'));
     if (quantityMatch) {
       command.quantity = Number(quantityMatch[1].replace(/,/g, ''));
     }
@@ -291,23 +291,23 @@ function parseNaturalPurchaseCommand(text: string): VoiceV2Command | null {
   );
   const n = '(\\d[\\d,]*(?:\\.\\d+)?)';
   const units = '(কেজি|kg|কিলো|কিলোগ্রাম|গ্রাম|gram|g|লিটার|liter|litre|l|পিস|পিছ|টা|টি|piece|pieces|pcs|unit|ইউনিট)';
-  const supplierPrefix = '(.+?)\\s+(?:এর\\s+কাছ\\s+থেকে|এর\\s+কাছথেকে|এর\\s+থেকে|er\\s+kach\\s+theke|er\\s+theke)\\s+';
+  const supplierPrefix = '(.+?)\s+(?:এর\s+কাছ\s+থেকে|এর\s+কাছথেকে|এর\s+থেকে|er\s+kach\s+theke|er\s+theke)\s+';
   const purchaseVerb = '(?:কিনলাম|কিনেছি|কিনেছে|কেনা হলো|ক্রয় করলাম|ক্রয় করেছি|bought|buy|purchased|purchase|kinlam|kinechi)';
-  const rate = '(?:টাকা|taka|tk)?\\s*(?:দরে|ধরে|প্রতি|দর|rate|per|dore|dhore|proti)';
+  const rate = '(?:টাকা|taka|tk)?\s*(?:দরে|ধরে|প্রতি|দর|rate|per|dore|dhore|proti)';
   const paid = '(?:দিলাম|দিল|দিয়েছি|দিয়েছি|দিয়েছে|দিয়েছে|paid|pay|dilam|dil|diyechi|diyeche)';
   const due = '(?:বাকি|বাকিতে|due|credit)';
 
   const patterns = [
     new RegExp(
-      '^' + supplierPrefix + n + '\\s*' + units + '\\s+(.+?)\\s+' + n +
-      '\\s*' + rate + '\\s*' + purchaseVerb +
-      '(?:\\s*[, ]+|\\s+)' + n + '\\s*(?:টাকা|taka|tk)?\\s+' + paid + '$',
+      '^' + supplierPrefix + n + '\s*' + units + '\s+(.+?)\s+' + n +
+      '\s*' + rate + '\s*' + purchaseVerb +
+      '(?:\s*[, ]+|\s+)' + n + '\s*(?:টাকা|taka|tk)?\s+' + paid + '$',
       'iu',
     ),
     new RegExp(
-      '^' + supplierPrefix + n + '\\s*' + units + '\\s+(.+?)\\s+' + n +
-      '\\s*' + rate + '\\s*' + purchaseVerb +
-      '\\s+' + due + '$',
+      '^' + supplierPrefix + n + '\s*' + units + '\s+(.+?)\s+' + n +
+      '\s*' + rate + '\s*' + purchaseVerb +
+      '\s+' + due + '$',
       'iu',
     ),
   ];
@@ -360,15 +360,15 @@ function parseInventoryPurchaseCommand(text: string): VoiceV2Command | null {
 
   const purchasePatterns = [
     {
-      pattern: new RegExp('^' + number + '\\s*' + units + '\\s+(.+?)\\s+' + number + '\\s*(?:টাকা|taka|tk)?\\s*' + rateWords + '\\s*' + purchaseWords + '$', 'iu'),
+      pattern: new RegExp('^' + number + '\s*' + units + '\s+(.+?)\s+' + number + '\s*(?:টাকা|taka|tk)?\s*' + rateWords + '\s*' + purchaseWords + '$', 'iu'),
       quantityIndex: 1, nameIndex: 3, priceIndex: 4,
     },
     {
-      pattern: new RegExp('^' + number + '\\s*(?:টাকা|taka|tk)?\\s*' + rateWords + '\\s+' + number + '\\s*' + units + '\\s+(.+?)\\s*' + purchaseWords + '$', 'iu'),
+      pattern: new RegExp('^' + number + '\s*(?:টাকা|taka|tk)?\s*' + rateWords + '\s+' + number + '\s*' + units + '\s+(.+?)\s*' + purchaseWords + '$', 'iu'),
       quantityIndex: 2, nameIndex: 4, priceIndex: 1,
     },
     {
-      pattern: new RegExp('^(?:আজ|today)\\s+(.+?)\\s+' + number + '\\s*' + units + '\\s+' + number + '\\s*(?:টাকা|taka|tk)?\\s*' + rateWords + '\\s*' + purchaseWords + '$', 'iu'),
+      pattern: new RegExp('^(?:আজ|today)\s+(.+?)\s+' + number + '\s*' + units + '\s+' + number + '\s*(?:টাকা|taka|tk)?\s*' + rateWords + '\s*' + purchaseWords + '$', 'iu'),
       quantityIndex: 2, nameIndex: 1, priceIndex: 3,
     },
   ];
@@ -392,10 +392,10 @@ function parseInventoryPurchaseCommand(text: string): VoiceV2Command | null {
   }
 
   const addPatterns = [
-    new RegExp('^' + number + '\\s*(?:টাকা|taka|tk)?\\s*' + rateWords + '\\s+' + number + '\\s*' + units + '\\s+(.+?)\\s+' + addWords + '$', 'iu'),
-    new RegExp('^' + number + '\\s*' + units + '\\s+(.+?)\\s+' + number + '\\s*(?:টাকা|taka|tk)?\\s*' + rateWords + '\\s+' + addWords + '$', 'iu'),
-    new RegExp('^(.+?)\\s+' + number + '\\s*' + units + '\\s+' + number + '\\s*(?:টাকা|taka|tk)?\\s*' + rateWords + '\\s+' + addWords + '$', 'iu'),
-    new RegExp('^(.+?)\\s+' + number + '\\s*' + units + '\\s+' + addWords + '\\s+' + number + '\\s*(?:টাকা|taka|tk)?\\s*' + rateWords + '$', 'iu'),
+    new RegExp('^' + number + '\s*(?:টাকা|taka|tk)?\s*' + rateWords + '\s+' + number + '\s*' + units + '\s+(.+?)\s+' + addWords + '$', 'iu'),
+    new RegExp('^' + number + '\s*' + units + '\s+(.+?)\s+' + number + '\s*(?:টাকা|taka|tk)?\s*' + rateWords + '\s+' + addWords + '$', 'iu'),
+    new RegExp('^(.+?)\s+' + number + '\s*' + units + '\s+' + number + '\s*(?:টাকা|taka|tk)?\s*' + rateWords + '\s+' + addWords + '$', 'iu'),
+    new RegExp('^(.+?)\s+' + number + '\s*' + units + '\s+' + addWords + '\s+' + number + '\s*(?:টাকা|taka|tk)?\s*' + rateWords + '$', 'iu'),
   ];
 
   for (const pattern of addPatterns) {
@@ -410,7 +410,7 @@ function parseInventoryPurchaseCommand(text: string): VoiceV2Command | null {
     const command = blank('CREATE_PRODUCT');
     command.entityType = 'PRODUCT';
     command.entityName = name;
-    const firstNumberIsPrice = new RegExp('^' + number + '\\s*(?:টাকা|taka|tk)?\\s*' + rateWords, 'iu').test(value);
+    const firstNumberIsPrice = new RegExp('^' + number + '\s*(?:টাকা|taka|tk)?\s*' + rateWords, 'iu').test(value);
     command.quantity = firstNumberIsPrice ? nums[1] : nums[0];
     command.unit = unit;
     command.unitPrice = firstNumberIsPrice ? nums[0] : nums[1];
@@ -515,16 +515,16 @@ function parseLedgerDirectionCommand(text: string): VoiceV2Command | null {
     }
   }
 
-  const numberPattern = '(?:\\d[\\d,]*(?:\\.\\d+)?|[০-৯]+|(?:[^\\d\\s]+)(?:\\s+[^\\d\\s]+){0,3})';
+  const numberPattern = '(?:\\d[\\d,]*(?:\\.\\d+)?|[০-৯]+|(?:[^\\d\s]+)(?:\s+[^\\d\s]+){0,3})';
 
   const command = (action: VoiceV2Command['action'], rawName: string): VoiceV2Command => {
     const name = rawName
       .trim()
-      .replace(/^(?:আমি|আমরা|i|we)\\s+/iu, '')
-      .replace(/\\s+(?:আমাকে|আমার কাছে|me|to me)$/iu, '')
+      .replace(/^(?:আমি|আমরা|i|we)\s+/iu, '')
+      .replace(/\s+(?:আমাকে|আমার কাছে|me|to me)$/iu, '')
       .replace(/(?:এর|ের|র|কে|দের)$/u, '')
       .replace(/ে$/u, '')
-      .replace(/\\s+(?:er|r|ke|der)$/i, '')
+      .replace(/\s+(?:er|r|ke|der)$/i, '')
       .trim();
 
     const result = blank(action);
@@ -536,85 +536,85 @@ function parseLedgerDirectionCommand(text: string): VoiceV2Command | null {
   };
 
   let match = value.match(new RegExp(
-    '^(.+?)\\s*(?:এর|ের|র)?\\s*(?:কাছ থেকে|কাছথেকে|থেকে)\\s*' +
+    '^(.+?)\s*(?:এর|ের|র)?\s*(?:কাছ থেকে|কাছথেকে|থেকে)\s*' +
     numberPattern +
-    '\\s*(?:টাকা|tk|taka)?\\s*(?:পেলাম|পেয়েছি|পেয়েছি|নিলাম|নিয়েছি|নিয়েছি|আদায় করলাম|আদায় করলাম|received|got|nilam|pelam|peyechi)$',
+    '\s*(?:টাকা|tk|taka)?\s*(?:পেলাম|পেয়েছি|পেয়েছি|নিলাম|নিয়েছি|নিয়েছি|আদায় করলাম|আদায় করলাম|received|got|nilam|pelam|peyechi)$',
     'iu',
   ));
   if (match?.[1]) return command('RECEIVE_PAYMENT', match[1]);
 
   match = value.match(new RegExp(
-    '^(.+?)(?:\\s+(?:আমাকে|আমার কাছে|me|to me))?\\s*' +
+    '^(.+?)(?:\s+(?:আমাকে|আমার কাছে|me|to me))?\s*' +
     numberPattern +
-    '\\s*(?:টাকা|tk|taka)?\\s*(?:দিল|দিলো|দিয়েছে|দিয়েছে|জমা দিল|জমা দিয়েছে|জমা দিয়েছে|পরিশোধ করল|পরিশোধ করেছে|paid|received|dilo|diyeche)$',
+    '\s*(?:টাকা|tk|taka)?\s*(?:দিল|দিলো|দিয়েছে|দিয়েছে|জমা দিল|জমা দিয়েছে|জমা দিয়েছে|পরিশোধ করল|পরিশোধ করেছে|paid|received|dilo|diyeche)$',
     'iu',
   ));
   if (match?.[1]) return command('RECEIVE_PAYMENT', match[1]);
 
   match = value.match(new RegExp(
-    '^(.+?)\\s*(?:আমাকে|আমার কাছে)?\\s*দেবে\\s*' + numberPattern +
-    '\\s*(?:টাকা|tk|taka)?$',
+    '^(.+?)\s*(?:আমাকে|আমার কাছে)?\s*দেবে\s*' + numberPattern +
+    '\s*(?:টাকা|tk|taka)?$',
     'iu',
   ))
     || value.match(new RegExp(
-      '^(.+?)\\s*' + numberPattern + '\\s*(?:টাকা|tk|taka)?\\s*দেবে$',
+      '^(.+?)\s*' + numberPattern + '\s*(?:টাকা|tk|taka)?\s*দেবে$',
       'iu',
     ))
     || value.match(new RegExp(
-      '^(.+?)\\s*(?:এর|ের|র)\\s*(?:কাছে)\\s*(?:পাবো|পাব|পাবে|পাও|pabo|pabe)\\s*' +
-      numberPattern + '\\s*(?:টাকা|tk|taka)?$',
+      '^(.+?)\s*(?:এর|ের|র)\s*(?:কাছে)\s*(?:পাবো|পাব|পাবে|পাও|pabo|pabe)\s*' +
+      numberPattern + '\s*(?:টাকা|tk|taka)?$',
       'iu',
     ))
     || value.match(new RegExp(
-      '^(.+?)\\s*(?:এর|ের|র)\\s*(?:কাছে)\\s*' + numberPattern +
-      '\\s*(?:টাকা|tk|taka)?\\s*(?:পাবো|পাব|পাবে|পাও|pabo|pabe)$',
+      '^(.+?)\s*(?:এর|ের|র)\s*(?:কাছে)\s*' + numberPattern +
+      '\s*(?:টাকা|tk|taka)?\s*(?:পাবো|পাব|পাবে|পাও|pabo|pabe)$',
       'iu',
     ));
   if (match?.[1]) return command('CREATE_DUE', match[1]);
 
   match = value.match(new RegExp(
-    '^(.+?)\\s*(?:এর|ের|র)\\s*(?:কাছে\\s*)?(?:বাকি|পাওনা|দেনা|due|baki)\\s*' +
-    numberPattern + '\\s*(?:টাকা|tk|taka)?$',
+    '^(.+?)\s*(?:এর|ের|র)\s*(?:কাছে\s*)?(?:বাকি|পাওনা|দেনা|due|baki)\s*' +
+    numberPattern + '\s*(?:টাকা|tk|taka)?$',
     'iu',
   ))
     || value.match(new RegExp(
-      '^(.+?)\\s*(?:এর|ের|র)\\s*(?:কাছে\\s*)?' + numberPattern +
-      '\\s*(?:টাকা|tk|taka)?\\s*(?:বাকি|পাওনা|দেনা|due|baki)$',
+      '^(.+?)\s*(?:এর|ের|র)\s*(?:কাছে\s*)?' + numberPattern +
+      '\s*(?:টাকা|tk|taka)?\s*(?:বাকি|পাওনা|দেনা|due|baki)$',
       'iu',
     ));
   if (match?.[1]) return command('CREATE_DUE', match[1]);
 
   match = value.match(new RegExp(
-    '^(.+?)\\s*(?:কে|ke)\\s*(?:দিলাম|দিল|দিয়েছি|দিয়েছি|দেবো|দেব|দিবো|দিব|dilam|dil|diyechi|debo|deb|dibo)\\s*' +
-    numberPattern + '\\s*(?:টাকা|tk|taka)?(?:\\s+.*)?$',
+    '^(.+?)\s*(?:কে|ke)\s*(?:দিলাম|দিল|দিয়েছি|দিয়েছি|দেবো|দেব|দিবো|দিব|dilam|dil|diyechi|debo|deb|dibo)\s*' +
+    numberPattern + '\s*(?:টাকা|tk|taka)?(?:\s+.*)?$',
     'iu',
   ))
     || value.match(new RegExp(
-      '^(.+?)\\s*(?:কে|ke)\\s*' + numberPattern +
-      '\\s*(?:টাকা|tk|taka)?\\s*(?:বাকি\\s*)?(?:দিলাম|দিল|দিয়েছি|দিয়েছি|দেবো|দেব|দিবো|দিব|dilam|dil|diyechi|debo|deb|dibo)(?:\\s+.*)?$',
+      '^(.+?)\s*(?:কে|ke)\s*' + numberPattern +
+      '\s*(?:টাকা|tk|taka)?\s*(?:বাকি\s*)?(?:দিলাম|দিল|দিয়েছি|দিয়েছি|দেবো|দেব|দিবো|দিব|dilam|dil|diyechi|debo|deb|dibo)(?:\s+.*)?$',
       'iu',
     ));
   if (match?.[1]) return command('CREATE_DUE', match[1]);
 
   match = value.match(new RegExp(
-    '^(.+?)\\s+(?:বাকি|বাকিতে|ধারে|উধারে|due|baki|bakite|dhare|credit)\\s*' +
-    numberPattern + '\\s*(?:টাকা|tk|taka)?\\s*(?:নিল|নিলো|নিয়েছে|নিয়েছে|নেবে|নিবে|নেবো|নিবো|নিলাম|nil|nilo|niyeche|niyechi|nibe|nebe|nebo|nibo|nilam|took|take|taken)$',
+    '^(.+?)\s+(?:বাকি|বাকিতে|ধারে|উধারে|due|baki|bakite|dhare|credit)\s*' +
+    numberPattern + '\s*(?:টাকা|tk|taka)?\s*(?:নিল|নিলো|নিয়েছে|নিয়েছে|নেবে|নিবে|নেবো|নিবো|নিলাম|nil|nilo|niyeche|niyechi|nibe|nebe|nebo|nibo|nilam|took|take|taken)$',
     'iu',
   ))
     || value.match(new RegExp(
-      '^(.+?)\\s*' + numberPattern + '\\s*(?:টাকা|tk|taka)?\\s*(?:বাকি|বাকিতে|ধারে|উধারে|due|baki|bakite|dhare|credit)\\s*(?:নিল|নিলো|নিয়েছে|নিয়েছে|নেবে|নিবে|নেবো|নিবো|নিলাম|nil|nilo|niyeche|niyechi|nibe|nebe|nebo|nibo|nilam|took|take|taken)$',
+      '^(.+?)\s*' + numberPattern + '\s*(?:টাকা|tk|taka)?\s*(?:বাকি|বাকিতে|ধারে|উধারে|due|baki|bakite|dhare|credit)\s*(?:নিল|নিলো|নিয়েছে|নিয়েছে|নেবে|নিবে|নেবো|নিবো|নিলাম|nil|nilo|niyeche|niyechi|nibe|nebe|nebo|nibo|nilam|took|take|taken)$',
       'iu',
     ))
     || value.match(new RegExp(
-      '^(.+?)\\s*(?:নিল|নিলো|নিয়েছে|নিয়েছে|নেবে|নিবে|নেবো|নিবো|নিলাম|nil|nilo|niyeche|niyechi|nibe|nebe|nebo|nibo|nilam|took|take|taken)\\s*' +
-      numberPattern + '\\s*(?:টাকা|tk|taka)?\\s*(?:বাকি|বাকিতে|ধারে|উধারে|due|baki|bakite|dhare|credit)$',
+      '^(.+?)\s*(?:নিল|নিলো|নিয়েছে|নিয়েছে|নেবে|নিবে|নেবো|নিবো|নিলাম|nil|nilo|niyeche|niyechi|nibe|nebe|nebo|nibo|nilam|took|take|taken)\s*' +
+      numberPattern + '\s*(?:টাকা|tk|taka)?\s*(?:বাকি|বাকিতে|ধারে|উধারে|due|baki|bakite|dhare|credit)$',
       'iu',
     ));
   if (match?.[1]) return command('CREATE_DUE', match[1]);
 
   match = value.match(new RegExp(
-    '^(?:আমি|আমরা|i|we)\\s+(.+?)\\s*(?:এর|ের|র)?\\s*(?:কাছ থেকে|কাছথেকে|থেকে)\\s*' +
-    numberPattern + '\\s*(?:টাকা|tk|taka)?\\s*(?:নেবো|নেব|নিবো|নিব|পাবো|পাব|nebo|nibo|pabo)$',
+    '^(?:আমি|আমরা|i|we)\s+(.+?)\s*(?:এর|ের|র)?\s*(?:কাছ থেকে|কাছথেকে|থেকে)\s*' +
+    numberPattern + '\s*(?:টাকা|tk|taka)?\s*(?:নেবো|নেব|নিবো|নিব|পাবো|পাব|nebo|nibo|pabo)$',
     'iu',
   ));
   if (match?.[1]) return command('RECEIVE_PAYMENT', match[1]);
@@ -659,7 +659,7 @@ export function parseVoiceV2Local(text: string): VoiceV2Command | null {
   // Defensive local fallback: create-party commands must never reach a paid AI
   // provider just because a speech transcript used a slightly different ending.
   const createPartyFallback = value.match(
-    /^(.*?)\\s+(?:name|নামে)\\s+নতুন\\s+(customer|কাস্টমার|গ্রাহক|supplier|সাপ্লায়ার|সরবরাহকারী)\\s+(?:যোগ|add|create)(?:\\s+(?:কর|করো|করুন|করতে|দাও|দাওনা))?$/iu,
+    /^(.*?)\s+(?:name|নামে)\s+নতুন\s+(customer|কাস্টমার|গ্রাহক|supplier|সাপ্লায়ার|সরবরাহকারী)\s+(?:যোগ|add|create)(?:\s+(?:কর|করো|করুন|করতে|দাও|দাওনা))?$/iu,
   );
   if (createPartyFallback?.[1]?.trim()) {
     const partyType =
@@ -673,7 +673,7 @@ export function parseVoiceV2Local(text: string): VoiceV2Command | null {
     return command;
   }
   const deletePartyMatch = value.match(
-    /^(.*?)\\s+(?:customer|কাস্টমার|গ্রাহক|supplier|সাপ্লায়ার|সরবরাহকারী|party|পার্টি)?\\s*(?:delete|remove|ডিলিট|মুছে দাও|মুছে ফেলো|মুছে ফেলুন|সরিয়ে দাও|সরিয়ে দাও|বাদ দাও|ডিলেট|delete koro|delete kor|remove koro|remove kor|মুছে দাও|মুছে ফেলো)\\s*$/iu,
+    /^(.*?)\s+(?:customer|কাস্টমার|গ্রাহক|supplier|সাপ্লায়ার|সরবরাহকারী|party|পার্টি)?\s*(?:delete|remove|ডিলিট|মুছে দাও|মুছে ফেলো|মুছে ফেলুন|সরিয়ে দাও|সরিয়ে দাও|বাদ দাও|ডিলেট|delete koro|delete kor|remove koro|remove kor|মুছে দাও|মুছে ফেলো)\s*$/iu,
   );
   if (deletePartyMatch?.[1]?.trim()) {
     const raw = deletePartyMatch[1].trim();
@@ -684,7 +684,7 @@ export function parseVoiceV2Local(text: string): VoiceV2Command | null {
           ? 'CUSTOMER'
           : null;
     const entityName = raw
-      .replace(/(?:customer|কাস্টমার|গ্রাহক|supplier|সাপ্লায়ার|সরবরাহকারী|party|পার্টি)\\s*$/iu, '')
+      .replace(/(?:customer|কাস্টমার|গ্রাহক|supplier|সাপ্লায়ার|সরবরাহকারী|party|পার্টি)\s*$/iu, '')
       .trim();
     if (entityName) {
       const command = blank('DELETE_PARTY');
