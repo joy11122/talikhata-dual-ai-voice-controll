@@ -65,7 +65,7 @@ export async function POST(req:Request){
   if(productMatches.length>1)return NextResponse.json({mode:'normal',answer:productMatches.map(p=>p.name).join(' ও ')+' নামে একাধিক product আছে। নির্দিষ্ট product-এর নাম বলুন।'});
   const product=productMatches[0];
   const tx=assistantTransactions.filter(x=>!party||String(x.partyId)===String(party._id)).filter(x=>!product||String(x.productId)===String(product._id));
-  const total=(type:string,rows=tx)=>rows.filter(x=>x.type===type).reduce((a,x)=>a+Number(x.amount||0),0);
+  const total=(type:string,rows=txRows)=>rows.filter(x=>x.type===type).reduce((a,x)=>a+Number(x.amount||0),0);
 
   if(intent==='CUSTOMERS'){
     const rows=assistantParties.filter(p=>p.partyType==='CUSTOMER');
@@ -91,15 +91,15 @@ export async function POST(req:Request){
     return NextResponse.json({mode:'normal',answer:'মোট পাওনা '+money(rec)+'। মোট দেনা '+money(pay)+'।'});
   }
   if(intent==='SALES'){
-    const rows=tx.filter(x=>x.type==='SALE'); return NextResponse.json({mode:'normal',answer:range.label+'-এর '+(party?party.name+'-এর ':product?product.name+'-এর ':'')+'বিক্রি '+money(total('SALE'))+'। '+rows.length+'টি sale হয়েছে।'});
+    const rows=txRows.filter(x=>x.type==='SALE'); return NextResponse.json({mode:'normal',answer:range.label+'-এর '+(party?party.name+'-এর ':product?product.name+'-এর ':'')+'বিক্রি '+money(total('SALE'))+'। '+rows.length+'টি sale হয়েছে।'});
   }
   if(intent==='PURCHASE'){
-    const rows=tx.filter(x=>x.type==='STOCK_IN'); return NextResponse.json({mode:'normal',answer:range.label+'-এর '+(party?party.name+'-এর ':product?product.name+'-এর ':'')+'purchase '+money(total('STOCK_IN'))+'। '+rows.length+'টি purchase হয়েছে।'});
+    const rows=txRows.filter(x=>x.type==='STOCK_IN'); return NextResponse.json({mode:'normal',answer:range.label+'-এর '+(party?party.name+'-এর ':product?product.name+'-এর ':'')+'purchase '+money(total('STOCK_IN'))+'। '+rows.length+'টি purchase হয়েছে।'});
   }
   if(intent==='EXPENSE')return NextResponse.json({mode:'normal',answer:range.label+'-এর মোট খরচ '+money(total('EXPENSE'))+'।'});
   if(intent==='INCOME')return NextResponse.json({mode:'normal',answer:range.label+'-এর অন্যান্য আয় '+money(total('OTHER_INCOME'))+'।'});
   if(intent==='PROFIT'){
-    const sales=total('SALE'),cogs=tx.filter(x=>x.type==='SALE').reduce((a,x)=>a+Number(x.costAmount||0),0),expense=total('EXPENSE');
+    const sales=total('SALE'),cogs=txRows.filter(x=>x.type==='SALE').reduce((a,x)=>a+Number(x.costAmount||0),0),expense=total('EXPENSE');
     return NextResponse.json({mode:'normal',answer:range.label+'-এর হিসাব:\nSales '+money(sales)+'\nCOGS '+money(cogs)+'\nGross profit '+money(sales-cogs)+'\nExpense '+money(expense)+'\nNet profit '+money(sales-cogs-expense)});
   }
   if(intent==='TOP_SALES'){
@@ -114,7 +114,7 @@ export async function POST(req:Request){
     return NextResponse.json({mode:'normal',answer:range.label+'-এর '+lines.length+'টি transaction:\n'+(lines.join('\n')||'কোনো transaction নেই')});
   }
   if(intent==='SUMMARY'){
-    const sales=total('SALE'),purchase=total('STOCK_IN'),expense=total('EXPENSE'),cogs=tx.filter(x=>x.type==='SALE').reduce((a,x)=>a+Number(x.costAmount||0),0);
+    const sales=total('SALE'),purchase=total('STOCK_IN'),expense=total('EXPENSE'),cogs=txRows.filter(x=>x.type==='SALE').reduce((a,x)=>a+Number(x.costAmount||0),0);
     return NextResponse.json({mode:'normal',answer:range.label+' business summary:\nSales '+money(sales)+'\nPurchase '+money(purchase)+'\nExpense '+money(expense)+'\nGross profit '+money(sales-cogs)+'\nNet profit '+money(sales-cogs-expense)});
   }
 
@@ -122,7 +122,7 @@ export async function POST(req:Request){
     const now=new Date();
     const window=getSalesWindow(q,now);
     const query:any={userId:uid,type:'SALE',isDeleted:false,timestamp:{$gte:window.start,$lte:window.end||now}};
-    const tx=await Transaction.find(query).sort({timestamp:1}).lean();
+    const txRows=await Transaction.find(query).sort({timestamp:1}).lean();
     const [parties,products]=await Promise.all([
       Party.find({userId:uid}).select('_id name').lean(),
       Product.find({userId:uid}).select('_id name unit').lean(),
@@ -153,7 +153,7 @@ export async function POST(req:Request){
   ]);
   let answer='আপনার প্রশ্নটি বুঝতে পারিনি। বিক্রি, লাভ, পাওনা, দেনা বা স্টক সম্পর্কে জিজ্ঞেস করুন।';
   if(q.includes('লাভ')||q.includes('profit')){
-    const sales=tx.filter(x=>x.type==='SALE').reduce((a,x)=>a+x.amount,0),cogs=tx.filter(x=>x.type==='SALE').reduce((a,x)=>a+(x.costAmount||0),0),exp=tx.filter(x=>x.type==='EXPENSE').reduce((a,x)=>a+x.amount,0);
+    const sales=tx.filter(x=>x.type==='SALE').reduce((a,x)=>a+x.amount,0),cogs=txRows.filter(x=>x.type==='SALE').reduce((a,x)=>a+(x.costAmount||0),0),exp=tx.filter(x=>x.type==='EXPENSE').reduce((a,x)=>a+x.amount,0);
     answer=`গত ৭ দিনের আনুমানিক নিট লাভ ৳${(sales-cogs-exp).toLocaleString()}।`;
   }else if(q.includes('পাওনা')||q.includes('receivable'))
     answer=`আপনার মোট পাওনা ৳${parties.filter(x=>x.partyType==='CUSTOMER'&&x.currentBalance>0).reduce((a,x)=>a+x.currentBalance,0).toLocaleString()}।`;
