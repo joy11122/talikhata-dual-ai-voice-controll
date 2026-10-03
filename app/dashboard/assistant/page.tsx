@@ -51,7 +51,7 @@ export default function Page(){
       transition={{duration:0.45,ease:'easeOut'}}
     >
       <h1 className="text-3xl font-bold">Smart Shop Assistant</h1>
-      <p className="mt-2 text-slate-500">Ask about sales, profit, receivables, payables or stock.</p>
+      <p className="mt-2 text-white/50">Ask about sales, profit, receivables, payables or stock.</p>
     </motion.div>
 
     <motion.form
@@ -64,10 +64,10 @@ export default function Page(){
       <label className="form-label">Your question</label>
       <div className="mt-2 flex items-center gap-2 tk-page-surface rounded-2xl p-2 shadow-sm focus-within:border-white/15 focus-within:ring-2 focus-within:ring-[#7692FF]/20">
         <input className="min-w-0 flex-1 border-0 bg-transparent px-3 py-3 outline-none" value={q} onChange={e=>setQ(e.target.value)} placeholder="আজকের বিক্রি কেমন?" aria-label="Your question" required/>
-        <button type="button" onClick={startVoice} disabled={listening||busy} aria-label="Speak your question" title="Speak your question" className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl transition ${listening?'bg-emerald-600 text-white':'bg-slate-100 text-emerald-700 hover:bg-emerald-50'} disabled:opacity-50`}>
+        <button type="button" onClick={startVoice} disabled={listening||busy} aria-label="Speak your question" title="Speak your question" className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl transition ${listening?'bg-emerald-600 text-white':'bg-transparent text-[#ABD2FA] border border-white/10 hover:bg-white/[0.06]'} disabled:opacity-50`}>
           {listening?<Mic className="animate-pulse"/>:<Mic/>}
         </button>
-        <button type="submit" disabled={busy||!q.trim()} aria-label="Send question" className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-slate-900 text-white transition hover:bg-slate-800 disabled:opacity-40">
+        <button type="submit" disabled={busy||!q.trim()} aria-label="Send question" className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-[#1B2CC1]/70 text-white transition hover:bg-[#1B2CC1] border border-white/10 disabled:opacity-40">
           {busy?<Loader2 className="animate-spin"/>:<Send size={18}/>}
         </button>
       </div>
@@ -81,7 +81,7 @@ export default function Page(){
           animate={{opacity:1,y:0,scale:1}}
           exit={{opacity:0,y:-5,scale:0.98}}
           transition={{duration:0.25}}
-          className="mt-5 flex items-center gap-3 rounded-2xl border border-emerald-100 bg-emerald-50/60 px-5 py-4 text-sm text-slate-600"
+          className="mt-5 flex items-center gap-3 rounded-2xl border border-white/10 bg-[#091540]/60 backdrop-blur-[18px] px-5 py-4 text-sm text-white/70"
           aria-live="polite"
         >
           <motion.div
@@ -109,7 +109,7 @@ export default function Page(){
           initial={{opacity:0,y:8}}
           animate={{opacity:1,y:0}}
           exit={{opacity:0,y:-5}}
-          className="mt-4 flex items-center justify-between rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700"
+          className="mt-4 flex items-center justify-between rounded-xl border border-rose-400/20 bg-rose-500/10 p-4 text-sm text-rose-200"
         >
           <span>{error}</span>
           <button onClick={()=>setError('')} aria-label="Close error"><X size={16}/></button>
