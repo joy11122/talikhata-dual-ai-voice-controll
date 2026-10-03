@@ -626,7 +626,7 @@ function parseLedgerDirectionCommand(text: string): VoiceV2Command | null {
 /* Local parser                                                               */
 /* -------------------------------------------------------------------------- */
 
-function localParse(text: string): VoiceV2Command | null {
+export function parseVoiceV2Local(text: string): VoiceV2Command | null {
   const inventory = parseInventoryPurchaseCommand(text);
   if (inventory) return inventory;
 
@@ -1073,7 +1073,7 @@ export async function parseVoiceV2(
     );
   }
 
-  const local = localParse(normalized);
+  const local = parseVoiceV2Local(normalized);
 
   if (local) {
     return normalizeLedgerSemantics(local, normalized);
