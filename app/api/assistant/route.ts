@@ -47,6 +47,7 @@ export async function POST(req:Request){
   await connectDB();
 
   const uid=new Types.ObjectId(s.user.id);
+  const now=new Date();
   const q=normalizeBangla(question);
   const intent=detectAssistantIntent(question);
   const range=getAssistantRange(question,now);
