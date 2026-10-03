@@ -29,7 +29,7 @@ export interface IProduct extends mongoose.Document{
   trackStock:boolean;
   attributes:Record<string,ProductAttributeValue>;
   variants:IProductVariant[];
-  createdAt:Date;
+  createdAt:Date;isDeleted:boolean;deletedAt?:Date;deletedBy?:Types.ObjectId;
 }
 
 const VariantSchema=new Schema<IProductVariant>({
@@ -56,7 +56,7 @@ const S=new Schema<IProduct>({
   lowStockThreshold:{type:Number,default:5,min:0},
   trackStock:{type:Boolean,default:true},
   attributes:{type:Schema.Types.Mixed,default:{}},
-  variants:{type:[VariantSchema],default:[]},
+  variants:{type:[VariantSchema],default:[]},isDeleted:{type:Boolean,default:false,index:true},deletedAt:{type:Date},deletedBy:{type:Schema.Types.ObjectId,ref:'User'},
 },{timestamps:true,versionKey:false});
 
 S.index({name:'text',category:'text',brand:'text',sku:'text',barcode:'text'});
