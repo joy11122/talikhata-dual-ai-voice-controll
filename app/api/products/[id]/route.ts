@@ -89,8 +89,8 @@ export async function DELETE(_:Request,{params}:{params:{id:string}}){
   const uid=new Types.ObjectId(s.user.id);
   const row=await Product.findOne({_id:new Types.ObjectId(params.id),userId:uid});
   if(!row)return NextResponse.json({error:'Not found'},{status:404});
-  const linked=await Transaction.countDocuments({userId:uid,productId:row._id});
+  const linked=await Transaction.countDocuments({userId:uid,productId:row._id,isDeleted:false});
   if(linked)return NextResponse.json({error:'Cannot delete a product with transaction history. Keep it for inventory integrity.'},{status:409});
-  await row.deleteOne();
+  await Product.updateOne({_id:row._id,userId:uid},{$set:{isDeleted:true,deletedAt:new Date(),deletedBy:uid}});
   return NextResponse.json({ok:true});
 }
