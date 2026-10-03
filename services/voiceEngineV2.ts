@@ -2785,16 +2785,16 @@ export async function executeVoiceV2(
                   ),
 
                   productId: String(
-                    product._id,
+                    transactionProduct!._id,
                   ),
 
                   amount: total,
 
                   quantity:
-                    command.quantity,
+                    command.quantity!,
 
                   unitPrice:
-                    command.unitPrice,
+                    command.unitPrice!,
 
                   paidAmount: paid,
 
