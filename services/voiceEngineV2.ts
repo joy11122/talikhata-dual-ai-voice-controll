@@ -2675,6 +2675,14 @@ export async function executeVoiceV2(
             );
           }
 
+          const transactionProduct = product;
+          if (!isAmountOnlySale && !transactionProduct) {
+            throw new VoiceV2Error(
+              'PRODUCT_NOT_FOUND',
+              `Product "${command.entityName}" পাওয়া যায়নি। আগে product হিসেবে যোগ করুন।`,
+            );
+          }
+
           const total = isAmountOnlySale
             ? money(command.amount)
             : money(
