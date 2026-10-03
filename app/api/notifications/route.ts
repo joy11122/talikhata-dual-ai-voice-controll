@@ -11,7 +11,7 @@ export async function GET(){
   if(!s?.user?.id)return NextResponse.json({error:'Unauthorized'},{status:401});
   await connectDB();
   const uid=new Types.ObjectId(s.user.id);
-  const products=await Product.find({userId:uid,isDeleted:false,trackStock:true,stockQuantity:{$lte:'$lowStockThreshold'}}).select('_id name stockQuantity lowStockThreshold unit').lean();
+  const products=await Product.find({userId:uid,isDeleted:false,trackStock:true,$expr:{$lte:['$stockQuantity','$lowStockThreshold']}}).select('_id name stockQuantity lowStockThreshold unit').lean();
   for(const product of products){
     const type=Number(product.stockQuantity)<=0?'OUT_OF_STOCK':'LOW_STOCK';
     const existing=await Notification.findOne({userId:uid,type,'metadata.productId':String(product._id),createdAt:{$gte:new Date(Date.now()-24*60*60*1000)}}).lean();
