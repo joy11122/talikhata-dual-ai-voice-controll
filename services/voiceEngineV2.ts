@@ -672,6 +672,30 @@ export function parseVoiceV2Local(text: string): VoiceV2Command | null {
     command.partyType = partyType;
     return command;
   }
+  const deletePartyMatch = value.match(
+    /^(.*?)\\s+(?:customer|কাস্টমার|গ্রাহক|supplier|সাপ্লায়ার|সরবরাহকারী|party|পার্টি)?\\s*(?:delete|remove|ডিলিট|মুছে দাও|মুছে ফেলো|মুছে ফেলুন|সরিয়ে দাও|সরিয়ে দাও|বাদ দাও|ডিলেট|delete koro|delete kor|remove koro|remove kor|মুছে দাও|মুছে ফেলো)\\s*$/iu,
+  );
+  if (deletePartyMatch?.[1]?.trim()) {
+    const raw = deletePartyMatch[1].trim();
+    const partyType =
+      /(?:supplier|সাপ্লায়ার|সরবরাহকারী)/iu.test(raw)
+        ? 'SUPPLIER'
+        : /(?:customer|কাস্টমার|গ্রাহক)/iu.test(raw)
+          ? 'CUSTOMER'
+          : null;
+    const entityName = raw
+      .replace(/(?:customer|কাস্টমার|গ্রাহক|supplier|সাপ্লায়ার|সরবরাহকারী|party|পার্টি)\\s*$/iu, '')
+      .trim();
+    if (entityName) {
+      const command = blank('DELETE_PARTY');
+      command.entityType = partyType || 'CUSTOMER';
+      command.entityName = entityName;
+      command.partyType = partyType;
+      command.confirmRequired = true;
+      return command;
+    }
+  }
+
 
   const list = /(?:list|তালিকা|সব|সকল|দেখাও|দেখান|দেখতে চাই|show|dao|দাও|লিস্ট)/i.test(value);
 
