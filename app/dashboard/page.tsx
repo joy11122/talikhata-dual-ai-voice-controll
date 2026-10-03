@@ -50,7 +50,7 @@ export default function DashboardPage(){
    <section className="w-full" aria-label="AI Assistant">
      <div className="pointer-events-none absolute -right-20 -top-24 h-48 w-48 rounded-full bg-[#7692ff]/10 blur-3xl" />
           <div className="relative min-w-0 flex-1">
-       <form className="mt-4 flex w-full items-center gap-1.5 rounded-2xl border border-white/10 bg-white/[.035] p-1.5 shadow-[inset_0_1px_0_rgba(255,255,255,.04)]" onSubmit={async e=>{
+       <form className="mt-4 flex w-full items-center gap-1.5 rounded-2xl border border-white/10 tk-glass-subtle p-1.5 shadow-[inset_0_1px_0_rgba(255,255,255,.04)]" onSubmit={async e=>{
          e.preventDefault();
          if(!assistantQ.trim()||assistantBusy)return;
          setAssistantBusy(true);setAssistantError('');
@@ -82,7 +82,7 @@ export default function DashboardPage(){
            {assistantBusy?<Loader2 className="animate-spin" size={17}/>:<Send size={17}/>}
          </button>
        </form>
-       {assistantA&&!assistantBusy&&<div className="mt-3 rounded-xl border border-white/10 bg-white/[.025] px-3.5 py-3 text-sm text-white/75"><div className="flex items-start gap-2"><span className="min-w-0 flex-1 leading-6">{assistantA}</span><button type="button" onClick={()=>setAssistantA('')} aria-label="Clear assistant answer" className="shrink-0 rounded-lg p-1 text-white/35 transition hover:bg-white/[.06] hover:text-white/70"><X size={15}/></button></div></div>}
+       {assistantA&&!assistantBusy&&<div className="mt-3 rounded-xl border border-white/10 tk-glass-subtle px-3.5 py-3 text-sm text-white/75"><div className="flex items-start gap-2"><span className="min-w-0 flex-1 leading-6">{assistantA}</span><button type="button" onClick={()=>setAssistantA('')} aria-label="Clear assistant answer" className="shrink-0 rounded-lg p-1 text-white/35 transition hover:bg-white/[.06] hover:text-white/70"><X size={15}/></button></div></div>}
        {assistantError&&<p className="mt-2 px-1 text-xs text-red-300/90" role="alert">{assistantError}</p>}
      </div>
    </section>
