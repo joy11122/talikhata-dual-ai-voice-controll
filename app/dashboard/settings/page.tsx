@@ -37,8 +37,7 @@ export default function SettingsPage(){
     }).catch(()=>{});
   },[]);
 
-  async function saveReport(e:React.FormEvent){
-    e.preventDefault();
+  async function saveReport(){
     setReportBusy(true);setReportMessage('');
     try{
       const payload={
@@ -104,7 +103,7 @@ export default function SettingsPage(){
             <label className="flex cursor-pointer items-center gap-3 tk-card p-4"><input type="checkbox" checked={report.inAppEnabled} onChange={e=>setReport({...report,inAppEnabled:e.target.checked})}/><Bell size={17}/><span><b className="block text-sm">In-app notification</b><small className="text-xs text-white/50">Free</small></span></label>
             <label className="flex cursor-pointer items-center gap-3 tk-card p-4"><input type="checkbox" checked={report.emailEnabled} onChange={e=>setReport({...report,emailEnabled:e.target.checked})}/><Mail size={17}/><span><b className="block text-sm">Email</b><small className="text-xs text-white/50">{report.email||'Your account email'}</small></span></label>
           </div>
-          <button type="button" disabled={reportBusy} onClick={saveReport as any} className="btn-primary w-full sm:w-auto">{reportBusy?'Saving…':'Save report settings'}</button>
+          <button type="button" disabled={reportBusy} onClick={()=>void saveReport()} className="btn-primary w-full sm:w-auto">{reportBusy?'Saving…':'Save report settings'}</button>
           {reportMessage&&<div className="rounded-2xl border border-emerald-200 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-300">{reportMessage}</div>}
         </div>
       </section>
