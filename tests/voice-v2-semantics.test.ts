@@ -51,6 +51,7 @@ describe('actual parser direction regression', () => {
   it.each(cases)('parses "$text" with the correct ledger direction', async ({ text, action, partyType, amount }) => {
     const parsed = await parseVoiceV2Local(text);
     expect(parsed).not.toBeNull();
+    if (!parsed) throw new Error('Parser returned null');
     expect(parsed.action).toBe(action);
     expect(parsed.partyType).toBe(partyType);
     expect(parsed.amount).toBe(amount);
