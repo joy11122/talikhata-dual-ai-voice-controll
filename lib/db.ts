@@ -56,6 +56,17 @@ export async function connectDB(): Promise<typeof mongoose> {
       const products = db.collection('products');
       const indexName = 'userId_1_sku_1';
 
+      const partyCollection = db.collection('parties');
+      const partyIndexes = await partyCollection.indexes();
+      const legacyPartyName = partyIndexes.find((i) => i.name === 'userId_1_name_1');
+      if (legacyPartyName && !legacyPartyName.partialFilterExpression) await partyCollection.dropIndex('userId_1_name_1');
+      try { await partyCollection.createIndex({ userId: 1, name: 1 }, { name: 'userId_1_name_1', unique: true, partialFilterExpression: { isDeleted: false } }); } catch (error) { if (!(error instanceof Error && error.message.includes('already exists'))) throw error; }
+
+      const productCollection = db.collection('products');
+      const legacyProductName = (await productCollection.indexes()).find((i) => i.name === 'userId_1_name_1');
+      if (legacyProductName && !legacyProductName.partialFilterExpression) await productCollection.dropIndex('userId_1_name_1');
+      try { await productCollection.createIndex({ userId: 1, name: 1 }, { name: 'userId_1_name_1', unique: true, partialFilterExpression: { isDeleted: false } }); } catch (error) { if (!(error instanceof Error && error.message.includes('already exists'))) throw error; }
+
       const indexMigrations: Array<{
         name: string;
         key: Record<string, 1 | -1>;
