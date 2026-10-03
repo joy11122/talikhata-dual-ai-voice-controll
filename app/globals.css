@@ -381,13 +381,10 @@ body{min-height:100vh;}
   isolation:isolate;
 }
 
-/* TaliKhata design-system primitives — use one primitive for equivalent UI. */
+/* TaliKhata design-system primitives — canonical shared UI. */
 .tk-card{border:1px solid var(--tk-glass-border);background:rgba(255,255,255,.025);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);box-shadow:0 10px 28px rgba(0,0,0,.10);}
 .tk-card:hover{border-color:rgba(118,146,255,.28);}
 .tk-modal-panel{width:100%;border:1px solid var(--tk-glass-border);background:var(--tk-glass-bg-strong);backdrop-filter:blur(24px);-webkit-backdrop-filter:blur(24px);box-shadow:0 18px 50px rgba(0,0,0,.35);}
-.tk-icon-button{display:inline-flex;min-height:40px;width:40px;align-items:center;justify-content:center;border:1px solid var(--tk-glass-border);border-radius:9999px;background:transparent;color:rgba(255,255,255,.70);transition:background-color .16s ease,border-color .16s ease,transform .16s ease;}
-.tk-icon-button:hover{background:var(--tk-glass-hover);border-color:rgba(255,255,255,.15);}
-.tk-icon-button:active{transform:scale(.96);}
 .tk-control{display:inline-flex;min-height:44px;align-items:center;justify-content:center;gap:.5rem;border:1px solid var(--tk-glass-border);border-radius:12px;background:transparent;color:rgba(255,255,255,.90);padding:.72rem 1rem;transition:background-color .16s ease,border-color .16s ease,transform .16s ease;}
 .tk-control:hover{background:var(--tk-glass-hover);border-color:rgba(255,255,255,.15);}
 .tk-control:active{transform:scale(.985);}
@@ -396,6 +393,8 @@ body{min-height:100vh;}
 .tk-glass{background:var(--tk-glass-bg);border:1px solid var(--tk-glass-border);backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px);box-shadow:0 10px 30px rgba(0,0,0,.16)}
 .tk-glass-strong{background:var(--tk-glass-bg-strong);border:1px solid var(--tk-glass-border);backdrop-filter:blur(24px);-webkit-backdrop-filter:blur(24px);box-shadow:0 18px 50px rgba(0,0,0,.35)}
 .tk-glass-hover:hover{background:var(--tk-glass-hover);border-color:rgba(255,255,255,.15)}
+
+/* Canonical icon button — shared across the app. */
 .tk-icon-button{display:inline-flex;min-height:40px;width:40px;align-items:center;justify-content:center;border:1px solid var(--tk-glass-border);border-radius:9999px;background:transparent;color:rgba(255,255,255,.72);transition:background-color .16s ease,border-color .16s ease,transform .16s ease}
 .tk-icon-button:hover{background:var(--tk-glass-hover);border-color:rgba(255,255,255,.15)}
 .tk-icon-button:active{transform:scale(.97)}
