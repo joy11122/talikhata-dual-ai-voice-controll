@@ -30,10 +30,7 @@ export default function OwnerProfile({name,email,image}:{name?:string|null;email
    };
  },[menuOpen]);
 
- const openRecovery=()=>{
-   setMenuOpen(false);
-   setRecoveryOpen(true);
- };
+ const openRecovery=()=>setRecoveryOpen(value=>!value);
 
  return <div ref={menuRef} className="relative flex items-center gap-2">
    <div className="hidden text-right lg:block">
@@ -83,9 +80,12 @@ export default function OwnerProfile({name,email,image}:{name?:string|null;email
          </Link>
          <button type="button" role="menuitem" onClick={openRecovery} className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm text-white/75 transition hover:bg-white/5 hover:text-white">
            <ArchiveRestore size={17} className="text-white/45"/>
-           <span>Backup &amp; deleted data</span>
+           <span className="flex-1">Backup &amp; deleted data</span>
+           <span className="text-xs text-white/40">{recoveryOpen?'▴':'▾'}</span>
          </button>
        </div>
+
+       {recoveryOpen&&<div className="mx-1 mb-1 rounded-xl border border-white/[0.08] bg-transparent p-2"><DataRecoveryPanel embedded onClose={()=>setRecoveryOpen(false)}/></div>}
 
        <div className="border-t border-white/[0.08] pt-1">
          <button
@@ -101,6 +101,5 @@ export default function OwnerProfile({name,email,image}:{name?:string|null;email
      </div>
    )}
 
-   {recoveryOpen&&<DataRecoveryPanel onClose={()=>setRecoveryOpen(false)}/>}
  </div>
 }
