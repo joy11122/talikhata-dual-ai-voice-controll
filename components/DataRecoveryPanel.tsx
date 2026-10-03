@@ -1,5 +1,6 @@
 'use client';
 import {useEffect,useState} from 'react';
+import {createPortal} from 'react-dom';
 import {ArchiveRestore,DatabaseBackup,Loader2,Trash2,X} from 'lucide-react';
 
 type Props={onClose:()=>void};
@@ -46,7 +47,10 @@ export default function DataRecoveryPanel({onClose}:Props){
   }finally{setLoading(false)}
  }
 
- return <div className="fixed inset-0 z-[9999] overflow-y-auto bg-black/35 backdrop-blur-[24px]" role="dialog" aria-modal="true">
+ if(typeof document==='undefined')return null;
+
+ const panel=(
+  <div className="fixed inset-0 z-[2147483647] overflow-y-auto bg-black/35 backdrop-blur-[24px]" role="dialog" aria-modal="true">
   <div className="flex min-h-full w-full items-start justify-center p-3 py-6 sm:items-center sm:p-5">
    <div className="tk-modal-panel w-full max-w-2xl max-h-[calc(100vh-3rem)] overflow-y-auto rounded-2xl p-4 sm:p-5">
     <div className="flex items-start justify-between gap-3">
