@@ -14,7 +14,7 @@ export async function GET(_:Request,{params}:{params:{id:string}}){
   if(!Types.ObjectId.isValid(params.id))return NextResponse.json({error:'Invalid id'},{status:400});
   await connectDB();
   const uid=new Types.ObjectId(s.user.id);
-  const row=await Product.findOne({_id:new Types.ObjectId(params.id),userId:uid}).lean();
+  const row=await Product.findOne({_id:new Types.ObjectId(params.id),userId:uid,isDeleted:false}).lean();
   if(!row)return NextResponse.json({error:'Not found'},{status:404});
   const transactions=await Transaction.find({userId:uid,productId:row._id}).sort({timestamp:-1}).limit(100).lean();
   return NextResponse.json({product:row,transactions});
@@ -77,7 +77,7 @@ export async function PATCH(req:Request,{params}:{params:{id:string}}){
     if(data.sellPrice===undefined)data.sellPrice=data.variants[0]?.sellPrice||0;
     if(data.buyPrice===undefined)data.buyPrice=data.variants[0]?.buyPrice||0;
   }
-  const row=await Product.findOneAndUpdate({_id:id,userId:uid},{$set:data},{new:true,runValidators:true}).lean();
+  const row=await Product.findOneAndUpdate({_id:id,userId:uid,isDeleted:false},{$set:data},{new:true,runValidators:true}).lean();
   return row?NextResponse.json(row):NextResponse.json({error:'Not found'},{status:404});
 }
 
