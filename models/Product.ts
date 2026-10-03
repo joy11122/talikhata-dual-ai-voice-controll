@@ -60,7 +60,7 @@ const S=new Schema<IProduct>({
 },{timestamps:true,versionKey:false});
 
 S.index({name:'text',category:'text',brand:'text',sku:'text',barcode:'text'});
-S.index({userId:1,name:1},{unique:true});
+S.index({userId:1,name:1},{unique:true,partialFilterExpression:{isDeleted:false}});
 S.index({userId:1,lowStockThreshold:1,stockQuantity:1});
 S.index({userId:1,sku:1},{unique:true,partialFilterExpression:{sku:{$type:'string'}}});
 S.index({userId:1,barcode:1},{unique:true,partialFilterExpression:{barcode:{$type:'string'}}});
