@@ -69,5 +69,6 @@ export default function DataRecoveryPanel({onClose}:Props){
     {loading&&<div className="mt-3 text-xs text-white/50">Working…</div>}
    </div>
   </div>
- </div>
+ );
+ return createPortal(panel,document.body);
 }
