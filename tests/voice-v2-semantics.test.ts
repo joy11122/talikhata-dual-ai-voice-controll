@@ -1,5 +1,4 @@
 import { describe, expect, it } from 'vitest';
-import { describe, expect, it } from 'vitest';
 describe('bangla banglish english command matrix', () => {
   const cases = [
     ['রহিম বাকি নিল ৫০০ টাকা', 'CUSTOMER_DUE'],
