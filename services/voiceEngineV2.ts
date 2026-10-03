@@ -2833,7 +2833,7 @@ export async function executeVoiceV2(
               type: 'CREATE_PURCHASE',
 
               product:
-                product.name,
+                transactionProduct!.name,
 
               supplier: supplier.name,
               supplierCreated: supplierResolved.created,
