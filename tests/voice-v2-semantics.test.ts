@@ -211,6 +211,7 @@ describe('Voice V2 Bangladesh ledger semantics', () => {
     ['Rahim ke 500 taka dilam', 'CREATE_DUE', 'Rahim', 500],
   ])('%s → %s', async (text, action, name, amount) => {
     const command = await parseVoiceV2Local(text);
+    if (!command) throw new Error('Parser returned null');
     expect(command).not.toBeNull();
 
     expect(command.action).toBe(action);
@@ -237,6 +238,7 @@ describe('Voice V2 Bangladesh ledger semantics', () => {
     ['I received 500 from Rahim', 'RECEIVE_PAYMENT', 'Rahim', 500],
   ])('%s → customer ledger direction', async (text, action, name, amount) => {
     const command = await parseVoiceV2Local(text);
+    if (!command) throw new Error('Parser returned null');
     expect(command).not.toBeNull();
     expect(command.action).toBe(action);
     expect(command.entityName).toBe(name);
@@ -248,6 +250,7 @@ describe('Voice V2 Bangladesh ledger semantics', () => {
     ['সরবরাহকারী করিমের ১০০০ টাকা পাওনা', 'SUPPLIER', 'SUPPLIER', 'CREATE_DUE'],
   ])('%s → explicit supplier role', async (text, entityType, partyType, action) => {
     const command = await parseVoiceV2Local(text);
+    if (!command) throw new Error('Parser returned null');
     expect(command).not.toBeNull();
     expect(command.action).toBe(action);
     expect(command.entityType).toBe(entityType);
@@ -261,6 +264,7 @@ describe('Voice V2 Bangladesh ledger semantics', () => {
     ['করিমের কাছ থেকে ৫০০ টাকা নিলাম', 'RECEIVE_PAYMENT', 'করিম', 500],
   ])('%s → supplier/payment direction', async (text, action, name, amount) => {
     const command = await parseVoiceV2Local(text);
+    if (!command) throw new Error('Parser returned null');
     expect(command).not.toBeNull();
     expect(command.action).toBe(action);
     expect(command.entityName).toBe(name);
@@ -272,6 +276,7 @@ describe('Voice V2 Bangladesh ledger semantics', () => {
     ['Rahim er baki koto', 'READ_BALANCE', 'Rahim'],
   ])('%s → balance query', async (text, action, name) => {
     const command = await parseVoiceV2Local(text);
+    if (!command) throw new Error('Parser returned null');
     expect(command).not.toBeNull();
 
     expect(command.action).toBe(action);
@@ -286,6 +291,7 @@ describe('Voice V2 Bangladesh ledger semantics', () => {
     ['20 কেজি গম 70 টাকা দরে যোগ করো', 'গম', 20, 'কেজি', 70],
   ])('%s → product add', async (text, name, quantity, unit, unitPrice) => {
     const command = await parseVoiceV2Local(text);
+    if (!command) throw new Error('Parser returned null');
     expect(command).not.toBeNull();
 
     expect(command.action).toBe('CREATE_PRODUCT');
@@ -309,6 +315,7 @@ describe('Voice V2 Bangladesh ledger semantics', () => {
     ['রহিমকে ১০০০ টাকার মাল বিক্রি করলাম ৪০০ টাকা বাকি', 'CREATE_SALE'],
   ])('%s → sale command', async (text, action) => {
     const command = await parseVoiceV2Local(text);
+    if (!command) throw new Error('Parser returned null');
     expect(command).not.toBeNull();
     expect(command.action).toBe(action);
   });
@@ -318,6 +325,7 @@ describe('Voice V2 Bangladesh ledger semantics', () => {
     ['রহিমকে ১০০০ টাকার মাল বিক্রি করলাম ৪০০ টাকা বাকি', 'রহিম', 1000, 600],
   ])('%s → amount-only compound sale', async (text, party, total, paid) => {
     const command = await parseVoiceV2Local(text);
+    if (!command) throw new Error('Parser returned null');
     expect(command).not.toBeNull();
     expect(command.action).toBe('CREATE_SALE');
     expect(command.query).toBe(party);
@@ -332,6 +340,7 @@ describe('Voice V2 Bangladesh ledger semantics', () => {
     ['Rahim took 2 kg rice for 140 taka', 'CREATE_SALE', 'Rahim', 'rice', 2, 70, 140],
   ])('%s → natural total sale', async (text, action, party, product, quantity, unitPrice, amount) => {
     const command = await parseVoiceV2Local(text);
+    if (!command) throw new Error('Parser returned null');
     expect(command).not.toBeNull();
     expect(command.action).toBe(action);
     expect(command.query).toBe(party);
@@ -347,6 +356,7 @@ describe('Voice V2 Bangladesh ledger semantics', () => {
     ['Karim er kach theke 20 kg chal 70 taka dore kinlam, 500 taka dilam', 'Karim', 20, 70, 1400, 500],
   ])('%s → compound purchase', async (text, supplier, quantity, unitPrice, amount, paid) => {
     const command = await parseVoiceV2Local(text);
+    if (!command) throw new Error('Parser returned null');
     expect(command).not.toBeNull();
     expect(command.action).toBe('CREATE_PURCHASE');
     expect(command.query).toBe(supplier);
@@ -365,6 +375,7 @@ describe('Voice V2 Bangladesh ledger semantics', () => {
     ['I bought 20 kg rice from Karim for 1400 taka', 'CREATE_PURCHASE'],
   ])('%s → purchase command', async (text, action) => {
     const command = await parseVoiceV2Local(text);
+    if (!command) throw new Error('Parser returned null');
     expect(command).not.toBeNull();
     expect(command.action).toBe(action);
   });
@@ -382,6 +393,7 @@ describe('Voice V2 Bangladesh ledger semantics', () => {
     ['Kajol er kach theke pelam 1000 taka', 'RECEIVE_PAYMENT'],
   ])('%s → deterministic direction', async (text, action) => {
     const command = await parseVoiceV2Local(text);
+    if (!command) throw new Error('Parser returned null');
     expect(command).not.toBeNull();
     expect(command.action).toBe(action);
   });
@@ -399,6 +411,7 @@ describe('Voice V2 Bangladesh ledger semantics', () => {
     ['Rahim 1000 taka paid', 'RECEIVE_PAYMENT'],
   ])('%s → cross-direction action', async (text, action) => {
     const command = await parseVoiceV2Local(text);
+    if (!command) throw new Error('Parser returned null');
     expect(command).not.toBeNull();
     expect(command.action).toBe(action);
   });
@@ -413,6 +426,7 @@ describe('Voice V2 Bangladesh ledger semantics', () => {
     ['অন্যান্য আয় ৫০০ টাকা যোগ করো', 'CREATE_INCOME', 500],
   ])('%s → finance action', async (text, action, amount) => {
     const command = await parseVoiceV2Local(text);
+    if (!command) throw new Error('Parser returned null');
     expect(command).not.toBeNull();
     expect(command.action).toBe(action);
     expect(command.amount).toBe(amount);
@@ -420,6 +434,7 @@ describe('Voice V2 Bangladesh ledger semantics', () => {
 
   it('supports Bengali word amounts in ledger commands', async () => {
     const command = await parseVoiceV2Local('রহিমকে পাঁচশ টাকা দিলাম');
+    if (!command) throw new Error('Parser returned null');
     expect(command).not.toBeNull();
 
     expect(command.action).toBe('CREATE_DUE');
