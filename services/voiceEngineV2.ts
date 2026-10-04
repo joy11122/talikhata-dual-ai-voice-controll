@@ -3124,14 +3124,81 @@ export async function executeVoiceV2(
 /* Local parser                                                               */
 /* -------------------------------------------------------------------------- */
 
-, 'iu'));
+function parseLedgerTradeFallback(text: string): VoiceV2Command | null {
+  const value = norm(text);
+  const amount = extractNumber(text);
+
+  const cleanName = (s: string) => s.trim()
+    .replace(/^(?:আজ|আমি|আমরা|i|we)\s+/iu, '')
+    .replace(/(?:এর|ের|র|কে|দের|ে)$/u, '')
+    .replace(/\s+(?:er|r|ke|der|e)$/i, '')
+    .replace(/\s+(?:supplier|customer|কাস্টমার|গ্রাহক|সরবরাহকারী|সাপ্লায়ার)$/iu, '')
+    .trim();
+
+  const saleNamed = value.match(
+    /^(.+?)\s*(?:কে|ke)\s*(\d[\d,]*(?:\.\d+)?)\s*(কেজি|kg|কিলো|কিলোগ্রাম|গ্রাম|gram|g|লিটার|liter|litre|ml|মিটার|meter|টা|টি|piece|pieces|pcs|বোতল|প্যাকেট|packet|box|unit|ইউনিট)\s+(.+?)\s+(\d[\d,]*(?:\.\d+)?)\s*(?:টাকা|tk|taka)?\s*(?:দরে|rate|per)\s+(?:বিক্রি|বেচা|বেচে|sell|sold)\s*(?:করলাম|করেছি|করল|করুন|করো)?$/iu,
+  );
+
   if (saleNamed) {
-    const quantity=Number(saleNamed[2].replace(/,/g,'')); const product=saleNamed[4].trim(); const price=Number(saleNamed[5].replace(/,/g,''));
-    if(quantity>0&&price>0&&product){const r=blank('CREATE_SALE');r.entityType='PRODUCT';r.entityName=product;r.quantity=quantity;r.unit=saleNamed[3];r.unitPrice=price;r.query=cleanName(saleNamed[1]);r.partyType='CUSTOMER';r.amount=money(quantity*price);r.paidAmount=/(?:বাকি|বাকিতে|credit|due)/iu.test(value)?0:r.amount;return r;}
+    const quantity = Number(saleNamed[2].replace(/,/g, ''));
+    const price = Number(saleNamed[5].replace(/,/g, ''));
+    const product = saleNamed[4].trim();
+
+    if (quantity > 0 && price > 0 && product) {
+      const r = blank('CREATE_SALE');
+      r.entityType = 'PRODUCT';
+      r.entityName = product;
+      r.quantity = quantity;
+      r.unit = saleNamed[3];
+      r.unitPrice = price;
+      r.query = cleanName(saleNamed[1]);
+      r.partyType = 'CUSTOMER';
+      r.amount = money(quantity * price);
+      r.paidAmount = /(?:বাকি|বাকিতে|credit|due)/iu.test(value) ? 0 : r.amount;
+      return r;
+    }
   }
 
-  const purchase = value.match(new RegExp('^(.+?)\\s*(?:এর|র)?\\s*(?:কাছ থেকে|kach theke|er kach theke|from)\\s*(' + moneyNumber + ')\\s*' + unit + '\\s+(.+?)\\s+(' + moneyNumber + ')\\s*(?:টাকা|tk|taka)?\\s*(?:দরে|rate|per)\\s+(?:কিনলাম|কিনেছি|kinlam|kinchi|bought|purchase)(?:.*)
-/* -------------------------------------------------------------------------- */
+  const purchase = value.match(
+    /^(.+?)\s*(?:এর|র)?\s*(?:কাছ থেকে|kach theke|er kach theke|from)\s*(\d[\d,]*(?:\.\d+)?)\s*(কেজি|kg|কিলো|কিলোগ্রাম|গ্রাম|gram|g|লিটার|liter|litre|ml|মিটার|meter|টা|টি|piece|pieces|pcs|বোতল|প্যাকেট|packet|box|unit|ইউনিট)\s+(.+?)\s+(\d[\d,]*(?:\.\d+)?)\s*(?:টাকা|tk|taka)?\s*(?:দরে|rate|per)\s+(?:কিনলাম|কিনেছি|kinlam|kinchi|bought|purchase)(?:.*)$/iu,
+  );
+
+  if (purchase) {
+    const quantity = Number(purchase[2].replace(/,/g, ''));
+    const price = Number(purchase[5].replace(/,/g, ''));
+    const product = purchase[4].trim();
+
+    if (quantity > 0 && price > 0 && product) {
+      const r = blank('CREATE_PURCHASE');
+      r.entityType = 'PRODUCT';
+      r.entityName = product;
+      r.quantity = quantity;
+      r.unit = purchase[3];
+      r.unitPrice = price;
+      r.query = cleanName(purchase[1]);
+      r.partyType = 'SUPPLIER';
+      r.amount = money(quantity * price);
+      r.paidAmount = /(?:দিলাম|দিয়েছি|dilam|paid)/iu.test(value) ? (amount ?? 0) : 0;
+      return r;
+    }
+  }
+
+  const amountTrade = value.match(
+    /^(.+?)\s*(?:কে|ke)\s*(\d+(?:\.\d+)?)\s*টাকার?\s*(?:মাল|পণ্য|product|item)\s+(?:বিক্রি|sell|sold)\b.*$/iu,
+  );
+
+  if (amountTrade) {
+    const r = blank('CREATE_SALE');
+    r.entityType = 'NONE';
+    r.query = cleanName(amountTrade[1]);
+    r.partyType = 'CUSTOMER';
+    r.amount = Number(amountTrade[2]);
+    r.paidAmount = /(?:বাকি|due|credit)/iu.test(value) ? 0 : r.amount;
+    return r;
+  }
+
+  return null;
+}
 
 export function parseVoiceV2Local(text: string): VoiceV2Command | null {
   const inventory = parseInventoryPurchaseCommand(text);
