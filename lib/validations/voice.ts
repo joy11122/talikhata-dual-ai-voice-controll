@@ -157,7 +157,8 @@ export const VoiceIntentSchema = z
       .number()
       .finite()
       .nonnegative()
-      .nullable(),
+      .nullable()
+      .default(null),
 
     /**
      * Optional search/update/delete helper.
@@ -166,7 +167,8 @@ export const VoiceIntentSchema = z
       .string()
       .trim()
       .max(300)
-      .nullable(),
+      .nullable()
+      .default(null),
 
     /**
      * Optional target identifier supplied by an already
@@ -178,7 +180,8 @@ export const VoiceIntentSchema = z
       .string()
       .trim()
       .max(100)
-      .nullable(),
+      .nullable()
+      .default(null),
   })
   .superRefine((value, ctx) => {
     /* ---------------------------------------------------------------------- */
