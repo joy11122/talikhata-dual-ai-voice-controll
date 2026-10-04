@@ -7,7 +7,7 @@ export async function createTransaction(input:TransactionInput,userId:string,ses
   const party=await Party.findOne({_id:new Types.ObjectId(input.partyId),userId:uid,isDeleted:false}).maxTimeMS(8000).session(s);
   if(!party)throw new TransactionServiceError('NOT_FOUND','Party not found');
   if((input.type==='SALE'||input.type==='DUE_GIVEN'||input.type==='DUE_RECEIVED') && input.partyId){
-    const required=input.type==='SALE'?'CUSTOMER':input.partyType;
+    const required=input.type==='SALE'?'CUSTOMER':undefined;
     if(required && party.partyType!==required)throw new TransactionServiceError('PARTY_TYPE_MISMATCH',`This transaction requires a ${required.toLowerCase()} party.`);
   }
 }
