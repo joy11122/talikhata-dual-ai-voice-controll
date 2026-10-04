@@ -146,7 +146,42 @@ export function parseSaleCommand(text: string): VoiceV2Command | null {
     '^(?:আজ\\s+)?(.+?)\\s*(?:কে|ke)\\s+(\\d[\\d,]*(?:\\.\\d+)?)\\s*' +
       units +
       '\\s+(.+?)\\s+(?:বাকি(?:তে)?|ক্রেডিট|credit|due)\\s+' +
-      saleVerb + '\\s*' + ending + '
+      saleVerb +
+      '\\s*' +
+      ending +
+      '$',
+    'iu',
+  );
+
+  const namedCredit = value.match(namedCreditPattern);
+  if (namedCredit) {
+    const party = namedCredit[1]
+      .replace(/^(?:ভাই|স্যার|সাহেব|মিস্টার|মিসেস)\\s+/iu, '')
+      .replace(/\\s+(?:ভাই|স্যার|সাহেব|sir|vai|bhai)$/iu, '')
+      .trim();
+    const quantity = Number(namedCredit[2].replace(/,/g, ''));
+    const unit = namedCredit[3];
+    const product = namedCredit[4]
+      .replace(/^(?:নতুন\\s+)/iu, '')
+      .replace(/\\s+(?:পণ্য|product|item|মাল)$/iu, '')
+      .trim();
+
+    if (party && product && Number.isFinite(quantity) && quantity > 0) {
+      const command = blank('CREATE_SALE');
+      command.entityType = 'PRODUCT';
+      command.entityName = product;
+      command.quantity = quantity;
+      command.unit = unit;
+      command.unitPrice = null;
+      command.query = party;
+      command.partyType = 'CUSTOMER';
+      command.amount = null;
+      command.paidAmount = 0;
+      command.notes = 'Credit sale; use product sellPrice';
+      return command;
+    }
+  }
+
   // and "একজন কাস্টমারের কাছে ২ কেজি চাল ৭০ টাকা দরে বিক্রি করলাম"
   const anonymousRatePattern = new RegExp(
     '^(?:নগদে\\s+)?(\\d[\\d,]*(?:\\.\\d+)?)\\s*' +
