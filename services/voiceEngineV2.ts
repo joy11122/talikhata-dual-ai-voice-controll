@@ -2663,7 +2663,7 @@ export async function executeVoiceV2(
               !command.quantity ||
               command.quantity <= 0 ||
               ((!command.unitPrice || command.unitPrice <= 0) &&
-                !(command.action === 'CREATE_SALE'))
+                command.action !== 'CREATE_SALE'))
           ) {
             throw new VoiceV2Error(
               'INVALID_TRADE',
