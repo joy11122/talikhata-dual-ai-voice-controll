@@ -26,7 +26,9 @@ export async function GET(req:Request){
   let processed=0,sent=0,failed=0;
   for(const setting of settings){
     const local=dateParts(now,setting.timezone||'Asia/Dhaka');
-    if(local.time!==setting.sendTime||setting.lastSentDate===local.date)continue;
+    const configuredHour=Number((setting.sendTime||'00:00').split(':')[0]);
+    const currentHour=Number(local.time.split(':')[0]);
+    if(currentHour!==configuredHour||setting.lastSentDate===local.date)continue;
     const uid=new Types.ObjectId(setting.userId);
     try{
       const start=new Date(`${local.date}T00:00:00`);
