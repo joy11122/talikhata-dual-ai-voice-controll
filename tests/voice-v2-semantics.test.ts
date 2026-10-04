@@ -1,6 +1,7 @@
 import { vi } from 'vitest';
 vi.mock('server-only', () => ({}));
 vi.mock('next/server', () => ({}));
+vi.mock('@/auth', () => ({ auth: vi.fn() }));
 import { describe, expect, it } from 'vitest';
 import { parseVoiceV2Local } from '../services/voiceEngineV2';
 describe('bangla banglish english command matrix', () => {
