@@ -2662,8 +2662,8 @@ export async function executeVoiceV2(
             (!command.entityName ||
               !command.quantity ||
               command.quantity <= 0 ||
-              !command.unitPrice ||
-              command.unitPrice <= 0)
+              ((!command.unitPrice || command.unitPrice <= 0) &&
+                !(command.action === 'CREATE_SALE'))
           ) {
             throw new VoiceV2Error(
               'INVALID_TRADE',
@@ -2692,6 +2692,26 @@ export async function executeVoiceV2(
 
           const product = resolvedProduct.product;
 
+          // A named credit sale may omit the price:
+          // "রহিমকে ২ কেজি চাল বাকিতে বিক্রি করলাম".
+          // In that case use the product's current selling price. We do this
+          // after product resolution so the database value is authoritative.
+          const resolvedUnitPrice =
+            !isAmountOnlySale &&
+            command.action === 'CREATE_SALE' &&
+            (!command.unitPrice || command.unitPrice <= 0)
+              ? money((product as any)?.sellPrice)
+              : money(command.unitPrice);
+
+          const resolvedAmount =
+            !isAmountOnlySale &&
+            command.action === 'CREATE_SALE' &&
+            (!command.amount || command.amount <= 0) &&
+            command.quantity &&
+            resolvedUnitPrice > 0
+              ? money(command.quantity * resolvedUnitPrice)
+              : money(command.amount);
+
           if (!isAmountOnlySale && !product) {
             throw new VoiceV2Error(
               'PRODUCT_NOT_FOUND',
@@ -2709,10 +2729,7 @@ export async function executeVoiceV2(
 
           const total = isAmountOnlySale
             ? money(command.amount)
-            : money(
-                command.quantity! *
-                  command.unitPrice!,
-              );
+            : resolvedAmount;
 
           const paid = num(
             command.paidAmount,
@@ -2759,7 +2776,7 @@ export async function executeVoiceV2(
 
                   quantity: command.quantity ?? 0,
 
-                  unitPrice: command.unitPrice ?? undefined,
+                  unitPrice: resolvedUnitPrice > 0 ? resolvedUnitPrice : undefined,
 
                   paidAmount: paid,
 
