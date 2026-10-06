@@ -19,6 +19,7 @@ type State = 'Idle' | 'Listening' | 'Processing' | 'Success' | 'Error';
 type Pending = {
   command: any;
   message: string;
+  commandId?: string;
   matches?: any[];
 };
 
@@ -113,6 +114,7 @@ export default function VoiceControl() {
   const [error, setError] = useState('');
   const [result, setResult] = useState<any>(null);
   const [pending, setPending] = useState<Pending | null>(null);
+  const [editingPending, setEditingPending] = useState(false);
   const [voiceModalOpen, setVoiceModalOpen] = useState(false);
   const { toast } = useToast();
 
@@ -178,6 +180,7 @@ export default function VoiceControl() {
     transcript: string,
     command?: any,
     confirmed = false,
+    commandId?: string,
   ) => {
     const cleanTranscript = normalizeSpeechCommand(transcript);
     if (!cleanTranscript.trim() && !command) {
@@ -199,6 +202,7 @@ export default function VoiceControl() {
           transcript: cleanTranscript,
           confirmed,
           command,
+          commandId,
         }),
       });
 
@@ -217,6 +221,8 @@ export default function VoiceControl() {
             message:
               data.error ||
               'এই কাজটি করার আগে confirmation প্রয়োজন।',
+            commandId: data.commandId || data.details?.commandId,
+            matches: data.details?.matches || [],
           });
 
           return;
@@ -253,6 +259,7 @@ export default function VoiceControl() {
       }
 
       setPending(null);
+      setEditingPending(false);
       setResult(data);
       setState('Success');
       setVoiceModalOpen(true);
@@ -290,6 +297,7 @@ export default function VoiceControl() {
     setText('');
     setResult(null);
     setPending(null);
+    setEditingPending(false);
     latest.current = '';
     finalTranscript.current = '';
     if (
@@ -420,11 +428,7 @@ export default function VoiceControl() {
       return;
     }
 
-    process(
-      pending.command?.entityName ? '' : text,
-      pending.command,
-      true,
-    );
+    process(text, pending.command, true, pending.commandId);
   };
 
   const choose = (match: any) => {
@@ -437,14 +441,21 @@ export default function VoiceControl() {
       entityName: match.name,
     };
 
-    setPending(null);
-
-    process(
-      '',
-      command,
-      false,
-    );
+    setPending({ ...pending, command });
+    setEditingPending(false);
+    process('', command, false, pending.commandId);
   };
+
+  const updatePending = (key: string, value: any) => {
+    setPending((current) => current ? { ...current, command: { ...current.command, [key]: value } } : current);
+  };
+
+  const actionLabel = (action: string) => ({
+    CREATE_PARTY: 'নতুন কাস্টমার / সাপ্লায়ার', CREATE_PRODUCT: 'নতুন পণ্য', CREATE_SALE: 'বিক্রি', CREATE_PURCHASE: 'ক্রয়',
+    CREATE_DUE: 'বাকি যোগ', RECEIVE_PAYMENT: 'পেমেন্ট গ্রহণ', CREATE_EXPENSE: 'খরচ', CREATE_INCOME: 'আয়', STOCK_IN: 'স্টক যোগ', STOCK_OUT: 'স্টক কমানো',
+    UPDATE_PARTY: 'কাস্টমার / সাপ্লায়ার আপডেট', UPDATE_PRODUCT: 'পণ্য আপডেট', DELETE_PARTY: 'কাস্টমার / সাপ্লায়ার মুছে ফেলা', DELETE_PRODUCT: 'পণ্য মুছে ফেলা',
+    DELETE_TRANSACTION: 'লেনদেন মুছে ফেলা', CREATE_USER: 'ইউজার তৈরি', UPDATE_USER: 'ইউজার আপডেট', DELETE_USER: 'ইউজার মুছে ফেলা',
+  } as Record<string, string>)[action] || action;
 
   const submit = (
     event: React.FormEvent<HTMLFormElement>,
@@ -543,34 +554,59 @@ export default function VoiceControl() {
                 </button>
               </div>
               <p className="mt-2 text-sm text-slate-500">{pending.message}</p>
+              <div className="mt-4 rounded-[16px] border border-white/10 bg-white/[0.035] p-4">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-white/40">Review before saving</p>
+                <p className="mt-1 text-lg font-semibold text-white">{actionLabel(pending.command?.action || '')}</p>
+                <p className="mt-1 text-xs leading-5 text-white/50">{pending.message}</p>
+              </div>
               {pending.matches?.length ? (
                 <div className="mt-4 space-y-2">
                   {pending.matches.map((match: any) => (
-                    <button
-                      type="button"
-                      key={match.id}
-                      onClick={() => choose(match)}
-                      className="flex w-full items-center justify-between rounded-xl border p-4 text-left"
-                    >
-                      <span>
-                        <b>{match.name}</b>
-                        <small className="block text-slate-500">{match.phone || ''}</small>
-                      </span>
-                      <ChevronRight size={18} />
+                    <button type="button" key={match.id} onClick={() => choose(match)} className="flex w-full items-center justify-between rounded-xl border border-white/10 bg-white/[0.035] p-4 text-left text-white hover:bg-white/[0.07]">
+                      <span><b>{match.name}</b><small className="block text-white/45">{match.phone || ''}</small></span><ChevronRight size={18} />
                     </button>
                   ))}
                 </div>
-              ) : null}
-              <div className="mt-5 flex gap-3">
-                <button type="button" onClick={() => setPending(null)} className="flex-1 rounded-xl border p-3">
-                  Cancel
-                </button>
-                {!pending.matches?.length && (
-                  <button type="button" onClick={confirm} className="flex-1 rounded-xl bg-slate-900 p-3 text-white">
-                    Confirm
-                  </button>
-                )}
-              </div>
+              ) : (
+                <>
+                  {!editingPending ? (
+                    <div className="mt-4 space-y-2 rounded-[16px] border border-white/10 bg-white/[0.025] p-4 text-sm">
+                      {[
+                        ['Intent', actionLabel(pending.command?.action || '')],
+                        ['Name', pending.command?.entityName],
+                        ['Party', pending.command?.partyType || pending.command?.entityType],
+                        ['Amount', pending.command?.amount != null ? '৳' + pending.command.amount : null],
+                        ['Quantity', pending.command?.quantity != null ? pending.command.quantity + ' ' + (pending.command?.unit || '') : null],
+                        ['Unit price', pending.command?.unitPrice != null ? '৳' + pending.command.unitPrice : null],
+                        ['Paid', pending.command?.paidAmount != null ? '৳' + pending.command.paidAmount : null],
+                      ].filter(([, value]) => value !== null && value !== undefined && value !== '').map(([label, value]) => (
+                        <div key={label} className="flex items-start justify-between gap-4 border-b border-white/[0.06] py-2 last:border-0"><span className="text-white/40">{label}</span><span className="text-right font-medium text-white">{String(value)}</span></div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="mt-4 space-y-3">
+                      <label className="block text-xs text-white/50">কাজের ধরন
+                        <select value={pending.command?.action || ''} onChange={(e) => updatePending('action', e.target.value)} className="mt-1 w-full rounded-xl border border-white/10 bg-white/[0.06] p-3 text-sm text-white outline-none">
+                          {['CREATE_PARTY','CREATE_PRODUCT','CREATE_SALE','CREATE_PURCHASE','CREATE_DUE','RECEIVE_PAYMENT','CREATE_EXPENSE','CREATE_INCOME','STOCK_IN','STOCK_OUT','UPDATE_PARTY','UPDATE_PRODUCT','DELETE_PARTY','DELETE_PRODUCT','DELETE_TRANSACTION'].map((action) => <option key={action} value={action} className="bg-slate-900">{actionLabel(action)}</option>)}
+                        </select>
+                      </label>
+                      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                        <label className="text-xs text-white/50">নাম / পণ্য / ব্যক্তি<input value={pending.command?.entityName || ''} onChange={(e) => updatePending('entityName', e.target.value || null)} className="mt-1 w-full rounded-xl border border-white/10 bg-white/[0.06] p-3 text-sm text-white outline-none" /></label>
+                        <label className="text-xs text-white/50">Party type<select value={pending.command?.partyType || ''} onChange={(e) => updatePending('partyType', e.target.value || null)} className="mt-1 w-full rounded-xl border border-white/10 bg-white/[0.06] p-3 text-sm text-white outline-none"><option value="">Auto</option><option value="CUSTOMER">Customer</option><option value="SUPPLIER">Supplier</option></select></label>
+                        <label className="text-xs text-white/50">Amount<input type="number" value={pending.command?.amount ?? ''} onChange={(e) => updatePending('amount', e.target.value === '' ? null : Number(e.target.value))} className="mt-1 w-full rounded-xl border border-white/10 bg-white/[0.06] p-3 text-sm text-white outline-none" /></label>
+                        <label className="text-xs text-white/50">Quantity<input type="number" value={pending.command?.quantity ?? ''} onChange={(e) => updatePending('quantity', e.target.value === '' ? null : Number(e.target.value))} className="mt-1 w-full rounded-xl border border-white/10 bg-white/[0.06] p-3 text-sm text-white outline-none" /></label>
+                        <label className="text-xs text-white/50">Unit<input value={pending.command?.unit || ''} onChange={(e) => updatePending('unit', e.target.value || null)} className="mt-1 w-full rounded-xl border border-white/10 bg-white/[0.06] p-3 text-sm text-white outline-none" /></label>
+                        <label className="text-xs text-white/50">Unit price<input type="number" value={pending.command?.unitPrice ?? ''} onChange={(e) => updatePending('unitPrice', e.target.value === '' ? null : Number(e.target.value))} className="mt-1 w-full rounded-xl border border-white/10 bg-white/[0.06] p-3 text-sm text-white outline-none" /></label>
+                      </div>
+                    </div>
+                  )}
+                  <div className="mt-5 flex flex-col-reverse gap-2 sm:flex-row">
+                    <button type="button" onClick={() => { setPending(null); setEditingPending(false); }} className="flex-1 rounded-xl border border-white/10 bg-white/[0.035] p-3 text-sm font-semibold text-white/70 hover:bg-white/[0.07]">Cancel</button>
+                    <button type="button" onClick={() => setEditingPending((value) => !value)} className="flex-1 rounded-xl border border-[#7692ff]/30 bg-[#7692ff]/10 p-3 text-sm font-semibold text-white hover:bg-[#7692ff]/20">{editingPending ? 'Preview' : 'Edit'}</button>
+                    <button type="button" onClick={confirm} disabled={editingPending} className="flex-1 rounded-xl bg-[#1b2cc1] p-3 text-sm font-semibold text-white shadow-lg hover:bg-[#2a3ddd] disabled:cursor-not-allowed disabled:opacity-40">Confirm & Save</button>
+                  </div>
+                </>
+              )
             </motion.div>
           </motion.div>
         )}
