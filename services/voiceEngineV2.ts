@@ -615,7 +615,7 @@ function parseLedgerDirectionCommand(text: string): VoiceV2Command | null {
   ))
     || value.match(new RegExp(
       '^(.+?)\s*(?:কে|ke)\s*' + numberPattern +
-      '\s*(?:টাকা|tk|taka)?\s*(?:বাকি\s*)?(?:দিলাম|দিল|দিয়েছি|দিয়েছি|দিয়ে দিলাম|দিয়ে দিলাম|দিয়ে দিল|দিয়ে দিল|দেবো|দেব|দিবো|দিব|dilam|dil|diyechi|diye dilam|diye dilo|debo|deb|dibo)(?:\s+.*)?$',
+      '\s*(?:টাকা|tk|taka)?\s*(?:বাকি\s*)?(?:দিয়ে\s+|দিয়ে\s+)?(?:দিলাম|দিল|দিয়েছি|দিয়েছি|দিয়ে দিলাম|দিয়ে দিলাম|দিয়ে দিল|দিয়ে দিল|দেবো|দেব|দিবো|দিব|dilam|dil|diyechi|diye dilam|diye dilo|debo|deb|dibo)(?:\s+.*)?$',
       'iu',
     ));
   if (match?.[1]) return command('CREATE_DUE', match[1]);
