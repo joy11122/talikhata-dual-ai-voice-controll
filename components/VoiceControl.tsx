@@ -605,11 +605,10 @@ export default function VoiceControl() {
                     <button type="button" onClick={confirm} disabled={editingPending} className="flex-1 rounded-xl bg-[#1b2cc1] p-3 text-sm font-semibold text-white shadow-lg hover:bg-[#2a3ddd] disabled:cursor-not-allowed disabled:opacity-40">Confirm & Save</button>
                   </div>
                 </>
-              )
+              )}
             </motion.div>
           </motion.div>
         )}
-      </AnimatePresence>
       </AnimatePresence>
     </>
   );
