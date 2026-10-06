@@ -3050,9 +3050,6 @@ export async function executeVoiceV2(
 /* Local parser                                                               */
 /* -------------------------------------------------------------------------- */
 
-,
-    'iu',
-  ))
     || value.match(new RegExp(
       '^(.+?)\s*(?:কে|ke)\s*' + numberPattern +
       '\s*(?:টাকা|tk|taka)?\s*(?:বাকি\s*)?(?:দিলাম|দিল|দিয়েছি|দিয়েছি|দিয়ে দিলাম|দিয়ে দিলাম|দিয়ে দিল|দিয়ে দিল|দেবো|দেব|দিবো|দিব|dilam|dil|diyechi|diye dilam|diye dilo|debo|deb|dibo)(?:\s+.*)?
