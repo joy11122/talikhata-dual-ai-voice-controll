@@ -1,4 +1,4 @@
-import { normalizeVoiceText } from '@/lib/voice/normalize';
+import { extractNumber, normalizeVoiceText } from '@/lib/voice/normalize';
 import type { VoiceV2Command } from './schema';
 
 const money = (value: unknown): number => {
@@ -40,6 +40,14 @@ export function parseSaleCommand(text: string): VoiceV2Command | null {
 
   const units = '(কেজি|kg|কিলো|কিলোগ্রাম|গ্রাম|gram|g|লিটার|liter|litre|ml|মিটার|meter|টা|টি|piece|pieces|pcs|বোতল|প্যাকেট|packet|box|unit|ইউনিট)';
   const saleVerb = '(?:বিক্রি|বেচা|বেচে|sell|sold)';
+
+  // Normalize spoken Bengali quantities before sale matching.
+  const spokenQuantity = /(?:শূন্য|এক|দুই|দুইটা|তিন|চার|পাঁচ|ছয়|ছয়|সাত|আট|নয়|নয়|দশ|এগারো|বারো|তেরো|চৌদ্দ|পনেরো|ষোল|সতেরো|আঠারো|উনিশ|বিশ|ত্রিশ|চল্লিশ|পঞ্চাশ|ষাট|সত্তর|আশি|নব্বই)\s+(কেজি|kg|কিলো|কিলোগ্রাম|গ্রাম|gram|g|লিটার|liter|litre|ml|মিটার|meter|টা|টি|piece|pieces|pcs|বোতল|প্যাকেট|packet|box|unit|ইউনিট)/giu;
+  value = value.replace(spokenQuantity, (match, unit) => {
+    const phrase = match.slice(0, match.length - String(unit).length).trim();
+    const quantity = extractNumber(phrase);
+    return quantity === null ? match : `${quantity} ${unit}`;
+  });
   const ending = '(?:করলাম|করেছি|করল|করলেন|করো|করুন|করেছে|করেছিলাম|দিলাম|দিয়েছি|দিয়ে ফেলেছি|করছি|করলাম)?';
   const credit = /(?:বাকি|বাকিতে|ক্রেডিট|credit|due)/iu.test(value);
 
