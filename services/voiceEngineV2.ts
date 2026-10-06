@@ -611,6 +611,14233 @@ function parseLedgerDirectionCommand(text: string): VoiceV2Command | null {
   match = value.match(new RegExp(
     '^(.+?)\s*(?:কে|ke)\s*(?:দিলাম|দিল|দিয়েছি|দিয়েছি|দিয়ে দিলাম|দিয়ে দিলাম|দিয়ে দিল|দিয়ে দিল|দেবো|দেব|দিবো|দিব|dilam|dil|diyechi|diye dilam|diye dilo|debo|deb|dibo)\s*' +
     numberPattern + '\s*(?:টাকা|tk|taka)?(?:\s+.*)?
+
+  match = value.match(new RegExp(
+    '^(.+?)\s+(?:বাকি|বাকিতে|ধারে|উধারে|due|baki|bakite|dhare|credit)\s*' +
+    numberPattern + '\s*(?:টাকা|tk|taka)?\s*(?:নিল|নিলো|নিয়েছে|নিয়েছে|নেবে|নিবে|নেবো|নিবো|নিলাম|nil|nilo|niyeche|niyechi|nibe|nebe|nebo|nibo|nilam|took|take|taken)$',
+    'iu',
+  ))
+    || value.match(new RegExp(
+      '^(.+?)\s*' + numberPattern + '\s*(?:টাকা|tk|taka)?\s*(?:বাকি|বাকিতে|ধারে|উধারে|due|baki|bakite|dhare|credit)\s*(?:নিল|নিলো|নিয়েছে|নিয়েছে|নেবে|নিবে|নেবো|নিবো|নিলাম|nil|nilo|niyeche|niyechi|nibe|nebe|nebo|nibo|nilam|took|take|taken)$',
+      'iu',
+    ))
+    || value.match(new RegExp(
+      '^(.+?)\s*(?:নিল|নিলো|নিয়েছে|নিয়েছে|নেবে|নিবে|নেবো|নিবো|নিলাম|nil|nilo|niyeche|niyechi|nibe|nebe|nebo|nibo|nilam|took|take|taken)\s*' +
+      numberPattern + '\s*(?:টাকা|tk|taka)?\s*(?:বাকি|বাকিতে|ধারে|উধারে|due|baki|bakite|dhare|credit)$',
+      'iu',
+    ));
+  if (match?.[1]) return command('CREATE_DUE', match[1]);
+
+  match = value.match(new RegExp(
+    '^(?:আমি|আমরা|i|we)\s+(.+?)\s*(?:এর|ের|র)?\s*(?:কাছ থেকে|কাছথেকে|থেকে)\s*' +
+    numberPattern + '\s*(?:টাকা|tk|taka)?\s*(?:নেবো|নেব|নিবো|নিব|পাবো|পাব|nebo|nibo|pabo)$',
+    'iu',
+  ));
+  if (match?.[1]) return command('RECEIVE_PAYMENT', match[1]);
+
+  return null;
+}
+
+/* -------------------------------------------------------------------------- */
+/* Local parser                                                               */
+/* -------------------------------------------------------------------------- */
+
+export function parseVoiceV2Local(text: string): VoiceV2Command | null {
+  const inventory = parseInventoryPurchaseCommand(text);
+  if (inventory) return inventory;
+
+  const createProduct = parseCreateProductCommand(text);
+  if (createProduct) return createProduct;
+
+  const sale = parseSaleCommand(text);
+  if (sale) return sale;
+
+  const shopFinance = parseShopFinanceCommand(text);
+  if (shopFinance) return shopFinance;
+
+  // Resolve high-confidence party-money direction before generic heuristics or AI.
+  const ledgerDirection = parseLedgerDirectionCommand(text);
+  if (ledgerDirection) return ledgerDirection;
+
+  const value = norm(text);
+  const amount = extractNumber(text);
+  const name = partyName(text);
+
+  const createParty = extractCreatePartyName(text);
+  if (createParty) {
+    const command = blank('CREATE_PARTY');
+    command.entityType = createParty.partyType;
+    command.entityName = createParty.name;
+    command.partyType = createParty.partyType;
+    return command;
+  }
+
+  // Defensive local fallback: create-party commands must never reach a paid AI
+  // provider just because a speech transcript used a slightly different ending.
+  const createPartyFallback = value.match(
+    /^(.*?)\s+(?:name|নামে)\s+নতুন\s+(customer|কাস্টমার|গ্রাহক|supplier|সাপ্লায়ার|সরবরাহকারী)\s+(?:যোগ|add|create)(?:\s+(?:কর|করো|করুন|করতে|দাও|দাওনা))?$/iu,
+  );
+  if (createPartyFallback?.[1]?.trim()) {
+    const partyType =
+      /^(supplier|সাপ্লায়ার|সরবরাহকারী)$/iu.test(createPartyFallback[2] || '')
+        ? 'SUPPLIER'
+        : 'CUSTOMER';
+    const command = blank('CREATE_PARTY');
+    command.entityType = partyType;
+    command.entityName = createPartyFallback[1].trim();
+    command.partyType = partyType;
+    return command;
+  }
+  const deletePartyMatch = value.match(
+    /^(.*?)\s+(?:customer|কাস্টমার|গ্রাহক|supplier|সাপ্লায়ার|সরবরাহকারী|party|পার্টি)?\s*(?:delete|remove|ডিলিট|মুছে দাও|মুছে ফেলো|মুছে ফেলুন|সরিয়ে দাও|সরিয়ে দাও|বাদ দাও|ডিলেট|delete koro|delete kor|remove koro|remove kor|মুছে দাও|মুছে ফেলো)\s*$/iu,
+  );
+  if (deletePartyMatch?.[1]?.trim()) {
+    const raw = deletePartyMatch[1].trim();
+    const partyType =
+      /(?:supplier|সাপ্লায়ার|সরবরাহকারী)/iu.test(raw)
+        ? 'SUPPLIER'
+        : /(?:customer|কাস্টমার|গ্রাহক)/iu.test(raw)
+          ? 'CUSTOMER'
+          : null;
+    const entityName = raw
+      .replace(/(?:customer|কাস্টমার|গ্রাহক|supplier|সাপ্লায়ার|সরবরাহকারী|party|পার্টি)\s*$/iu, '')
+      .trim();
+    if (entityName) {
+      const command = blank('DELETE_PARTY');
+      command.entityType = partyType || 'CUSTOMER';
+      command.entityName = entityName;
+      command.partyType = partyType;
+      command.confirmRequired = true;
+      return command;
+    }
+  }
+
+
+  const list = /(?:list|তালিকা|সব|সকল|দেখাও|দেখান|দেখতে চাই|show|dao|দাও|লিস্ট)/i.test(value);
+
+  if (/(?:customer|কাস্টমার|গ্রাহক|party|পার্টি)/i.test(value) && list) {
+    const command = blank('LIST_PARTIES');
+    command.entityType = 'CUSTOMER';
+    command.partyType = 'CUSTOMER';
+    return command;
+  }
+
+  if (/(?:supplier|সরবরাহকারী|সাপ্লায়ার|সাপ্লাইয়ার)/i.test(value) && list) {
+    const command = blank('LIST_PARTIES');
+    command.entityType = 'SUPPLIER';
+    command.partyType = 'SUPPLIER';
+    return command;
+  }
+
+  if (/(?:product|পণ্য|item|আইটেম|মাল)/i.test(value) && list) {
+    return blank('LIST_PRODUCTS');
+  }
+
+  if (/(?:transaction|লেনদেন|হিসাব|খাতা|ট্রানজেকশন)/i.test(value) && list) {
+    return blank('LIST_TRANSACTIONS');
+  }
+
+  const customerOwes =
+    /(?:বাকি|পাওনা|দেনা|due|baki|credit|খাতায়|খাতায়|হিসাবে|বাড়াও|বাড়াও|যোগ করো|যোগ করুন|রাখলাম|রাখো)/iu.test(value);
+
+  const customerPaid =
+    /(?:কাছ থেকে|কাছথেকে|থেকে).*?(?:পেলাম|পেয়েছি|পেয়েছি|নিলাম|নিয়েছি|নিয়েছি|আদায়|আদায়|পরিশোধ|জমা)|(?:পেলাম|পেয়েছি|পেয়েছি|দিল|দিয়েছে|দিয়েছে|পরিশোধ করেছে|জমা দিল|জমা দিয়েছে|জমা দিয়েছে|paid|received|payment|pelam|peyechi|nilam|diyeche)/iu.test(value);
+
+  const moneyGivenToParty =
+    /(?:কে|ke)\s*\d[\d,]*(?:\.\d+)?\s*(?:টাকা|tk|taka)?\s*(?:দিলাম|দিল|দিয়েছি|দিয়েছি|দেব|দিব|রাখলাম|রাখো|dilam|dil|dilo|diyechi|dibo)/iu.test(value);
+
+  const balanceQuery =
+    /(?:কত|কতো|বাকি কত|পাওনা কত|দেনা কত|হিসাব|খাতার হিসাব|balance|due|pabo|pabe|koto|hisab|how much|kototuku)/i.test(value);
+
+  if (name && balanceQuery && !amount) {
+    const command = blank('READ_BALANCE');
+    command.entityType = 'CUSTOMER';
+    command.entityName = name;
+    command.partyType = 'CUSTOMER';
+    return command;
+  }
+
+  if (name && amount && customerPaid && !moneyGivenToParty) {
+    const command = blank('RECEIVE_PAYMENT');
+    command.entityType = 'CUSTOMER';
+    command.entityName = name;
+    command.partyType = 'CUSTOMER';
+    command.amount = amount;
+    return command;
+  }
+
+  if (name && amount && (moneyGivenToParty || customerOwes)) {
+    const command = blank('CREATE_DUE');
+    command.entityType = 'CUSTOMER';
+    command.entityName = name;
+    command.partyType = 'CUSTOMER';
+    command.amount = amount;
+    return command;
+  }
+
+  if (name && amount && /(?:দিলাম|দিল|দিয়েছি|দিয়েছি|dilam|dil|dilo|diyechi)/iu.test(value)) {
+    const command = blank('CREATE_DUE');
+    command.entityType = 'CUSTOMER';
+    command.entityName = name;
+    command.partyType = 'CUSTOMER';
+    command.amount = amount;
+    return command;
+  }
+
+  return null;
+}
+
+/* -------------------------------------------------------------------------- */
+/* Semantic post-normalization                                                */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * Correct only high-confidence party-payment direction after the LLM.
+ * This prevents a provider from confusing "Rahim gave me 500" with
+ * "I gave Rahim 500", which is the most expensive class of voice error.
+ */
+function normalizeLedgerSemantics(
+  command: VoiceV2Command,
+  text: string,
+): VoiceV2Command {
+  const value = norm(text);
+  const name = partyName(text);
+  const amount = extractNumber(text);
+  if (!name || amount === null) return command;
+
+  if (command.partyType === 'SUPPLIER' || command.entityType === 'SUPPLIER') {
+    return { ...command, entityType: 'SUPPLIER', partyType: 'SUPPLIER', entityName: command.entityName || name, amount };
+  }
+
+  const outgoingToParty =
+    /(?:কে|ke)\s*\d[\d,]*(?:\.\d+)?\s*(?:টাকা|tk|taka)?\s*(?:দিলাম|দিল|দিয়েছি|দিয়েছি|দিয়ে দিলাম|দিয়ে দিলাম|দিয়ে দিল|দিয়ে দিল|দেব|দিব|dilam|dil|diyechi|diye dilam|diye dilo|dibo)/iu.test(value);
+  const incomingFromParty =
+    /(?:কাছ থেকে|কাছথেকে|থেকে)\s*\d[\d,]*(?:\.\d+)?\s*(?:টাকা|tk|taka)?\s*(?:পেলাম|পেয়েছি|পেয়েছি|নিলাম|নিয়েছি|নিয়েছি|আদায়|আদায়|পরিশোধ|জমা)/iu.test(value) ||
+    /^(?:.+?)\s+\d[\d,]*(?:\.\d+)?\s*(?:টাকা|tk|taka)?\s*(?:দিল|দিলো|দিয়েছে|দিয়েছে|পরিশোধ করেছে|paid|received)$/iu.test(value);
+
+  if (outgoingToParty && ['RECEIVE_PAYMENT', 'CREATE_DUE'].includes(command.action)) {
+    return { ...command, action: 'CREATE_DUE', entityType: 'CUSTOMER', partyType: 'CUSTOMER', entityName: command.entityName || name, amount };
+  }
+  if (incomingFromParty && ['CREATE_DUE', 'RECEIVE_PAYMENT'].includes(command.action)) {
+    return { ...command, action: 'RECEIVE_PAYMENT', entityType: 'CUSTOMER', partyType: 'CUSTOMER', entityName: command.entityName || name, amount };
+  }
+  return validateVoiceCommandSafety(command);
+}
+
+/* -------------------------------------------------------------------------- */
+/* AI system prompt                                                           */
+/* -------------------------------------------------------------------------- */
+
+const SYSTEM = [
+  'TaliKhata AI command understanding layer.',
+  'Understand Bangla, Banglish, English, Bengali/Arabic digits, colloquial speech and natural phrasing.',
+  'Return exactly one emit_voice_command call. Its command argument must be a JSON string matching the TaliKhata command fields.',
+  'Never invent IDs, database facts, prices, stock, balances or names. Preserve spoken names exactly; normalize number words and units into numeric/standard values.',
+  'Choose intent only from the allowed action values. CREATE_SALE means selling stock; CREATE_PURCHASE means buying stock; CREATE_PARTY means creating a customer/supplier; CREATE_DUE means money the customer owes; RECEIVE_PAYMENT means money received from a customer; supplier payments must remain supplier-side.',
+  'If required information is genuinely missing, use null. Do not turn missing data into guesses.'
+].join('\\n');
+
+/* -------------------------------------------------------------------------- */
+/* OpenAI tool                                                                */
+/* -------------------------------------------------------------------------- */
+
+const VOICE_V2_TOOL = {
+  type: 'function' as const,
+
+  function: {
+    name: 'emit_voice_command',
+
+    description:
+      'Return the single validated TaliKhata command requested by the user.',
+
+    parameters: VoiceV2JsonSchema,
+  },
+};
+
+/* -------------------------------------------------------------------------- */
+/* Provider types                                                             */
+/* -------------------------------------------------------------------------- */
+
+type VoiceProvider = {
+  name: 'openai' | 'openrouter';
+  apiKey: string;
+  model: string;
+  baseURL?: string;
+};
+
+/* -------------------------------------------------------------------------- */
+/* Provider configuration                                                      */
+/* -------------------------------------------------------------------------- */
+
+function getProviders(): VoiceProvider[] {
+  const providers: VoiceProvider[] = [];
+
+  const openAIKey = process.env.OPENAI_API_KEY?.trim();
+
+  if (openAIKey) {
+    providers.push({
+      name: 'openai',
+      apiKey: openAIKey,
+      model:
+        process.env.OPENAI_VOICE_MODEL?.trim() ||
+        'gpt-4.1-mini',
+    });
+  }
+
+  const openRouterKey =
+    process.env.OPENROUTER_API_KEY?.trim();
+
+  if (openRouterKey) {
+    providers.push({
+      name: 'openrouter',
+      apiKey: openRouterKey,
+      model:
+        process.env.OPENROUTER_VOICE_MODEL?.trim() ||
+        'openai/gpt-4.1-mini',
+      baseURL: 'https://openrouter.ai/api/v1',
+    });
+  }
+
+  return providers;
+}
+
+/* -------------------------------------------------------------------------- */
+/* Tool-call extraction                                                       */
+/* -------------------------------------------------------------------------- */
+
+function getToolArguments(response: OpenAI.Chat.Completions.ChatCompletion): string {
+  const toolCalls = response.choices[0]?.message?.tool_calls;
+
+  if (!toolCalls?.length) {
+    throw new Error(
+      'Provider returned no tool calls.',
+    );
+  }
+
+  const functionCall = toolCalls.find(
+    (
+      call,
+    ): call is Extract<
+      OpenAI.Chat.Completions.ChatCompletionMessageToolCall,
+      { type: 'function' }
+    > => call.type === 'function',
+  );
+
+  if (!functionCall?.function?.arguments) {
+    throw new Error(
+      'Provider returned no function arguments.',
+    );
+  }
+
+  return functionCall.function.arguments;
+}
+
+/* -------------------------------------------------------------------------- */
+/* AI parser                                                                  */
+/* -------------------------------------------------------------------------- */
+
+async function aiParse(
+  text: string,
+): Promise<VoiceV2Command> {
+  const providers = getProviders();
+  if (!providers.length) throw new VoiceV2Error('AI_NOT_CONFIGURED','No voice AI provider is configured. Add OPENAI_API_KEY or OPENROUTER_API_KEY to .env.local.',{providers:[]});
+  const errors: Array<{ provider: string; model: string; message: string }> = [];
+  for (const provider of providers) {
+    try {
+      console.info('[VoiceV2] Trying ' + provider.name + ' with ' + provider.model);
+      const client = new OpenAI({
+        apiKey: provider.apiKey,
+        baseURL: provider.baseURL,
+        timeout: 10_000,
+        maxRetries: 0,
+        defaultHeaders: provider.name === 'openrouter' ? {
+          'HTTP-Referer': process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000',
+          'X-Title': 'TaliKhata Voice V2',
+        } : undefined,
+      });
+      const response = await client.chat.completions.create({
+        model: provider.model,
+        messages: [{ role: 'system', content: SYSTEM }, { role: 'user', content: text }],
+        temperature: 0,
+        max_completion_tokens: 128,
+        tools: [VOICE_V2_TOOL],
+        tool_choice: { type: 'function', function: { name: 'emit_voice_command' } },
+      });
+      const argumentsJSON = getToolArguments(response);
+      let envelope: unknown;
+      try { envelope = JSON.parse(argumentsJSON); } catch { throw new Error('Provider returned invalid tool-call JSON.'); }
+      const commandPayload = envelope && typeof envelope === 'object' && 'command' in envelope && typeof (envelope as { command?: unknown }).command === 'string'
+        ? (envelope as { command: string }).command
+        : argumentsJSON;
+      let parsed: unknown;
+      try { parsed = JSON.parse(commandPayload); } catch { throw new Error('Provider returned invalid command JSON.'); }
+      const validated = VoiceV2Schema.safeParse(parsed);
+      if (!validated.success) {
+        const issues = validated.error.issues.map((issue) => ({ path: issue.path.join('.'), code: issue.code, message: issue.message }));
+        console.error('[VoiceV2] Invalid AI command:', issues);
+        throw new Error('Provider returned a command that failed TaliKhata validation: ' + issues.map((issue) => (issue.path || 'command') + ': ' + issue.message).join('; '));
+      }
+      console.info('[VoiceV2] ' + provider.name + ' succeeded');
+      return normalizeLedgerSemantics(validated.data, text);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      errors.push({ provider: provider.name, model: provider.model, message });
+      console.error('[VoiceV2] ' + provider.name + ' failed', { model: provider.model, message, error });
+    }
+  }
+  throw new VoiceV2Error('AI_UNAVAILABLE','Voice AI providers are temporarily unavailable. Please try again.',{providers:errors});
+}
+
+/* -------------------------------------------------------------------------- */
+/* Public parser                                                              */
+/* -------------------------------------------------------------------------- */
+
+export async function parseVoiceV2(
+  text: string,
+): Promise<VoiceV2Command> {
+  const normalized = text.trim();
+  if (!normalized) throw new VoiceV2Error('EMPTY_COMMAND', 'Voice command is empty.');
+  // AI is the primary understanding layer. Local regex parsers are emergency fallback only.
+  try {
+    return validateVoiceCommandSafety(await aiParse(normalized));
+  } catch (error) {
+    if (!(error instanceof VoiceV2Error) || !['AI_UNAVAILABLE', 'AI_NOT_CONFIGURED'].includes(error.code)) throw error;
+    const local = parseVoiceV2Local(normalized);
+    if (local) return normalizeLedgerSemantics(local, normalized);
+    throw error;
+  }
+}
+
+/* -------------------------------------------------------------------------- */
+/* Party resolver                                                             */
+/* -------------------------------------------------------------------------- */
+
+async function findParty(
+  userId: string,
+  name: string,
+  session: any,
+  type?: 'CUSTOMER' | 'SUPPLIER',
+) {
+  const all = await resolveParty(
+    userId,
+    name,
+    session,
+  );
+
+  const rows = type
+    ? all.filter(
+        (party: any) =>
+          party.partyType === type,
+      )
+    : all;
+
+  if (!rows.length) {
+    throw new VoiceV2Error(
+      'NOT_FOUND',
+      `${
+        type === 'SUPPLIER'
+          ? 'Supplier'
+          : 'Customer'
+      } "${name}" was not found`,
+      {
+        name,
+      },
+    );
+  }
+
+  if (rows.length > 1) {
+    throw new VoiceV2Error(
+      'AMBIGUOUS_ENTITY',
+      `Multiple parties matched "${name}"`,
+      {
+        matches: rows
+          .slice(0, 10)
+          .map((party: any) => ({
+            id: String(party._id),
+            name: party.name,
+            phone: party.phone || null,
+            balance: party.currentBalance,
+          })),
+      },
+    );
+  }
+
+  return rows[0];
+}
+
+/* -------------------------------------------------------------------------- */
+/* Admin                                                                      */
+/* -------------------------------------------------------------------------- */
+
+async function requireAdmin(
+  userId: string,
+) {
+  const user = await User.findById(userId)
+    .select('role status')
+    .lean();
+
+  if (
+    !user ||
+    user.status !== 'ACTIVE' ||
+    user.role !== 'ADMIN'
+  ) {
+    throw new VoiceV2Error(
+      'FORBIDDEN',
+      'Admin permission is required for user management.',
+    );
+  }
+
+  return user;
+}
+
+/* -------------------------------------------------------------------------- */
+/* Product resolver                                                           */
+/* -------------------------------------------------------------------------- */
+
+async function findProduct(
+  userId: string,
+  name: string,
+  session: any,
+) {
+  const rows = await resolveProduct(
+    userId,
+    name,
+    session,
+  );
+
+  if (!rows.length) {
+    throw new VoiceV2Error(
+      'NOT_FOUND',
+      `Product "${name}" was not found`,
+      {
+        name,
+      },
+    );
+  }
+
+  if (rows.length > 1) {
+    throw new VoiceV2Error(
+      'AMBIGUOUS_ENTITY',
+      `Multiple products matched "${name}"`,
+      {
+        matches: rows
+          .slice(0, 10)
+          .map((product: any) => ({
+            id: String(product._id),
+            name: product.name,
+            stock: product.stockQuantity,
+            unit: product.unit,
+          })),
+      },
+    );
+  }
+
+  return rows[0];
+}
+
+async function findOrCreateProduct(
+  userId: string,
+  name: string,
+  session: any,
+  input: { unit?: string | null; quantity?: number | null; unitPrice?: number | null },
+) {
+  const normalizedName = name.trim();
+  if (!normalizedName) {
+    throw new VoiceV2Error('MISSING_ENTITY', 'Product name is required');
+  }
+
+  const candidates = await resolveProduct(userId, normalizedName, session);
+
+  if (candidates.length === 1) {
+    return { product: candidates[0], created: false };
+  }
+
+  if (candidates.length > 1) {
+    throw new VoiceV2Error(
+      'AMBIGUOUS_ENTITY',
+      `Multiple products matched "${normalizedName}"`,
+      {
+        matches: candidates.slice(0, 10).map((product: any) => ({
+          id: String(product._id),
+          name: product.name,
+          stock: product.stockQuantity,
+          unit: product.unit,
+        })),
+      },
+    );
+  }
+
+  const [created] = await Product.create(
+    [{
+      userId: new Types.ObjectId(userId),
+      name: normalizedName,
+      unit: input.unit?.trim() || 'unit',
+      stockQuantity: 0,
+      buyPrice: money(input.unitPrice),
+      sellPrice: 0,
+      lowStockThreshold: 5,
+    }],
+    { session },
+  );
+
+  return { product: created, created: true };
+}
+
+/* -------------------------------------------------------------------------- */
+/* Party creation / resolution                                                 */
+/* -------------------------------------------------------------------------- */
+
+async function findOrCreateParty(
+  userId: string,
+  name: string,
+  session: any,
+  type: 'CUSTOMER' | 'SUPPLIER',
+) {
+  const normalizedName = name.trim();
+
+  if (!normalizedName) {
+    throw new VoiceV2Error(
+      'MISSING_ENTITY',
+      type === 'SUPPLIER'
+        ? 'Supplier name is required'
+        : 'Customer name is required',
+    );
+  }
+
+  const candidates = await resolveParty(
+    userId,
+    normalizedName,
+    session,
+  );
+
+  const sameType = candidates.filter(
+    (party: any) => party.partyType === type,
+  );
+
+  if (sameType.length === 1) {
+    return { party: sameType[0], created: false };
+  }
+
+  if (sameType.length > 1) {
+    throw new VoiceV2Error(
+      'AMBIGUOUS_ENTITY',
+      'Multiple ' +
+        (type === 'SUPPLIER' ? 'suppliers' : 'customers') +
+        ' matched "' +
+        normalizedName +
+        '".',
+      {
+        matches: sameType.slice(0, 10).map((party: any) => ({
+          id: String(party._id),
+          name: party.name,
+          phone: party.phone || null,
+          balance: party.currentBalance,
+        })),
+      },
+    );
+  }
+
+  try {
+    const [created] = await Party.create(
+      [
+        {
+          userId: new Types.ObjectId(userId),
+          name: normalizedName,
+          partyType: type,
+          currentBalance: 0,
+        },
+      ],
+      { session },
+    );
+
+    return { party: created, created: true };
+  } catch (error) {
+    if (
+      error instanceof Error &&
+      /E11000|duplicate/i.test(error.message)
+    ) {
+      const retry = await resolveParty(
+        userId,
+        normalizedName,
+        session,
+      );
+
+      const retrySameType = retry.filter(
+        (party: any) => party.partyType === type,
+      );
+
+      if (retrySameType.length === 1) {
+        return {
+          party: retrySameType[0],
+          created: false,
+        };
+      }
+    }
+
+    throw error;
+  }
+}
+
+/* -------------------------------------------------------------------------- */
+/* Confirmation                                                               */
+/* -------------------------------------------------------------------------- */
+
+function confirm(
+  command: VoiceV2Command,
+  confirmed: boolean,
+) {
+  const destructiveActions = new Set([
+    'DELETE_PARTY',
+    'DELETE_PRODUCT',
+    'DELETE_TRANSACTION',
+    'DELETE_USER',
+  ]);
+
+  const amount = money(command.amount);
+
+  const highValueWrite =
+    amount >= 10000 &&
+    [
+      'CREATE_DUE',
+      'RECEIVE_PAYMENT',
+      'CREATE_SALE',
+      'CREATE_PURCHASE',
+      'CREATE_EXPENSE',
+      'CREATE_INCOME',
+    ].includes(command.action);
+
+  const needsConfirmation =
+    command.confirmRequired ||
+    destructiveActions.has(command.action) ||
+    highValueWrite;
+
+  if (needsConfirmation && !confirmed) {
+    throw new VoiceV2Error(
+      'CONFIRMATION_REQUIRED',
+      highValueWrite
+        ? '৳১০,০০০ বা তার বেশি আর্থিক লেনদেন করার আগে confirmation প্রয়োজন।'
+        : 'এই কাজটি করার আগে confirmation প্রয়োজন।',
+      {
+        action: command.action,
+        amount: amount || null,
+        reason: highValueWrite
+          ? 'HIGH_VALUE_FINANCIAL_WRITE'
+          : 'DESTRUCTIVE_ACTION',
+      },
+    );
+  }
+}
+
+/* -------------------------------------------------------------------------- */
+/* Execute Voice V2                                                           */
+/* -------------------------------------------------------------------------- */
+
+export async function executeVoiceV2(
+  commandInput: VoiceV2Command,
+  userId: string,
+  transcript = '',
+  confirmed = false,
+  commandId?: string,
+) {
+  /* ---------------------------------------------------------------------- */
+  /* Authentication                                                         */
+  /* ---------------------------------------------------------------------- */
+
+  const sessionUser = await auth();
+
+  if (
+    !sessionUser?.user?.id ||
+    sessionUser.user.id !== userId
+  ) {
+    throw new VoiceV2Error(
+      'UNAUTHORIZED',
+      'Unauthorized',
+    );
+  }
+
+  if (!Types.ObjectId.isValid(userId)) {
+    throw new VoiceV2Error(
+      'UNAUTHORIZED',
+      'Invalid user',
+    );
+  }
+
+  /* ---------------------------------------------------------------------- */
+  /* Validate command                                                       */
+  /* ---------------------------------------------------------------------- */
+
+  const parsedCommand =
+    VoiceV2Schema.parse(commandInput);
+
+  // Product creation is intentionally tolerant of omitted units in natural voice.
+  // Mongo still receives a valid unit so commands such as "চাল ৭০ টাকা দরে পণ্য হিসেবে যোগ করো"
+  // can create the catalog item instead of failing only because the spoken unit was omitted.
+  const command: VoiceV2Command =
+    parsedCommand.action === 'CREATE_PRODUCT'
+      ? { ...parsedCommand, unit: parsedCommand.unit || 'unit' }
+      : parsedCommand;
+
+  confirm(command, confirmed);
+
+  /* ---------------------------------------------------------------------- */
+  /* Database                                                               */
+  /* ---------------------------------------------------------------------- */
+
+  await connectDB();
+
+  const uid = new Types.ObjectId(userId);
+
+  /* ---------------------------------------------------------------------- */
+  /* Idempotency                                                             */
+  /* ---------------------------------------------------------------------- */
+
+  if (commandId) {
+    const old = await AuditLog.findOne({
+      userId: uid,
+      commandId,
+      status: 'SUCCESS',
+    }).lean();
+
+    if (old?.result) {
+      return old.result;
+    }
+
+    // Transaction-level idempotency protects against duplicate execution
+    // even when the audit write has not completed yet.
+    const existingTransaction = await Transaction.findOne({
+      userId: uid,
+      commandId,
+    }).lean();
+
+    if (existingTransaction) {
+      return {
+        type: command.action,
+        amount: existingTransaction.amount,
+        quantity: existingTransaction.quantity,
+        transaction: {
+          id: String(existingTransaction._id),
+          type: existingTransaction.type,
+          amount: existingTransaction.amount,
+          quantity: existingTransaction.quantity,
+        },
+      };
+    }
+  }
+
+  /* ---------------------------------------------------------------------- */
+  /* Balance                                                                */
+  /* ---------------------------------------------------------------------- */
+
+  if (command.action === 'READ_BALANCE') {
+    if (!command.entityName) {
+      throw new VoiceV2Error(
+        'MISSING_ENTITY',
+        'Customer name is required',
+      );
+    }
+
+    const party = await findParty(
+      userId,
+      command.entityName,
+      null,
+      'CUSTOMER',
+    );
+
+    const balance = money(
+      party.currentBalance,
+    );
+
+    return {
+      type: 'READ_BALANCE',
+
+      party: {
+        id: String(party._id),
+        name: party.name,
+        phone: party.phone || null,
+      },
+
+      balance,
+
+      receivable: Math.max(
+        0,
+        balance,
+      ),
+
+      payable: Math.max(
+        0,
+        -balance,
+      ),
+    };
+  }
+
+  /* ---------------------------------------------------------------------- */
+  /* Read / List                                                             */
+  /* ---------------------------------------------------------------------- */
+
+  if (
+    [
+      'READ_PARTY',
+      'READ_PRODUCT',
+      'LIST_PARTIES',
+      'LIST_PRODUCTS',
+      'LIST_TRANSACTIONS',
+      'READ_USER',
+      'LIST_USERS',
+    ].includes(command.action)
+  ) {
+    if (command.action === 'READ_PARTY') {
+      if (!command.entityName) {
+        throw new VoiceV2Error(
+          'MISSING_ENTITY',
+          'Party name is required',
+        );
+      }
+
+      return {
+        type: 'READ_PARTY',
+        party: await findParty(
+          userId,
+          command.entityName,
+          null,
+          command.partyType || undefined,
+        ),
+      };
+    }
+
+    if (command.action === 'READ_PRODUCT') {
+      if (!command.entityName) {
+        throw new VoiceV2Error(
+          'MISSING_ENTITY',
+          'Product name is required',
+        );
+      }
+
+      return {
+        type: 'READ_PRODUCT',
+        product: await findProduct(
+          userId,
+          command.entityName,
+          null,
+        ),
+      };
+    }
+
+    if (command.action === 'READ_USER') {
+      await requireAdmin(userId);
+
+      const user =
+        await User.findOne(
+          command.query
+            ? {
+                email:
+                  command.query.toLowerCase(),
+                _id: {
+                  $ne: uid,
+                },
+              }
+            : {
+                _id:
+                  command.targetId &&
+                  Types.ObjectId.isValid(
+                    command.targetId,
+                  )
+                    ? new Types.ObjectId(
+                        command.targetId,
+                      )
+                    : uid,
+              },
+        )
+          .select('-password')
+          .lean();
+
+      if (!user) {
+        throw new VoiceV2Error(
+          'NOT_FOUND',
+          'User was not found',
+        );
+      }
+
+      return {
+        type: 'READ_USER',
+        user,
+      };
+    }
+
+    if (command.action === 'LIST_USERS') {
+      await requireAdmin(userId);
+
+      const rows = await User.find({})
+        .select('-password')
+        .sort({
+          createdAt: -1,
+        })
+        .limit(200)
+        .lean();
+
+      return {
+        type: 'LIST_USERS',
+        items: rows,
+      };
+    }
+
+    if (
+      command.action === 'LIST_PARTIES'
+    ) {
+      const query: any = {
+        userId: uid,
+      };
+
+      if (command.partyType) {
+        query.partyType =
+          command.partyType;
+      }
+
+      const rows = await Party.find(query)
+        .sort({
+          name: 1,
+        })
+        .limit(200)
+        .lean();
+
+      return {
+        type: 'LIST_PARTIES',
+        items: rows.map(
+          (party: any) => ({
+            id: String(party._id),
+            name: party.name,
+            phone: party.phone || null,
+            partyType: party.partyType,
+            balance:
+              party.currentBalance,
+          }),
+        ),
+      };
+    }
+
+    if (
+      command.action === 'LIST_PRODUCTS'
+    ) {
+      const rows = await Product.find({
+        userId: uid,
+      })
+        .sort({
+          name: 1,
+        })
+        .limit(200)
+        .lean();
+
+      return {
+        type: 'LIST_PRODUCTS',
+        items: rows,
+      };
+    }
+
+    const rows =
+      await Transaction.find({
+        userId: uid,
+        isDeleted: {
+          $ne: true,
+        },
+      })
+        .sort({
+          timestamp: -1,
+        })
+        .limit(100)
+        .lean();
+
+    return {
+      type: 'LIST_TRANSACTIONS',
+      items: rows,
+    };
+  }
+
+  /* ---------------------------------------------------------------------- */
+  /* Transaction session                                                    */
+  /* ---------------------------------------------------------------------- */
+
+  const session =
+    await Party.startSession();
+
+  let result: any;
+
+  try {
+    await session.withTransaction(
+      async () => {
+        /* ---------------------------------------------------------------- */
+        /* USER CRUD                                                         */
+        /* ---------------------------------------------------------------- */
+
+        if (
+          command.action ===
+            'CREATE_USER' ||
+          command.action ===
+            'UPDATE_USER' ||
+          command.action ===
+            'DELETE_USER'
+        ) {
+          await requireAdmin(userId);
+
+          if (
+            command.action ===
+            'CREATE_USER'
+          ) {
+            const email =
+              clean(command.query)
+                ?.toLowerCase();
+
+            if (
+              !command.entityName ||
+              !email ||
+              !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(
+                email,
+              )
+            ) {
+              throw new VoiceV2Error(
+                'INVALID_USER',
+                'Name and valid email are required',
+              );
+            }
+
+            const duplicate =
+              await User.findOne({
+                email,
+              }).session(session);
+
+            if (duplicate) {
+              throw new VoiceV2Error(
+                'DUPLICATE_ENTITY',
+                'A user with this email already exists',
+              );
+            }
+
+            const [user] =
+              await User.create(
+                [
+                  {
+                    name:
+                      command.entityName,
+
+                    email,
+
+                    phone:
+                      command.phone ||
+                      undefined,
+
+                    role: 'USER',
+
+                    status: 'ACTIVE',
+                  },
+                ],
+                {
+                  session,
+                },
+              );
+
+            result = {
+              type: 'CREATE_USER',
+
+              user: {
+                id: String(user._id),
+                name: user.name,
+                email: user.email,
+                phone:
+                  user.phone || null,
+                role: user.role,
+                status: user.status,
+              },
+            };
+          } else {
+            const target =
+              command.query
+                ?.toLowerCase();
+
+            const filter: any =
+              target
+                ? {
+                    email: target,
+                  }
+                : {
+                    _id:
+                      command.targetId &&
+                      Types.ObjectId.isValid(
+                        command.targetId,
+                      )
+                        ? new Types.ObjectId(
+                            command.targetId,
+                          )
+                        : null,
+                  };
+
+            if (
+              !filter._id &&
+              !filter.email
+            ) {
+              throw new VoiceV2Error(
+                'MISSING_ENTITY',
+                'User email or id is required',
+              );
+            }
+
+            const user =
+              await User.findOne(
+                filter,
+              ).session(session);
+
+            if (!user) {
+              throw new VoiceV2Error(
+                'NOT_FOUND',
+                'User was not found',
+              );
+            }
+
+            if (
+              String(user._id) ===
+                userId &&
+              command.action ===
+                'DELETE_USER'
+            ) {
+              throw new VoiceV2Error(
+                'DELETE_BLOCKED',
+                'You cannot delete your own account by voice.',
+              );
+            }
+
+            if (
+              command.action ===
+              'UPDATE_USER'
+            ) {
+              const update: any = {};
+
+              if (command.entityName) {
+                update.name =
+                  command.entityName;
+              }
+
+              if (command.phone) {
+                update.phone =
+                  command.phone;
+              }
+
+              if (
+                command.notes &&
+                [
+                  'ACTIVE',
+                  'SUSPENDED',
+                ].includes(
+                  command.notes,
+                )
+              ) {
+                update.status =
+                  command.notes;
+              }
+
+              if (
+                command.partyType ===
+                'CUSTOMER'
+              ) {
+                update.role = 'USER';
+              }
+
+              if (
+                !Object.keys(update)
+                  .length
+              ) {
+                throw new VoiceV2Error(
+                  'INVALID_UPDATE',
+                  'No user fields to update',
+                );
+              }
+
+              const updated =
+                await User.findOneAndUpdate(
+                  {
+                    _id: user._id,
+                  },
+                  {
+                    $set: update,
+                  },
+                  {
+                    new: true,
+                    session,
+                  },
+                )
+                  .select('-password')
+                  .lean();
+
+              result = {
+                type: 'UPDATE_USER',
+                user: updated,
+              };
+            } else {
+              const hasData =
+                await Promise.all([
+                  Party.exists({
+                    userId: user._id,
+                  }).session(session),
+
+                  Product.exists({
+                    userId: user._id,
+                  }).session(session),
+
+                  Transaction.exists({
+                    userId: user._id,
+                  }).session(session),
+                ]);
+
+              if (hasData.some(Boolean)) {
+                throw new VoiceV2Error(
+                  'DELETE_BLOCKED',
+                  'This user owns ledger data and cannot be deleted safely.',
+                );
+              }
+
+              await User.deleteOne(
+                {
+                  _id: user._id,
+                },
+                {
+                  session,
+                },
+              );
+
+              result = {
+                type: 'DELETE_USER',
+                id: String(
+                  user._id,
+                ),
+                email: user.email,
+              };
+            }
+          }
+        }
+
+        /* ---------------------------------------------------------------- */
+        /* CREATE PARTY                                                      */
+        /* ---------------------------------------------------------------- */
+
+        else if (
+          command.action ===
+          'CREATE_PARTY'
+        ) {
+          if (!command.entityName) {
+            throw new VoiceV2Error(
+              'MISSING_ENTITY',
+              'Party name is required',
+            );
+          }
+
+          const partyType =
+            command.partyType ||
+            'CUSTOMER';
+
+          const escaped =
+            command.entityName.replace(
+              /[.*+?^\${}()|[\]\\]/g,
+              '\\$&',
+            );
+
+          const duplicate =
+            await Party.findOne({
+              userId: uid,
+              name: new RegExp(
+                `^${escaped}$`,
+                'i',
+              ),
+            }).session(session);
+
+          if (duplicate) {
+            throw new VoiceV2Error(
+              'DUPLICATE_ENTITY',
+              `A party named "${command.entityName}" already exists`,
+              {
+                matches: [
+                  {
+                    id: String(
+                      duplicate._id,
+                    ),
+                    name: duplicate.name,
+                    phone:
+                      duplicate.phone ||
+                      null,
+                    balance:
+                      duplicate.currentBalance,
+                  },
+                ],
+              },
+            );
+          }
+
+          const [party] =
+            await Party.create(
+              [
+                {
+                  userId: uid,
+                  name:
+                    command.entityName,
+                  phone:
+                    command.phone ||
+                    undefined,
+                  partyType,
+                  currentBalance: 0,
+                },
+              ],
+              {
+                session,
+              },
+            );
+
+          result = {
+            type: 'CREATE_PARTY',
+            id: String(party._id),
+            name: party.name,
+            phone:
+              party.phone || null,
+            partyType:
+              party.partyType,
+            balance: 0,
+          };
+        }
+
+        /* ---------------------------------------------------------------- */
+        /* UPDATE PARTY                                                      */
+        /* ---------------------------------------------------------------- */
+
+        else if (
+          command.action ===
+          'UPDATE_PARTY'
+        ) {
+          if (!command.entityName) {
+            throw new VoiceV2Error(
+              'MISSING_ENTITY',
+              'Party name is required',
+            );
+          }
+
+          const party =
+            await findParty(
+              userId,
+              command.entityName,
+              session,
+              command.partyType ||
+                undefined,
+            );
+
+          const update: any = {};
+
+          if (command.phone) {
+            update.phone =
+              command.phone;
+          }
+
+          if (command.query) {
+            update.name =
+              command.query;
+          }
+
+          if (
+            !Object.keys(update).length
+          ) {
+            throw new VoiceV2Error(
+              'INVALID_UPDATE',
+              'No party fields to update',
+            );
+          }
+
+          result = {
+            type: 'UPDATE_PARTY',
+
+            party:
+              await Party.findOneAndUpdate(
+                {
+                  _id: party._id,
+                  userId: uid,
+                },
+                {
+                  $set: update,
+                },
+                {
+                  new: true,
+                  session,
+                },
+              ).lean(),
+          };
+        }
+
+        /* ---------------------------------------------------------------- */
+        /* DELETE PARTY                                                      */
+        /* ---------------------------------------------------------------- */
+
+        else if (
+          command.action ===
+          'DELETE_PARTY'
+        ) {
+          if (!command.entityName) {
+            throw new VoiceV2Error(
+              'MISSING_ENTITY',
+              'Party name is required',
+            );
+          }
+
+          const party =
+            await findParty(
+              userId,
+              command.entityName,
+              session,
+              command.partyType ||
+                undefined,
+            );
+
+          const hasTransactions =
+            await Transaction.exists({
+              userId: uid,
+              partyId: party._id,
+            }).session(session);
+
+          if (hasTransactions) {
+            throw new VoiceV2Error(
+              'DELETE_BLOCKED',
+              'This party has transaction history and cannot be deleted safely.',
+            );
+          }
+
+          await Party.deleteOne(
+            {
+              _id: party._id,
+              userId: uid,
+            },
+            {
+              session,
+            },
+          );
+
+          result = {
+            type: 'DELETE_PARTY',
+            id: String(party._id),
+            name: party.name,
+          };
+        }
+
+        /* ---------------------------------------------------------------- */
+        /* CREATE PRODUCT                                                    */
+        /* ---------------------------------------------------------------- */
+
+        else if (
+          command.action ===
+          'CREATE_PRODUCT'
+        ) {
+          if (
+            !command.entityName ||
+            !command.unit
+          ) {
+            throw new VoiceV2Error(
+              'INVALID_PRODUCT',
+              'Product name and unit are required',
+            );
+          }
+
+          const escaped =
+            command.entityName.replace(
+              /[.*+?^\${}()|[\]\\]/g,
+              '\\$&',
+            );
+
+          const duplicate =
+            await Product.findOne({
+              userId: uid,
+              name: new RegExp(
+                `^${escaped}$`,
+                'i',
+              ),
+            }).session(session);
+
+          if (duplicate) {
+            throw new VoiceV2Error(
+              'DUPLICATE_ENTITY',
+              `Product "${command.entityName}" already exists`,
+            );
+          }
+
+          const [product] =
+            await Product.create(
+              [
+                {
+                  userId: uid,
+                  name:
+                    command.entityName,
+                  unit:
+                    command.unit,
+                  stockQuantity:
+                    num(command.quantity),
+                  buyPrice:
+                    num(command.unitPrice),
+                  sellPrice: 0,
+                  lowStockThreshold: 5,
+                },
+              ],
+              {
+                session,
+              },
+            );
+
+          result = {
+            type: 'CREATE_PRODUCT',
+            id: String(
+              product._id,
+            ),
+            name: product.name,
+            unit: product.unit,
+            stock:
+              product.stockQuantity,
+            buyPrice:
+              product.buyPrice,
+            sellPrice:
+              product.sellPrice,
+          };
+        }
+
+        /* ---------------------------------------------------------------- */
+        /* UPDATE PRODUCT                                                    */
+        /* ---------------------------------------------------------------- */
+
+        else if (
+          command.action ===
+          'UPDATE_PRODUCT'
+        ) {
+          if (!command.entityName) {
+            throw new VoiceV2Error(
+              'MISSING_ENTITY',
+              'Product name is required',
+            );
+          }
+
+          const product =
+            await findProduct(
+              userId,
+              command.entityName,
+              session,
+            );
+
+          const update: any = {};
+
+          if (command.unit) {
+            update.unit =
+              command.unit;
+          }
+
+          if (
+            command.unitPrice !==
+            null
+          ) {
+            update.buyPrice =
+              num(command.unitPrice);
+          }
+
+          if (command.query) {
+            update.name =
+              command.query;
+          }
+
+          if (
+            !Object.keys(update).length
+          ) {
+            throw new VoiceV2Error(
+              'INVALID_UPDATE',
+              'No product fields to update',
+            );
+          }
+
+          result = {
+            type: 'UPDATE_PRODUCT',
+
+            product:
+              await Product.findOneAndUpdate(
+                {
+                  _id: product._id,
+                  userId: uid,
+                },
+                {
+                  $set: update,
+                },
+                {
+                  new: true,
+                  session,
+                },
+              ).lean(),
+          };
+        }
+
+        /* ---------------------------------------------------------------- */
+        /* DELETE PRODUCT                                                    */
+        /* ---------------------------------------------------------------- */
+
+        else if (
+          command.action ===
+          'DELETE_PRODUCT'
+        ) {
+          if (!command.entityName) {
+            throw new VoiceV2Error(
+              'MISSING_ENTITY',
+              'Product name is required',
+            );
+          }
+
+          const product =
+            await findProduct(
+              userId,
+              command.entityName,
+              session,
+            );
+
+          const hasTransactions =
+            await Transaction.exists({
+              userId: uid,
+              productId: product._id,
+            }).session(session);
+
+          if (hasTransactions) {
+            throw new VoiceV2Error(
+              'DELETE_BLOCKED',
+              'This product has transaction history and cannot be deleted safely.',
+            );
+          }
+
+          await Product.deleteOne(
+            {
+              _id: product._id,
+              userId: uid,
+            },
+            {
+              session,
+            },
+          );
+
+          result = {
+            type: 'DELETE_PRODUCT',
+            id: String(
+              product._id,
+            ),
+            name: product.name,
+          };
+        }
+
+        /* ---------------------------------------------------------------- */
+        /* DUE / PAYMENT                                                     */
+        /* ---------------------------------------------------------------- */
+
+        else if (
+          command.action ===
+            'CREATE_DUE' ||
+          command.action ===
+            'RECEIVE_PAYMENT'
+        ) {
+          if (
+            !command.entityName ||
+            !command.amount ||
+            command.amount <= 0
+          ) {
+            throw new VoiceV2Error(
+              'INVALID_TRANSACTION',
+              'Customer and positive amount are required',
+            );
+          }
+
+          let party;
+          let partyCreated = false;
+
+          if (command.partyType === 'SUPPLIER' || command.entityType === 'SUPPLIER') {
+            const resolved = await findOrCreateParty(
+              userId,
+              command.entityName,
+              session,
+              'SUPPLIER',
+            );
+            party = resolved.party;
+            partyCreated = resolved.created;
+          } else {
+            const existingSupplier = await Party.findOne({
+              userId: new Types.ObjectId(userId),
+              name: command.entityName,
+              partyType: 'SUPPLIER',
+            }).session(session);
+
+            if (existingSupplier) {
+              party = existingSupplier;
+            } else {
+              const resolved = await findOrCreateParty(
+                userId,
+                command.entityName,
+                session,
+                'CUSTOMER',
+              );
+              party = resolved.party;
+              partyCreated = resolved.created;
+            }
+          }
+
+          const isSupplier =
+            party.partyType === 'SUPPLIER' ||
+            command.partyType === 'SUPPLIER' ||
+            command.entityType === 'SUPPLIER';
+
+          // Balance convention:
+          // CUSTOMER: DUE_GIVEN +, DUE_RECEIVED -
+          // SUPPLIER: DUE_RECEIVED -, DUE_GIVEN +
+          // Therefore a supplier payable increases with CREATE_DUE,
+          // while a supplier payment uses DUE_GIVEN to reduce the payable.
+          const transactionType =
+            isSupplier
+              ? command.action === 'CREATE_DUE'
+                ? 'DUE_RECEIVED'
+                : 'DUE_GIVEN'
+              : command.action === 'CREATE_DUE'
+                ? 'DUE_GIVEN'
+                : 'DUE_RECEIVED';
+
+          const transaction =
+            await createTransaction(
+              {
+                type: transactionType,
+
+                partyId: String(party._id),
+
+                amount: command.amount,
+
+                quantity: 0,
+
+                notes: command.notes || undefined,
+                commandId,
+                source: 'VOICE',
+              },
+              userId,
+              session,
+            );
+
+          result = {
+            type: command.action,
+            ledgerType: transactionType,
+            partyType: party.partyType,
+            amount:
+              command.amount,
+
+            party: {
+              id: String(party._id),
+              name: party.name,
+              created: partyCreated,
+            },
+
+            transaction,
+          };
+        }
+
+        /* ---------------------------------------------------------------- */
+        /* STOCK                                                              */
+        /* ---------------------------------------------------------------- */
+
+        else if (
+          command.action ===
+            'STOCK_IN' ||
+          command.action ===
+            'STOCK_OUT'
+        ) {
+          if (
+            !command.entityName ||
+            !command.quantity ||
+            command.quantity <= 0
+          ) {
+            throw new VoiceV2Error(
+              'INVALID_STOCK',
+              'Product and positive quantity are required',
+            );
+          }
+
+          const resolvedProduct =
+            command.action === 'STOCK_IN'
+              ? await findOrCreateProduct(
+                  userId,
+                  command.entityName,
+                  session,
+                  {
+                    unit: command.unit,
+                    quantity: command.quantity,
+                    unitPrice: command.unitPrice,
+                  },
+                )
+              : { product: await findProduct(userId, command.entityName, session), created: false };
+
+          const product = resolvedProduct.product;
+
+          if (!product) {
+            throw new VoiceV2Error(
+              'PRODUCT_NOT_FOUND',
+              `Product "${command.entityName}" পাওয়া যায়নি।`,
+            );
+          }
+
+          const transaction =
+            await createTransaction(
+              {
+                type:
+                  command.action ===
+                  'STOCK_IN'
+                    ? 'STOCK_IN'
+                    : 'STOCK_OUT',
+
+                productId: String(
+                  product._id,
+                ),
+
+                amount: money(
+                  num(
+                    command.quantity,
+                  ) *
+                    num(
+                      command.unitPrice,
+                    ),
+                ),
+
+                quantity:
+                  command.quantity,
+
+                unitPrice:
+                  command.unitPrice ??
+                  undefined,
+
+                notes:
+                  command.notes ||
+                  undefined,
+                commandId,
+                source: 'VOICE',
+              },
+              userId,
+              session,
+            );
+
+          const fresh =
+            await Product.findById(
+              product._id,
+            )
+              .session(session)
+              .lean();
+
+          result = {
+            type: command.action,
+
+            product: {
+              id: String(product._id),
+              name: product.name,
+              unit: product.unit,
+              created: resolvedProduct.created,
+            },
+
+            quantity:
+              command.quantity,
+
+            stock: num(
+              fresh?.stockQuantity,
+            ),
+
+            transaction,
+          };
+        }
+
+        /* ---------------------------------------------------------------- */
+        /* SALE / PURCHASE                                                   */
+        /* ---------------------------------------------------------------- */
+
+        else if (
+          command.action ===
+            'CREATE_SALE' ||
+          command.action ===
+            'CREATE_PURCHASE'
+        ) {
+          const isAmountOnlySale =
+            command.action === 'CREATE_SALE' &&
+            !command.entityName &&
+            !command.quantity &&
+            !command.unitPrice &&
+            !!command.amount &&
+            command.amount > 0;
+
+          if (
+            !isAmountOnlySale &&
+            (!command.entityName ||
+              !command.quantity ||
+              command.quantity <= 0 ||
+              ((!command.unitPrice || command.unitPrice <= 0) &&
+                command.action !== 'CREATE_SALE'))
+          ) {
+            throw new VoiceV2Error(
+              'INVALID_TRADE',
+              'Product, quantity and unit price are required for an inventory sale or purchase',
+            );
+          }
+
+          const resolvedProduct =
+            isAmountOnlySale
+              ? { product: null, created: false }
+              : command.action === 'CREATE_PURCHASE'
+                ? await findOrCreateProduct(
+                    userId,
+                    command.entityName!,
+                    session,
+                    {
+                      unit: command.unit,
+                      // Inventory quantity is applied exactly once by the
+                      // STOCK_IN transaction below. Do not seed the new
+                      // product with the purchase quantity here.
+                      quantity: 0,
+                      unitPrice: command.unitPrice!,
+                    },
+                  )
+                : { product: await findProduct(userId, command.entityName!, session), created: false };
+
+          const product = resolvedProduct.product;
+
+          // A named credit sale may omit the price:
+          // "রহিমকে ২ কেজি চাল বাকিতে বিক্রি করলাম".
+          // In that case use the product's current selling price. We do this
+          // after product resolution so the database value is authoritative.
+          const resolvedUnitPrice =
+            !isAmountOnlySale &&
+            command.action === 'CREATE_SALE' &&
+            (!command.unitPrice || command.unitPrice <= 0)
+              ? money((product as any)?.sellPrice)
+              : money(command.unitPrice);
+
+          const resolvedAmount =
+            !isAmountOnlySale &&
+            command.action === 'CREATE_SALE' &&
+            (!command.amount || command.amount <= 0) &&
+            command.quantity &&
+            resolvedUnitPrice > 0
+              ? money(command.quantity * resolvedUnitPrice)
+              : money(command.amount);
+
+          if (!isAmountOnlySale && !product) {
+            throw new VoiceV2Error(
+              'PRODUCT_NOT_FOUND',
+              `Product "${command.entityName}" পাওয়া যায়নি। আগে product হিসেবে যোগ করুন।`,
+            );
+          }
+
+          const transactionProduct = product;
+          if (!isAmountOnlySale && !transactionProduct) {
+            throw new VoiceV2Error(
+              'PRODUCT_NOT_FOUND',
+              `Product "${command.entityName}" পাওয়া যায়নি। আগে product হিসেবে যোগ করুন।`,
+            );
+          }
+
+          const total = isAmountOnlySale
+            ? money(command.amount)
+            : resolvedAmount;
+
+          const paid = num(
+            command.paidAmount,
+          );
+
+          if (paid > total) {
+            throw new VoiceV2Error(
+              'INVALID_PAYMENT',
+              'Paid amount cannot exceed total amount',
+            );
+          }
+
+          if (
+            command.action ===
+            'CREATE_SALE'
+          ) {
+            let partyId:
+              | string
+              | undefined;
+
+            let customerCreated = false;
+
+            if (command.query) {
+              const resolved = await findOrCreateParty(userId, command.query, session, 'CUSTOMER');
+              partyId = String(resolved.party._id);
+              customerCreated = resolved.created;
+            } else if (paid < total) {
+              throw new VoiceV2Error(
+                'PARTY_REQUIRED',
+                'A customer is required for an unpaid or credit sale. For a walk-in sale, say "নগদে" or provide the customer name.',
+              );
+            }
+
+            const transaction =
+              await createTransaction(
+                {
+                  type: 'SALE',
+
+                  partyId,
+
+                  productId: product ? String(product._id) : undefined,
+
+                  amount: total,
+
+                  quantity: command.quantity ?? 0,
+
+                  unitPrice: resolvedUnitPrice > 0 ? resolvedUnitPrice : undefined,
+
+                  paidAmount: paid,
+
+                  notes:
+                    command.notes ||
+                    undefined,
+                },
+                userId,
+                session,
+              );
+
+            result = {
+              type: 'CREATE_SALE',
+
+              product:
+                product?.name ?? null,
+
+              total,
+
+              paidAmount: paid,
+
+              due: money(total - paid),
+              customerCreated,
+              transaction,
+            };
+          } else {
+            if (!command.query) {
+              throw new VoiceV2Error(
+                'PARTY_REQUIRED',
+                'Supplier name is required for a purchase',
+              );
+            }
+
+            const supplierResolved = await findOrCreateParty(userId, command.query, session, 'SUPPLIER');
+            if (supplierResolved.created) {
+              throw new VoiceV2Error('SUPPLIER_NOT_FOUND', `Supplier "${command.query}" পাওয়া যায়নি। আগে supplier হিসেবে যোগ করুন।`);
+            }
+            const supplier = supplierResolved.party;
+
+            const transaction =
+              await createTransaction(
+                {
+                  type: 'STOCK_IN',
+
+                  partyId: String(
+                    supplier._id,
+                  ),
+
+                  productId: String(
+                    transactionProduct!._id,
+                  ),
+
+                  amount: total,
+
+                  quantity:
+                    command.quantity!,
+
+                  unitPrice:
+                    command.unitPrice!,
+
+                  paidAmount: paid,
+
+                  notes:
+                    command.notes ||
+                    undefined,
+                },
+                userId,
+                session,
+              );
+
+            const due = money(
+              total - paid,
+            );
+
+            if (due > 0) {
+              await Party.updateOne(
+                {
+                  _id:
+                    supplier._id,
+                  userId: uid,
+                },
+                {
+                  $inc: {
+                    currentBalance:
+                      -due,
+                  },
+                },
+                {
+                  session,
+                },
+              );
+            }
+
+            result = {
+              type: 'CREATE_PURCHASE',
+
+              product:
+                transactionProduct!.name,
+
+              supplier: supplier.name,
+              supplierCreated: supplierResolved.created,
+              total,
+
+              paidAmount: paid,
+
+              due,
+
+              transaction,
+            };
+          }
+        }
+
+        /* ---------------------------------------------------------------- */
+        /* EXPENSE                                                            */
+        /* ---------------------------------------------------------------- */
+
+        else if (
+          command.action ===
+          'CREATE_EXPENSE'
+        ) {
+          if (
+            !command.amount ||
+            command.amount <= 0
+          ) {
+            throw new VoiceV2Error(
+              'INVALID_EXPENSE',
+              'Positive expense amount is required',
+            );
+          }
+
+          const transaction =
+            await createTransaction(
+              {
+                type: 'EXPENSE',
+
+                amount:
+                  command.amount,
+
+                quantity: 0,
+
+                notes:
+                  command.notes ||
+                  transcript,
+                commandId,
+                source: 'VOICE',
+              },
+              userId,
+              session,
+            );
+
+          result = {
+            type: 'CREATE_EXPENSE',
+            amount:
+              command.amount,
+            transaction,
+          };
+        }
+
+        /* ---------------------------------------------------------------- */
+        /* OTHER INCOME                                                     */
+        /* ---------------------------------------------------------------- */
+
+        else if (
+          command.action ===
+          'CREATE_INCOME'
+        ) {
+          if (!command.amount || command.amount <= 0) {
+            throw new VoiceV2Error(
+              'INVALID_INCOME',
+              'Positive income amount is required',
+            );
+          }
+
+          const transaction =
+            await createTransaction(
+              {
+                type: 'OTHER_INCOME',
+                amount: command.amount,
+                quantity: 0,
+                notes: command.notes || transcript,
+                commandId,
+                source: 'VOICE',
+              },
+              userId,
+              session,
+            );
+
+          result = {
+            type: 'CREATE_INCOME',
+            amount: command.amount,
+            transaction,
+          };
+        }
+
+        /* ---------------------------------------------------------------- */
+        /* DELETE TRANSACTION                                                */
+        /* ---------------------------------------------------------------- */
+
+        else if (
+          command.action ===
+          'DELETE_TRANSACTION'
+        ) {
+          if (
+            !command.targetId ||
+            !Types.ObjectId.isValid(
+              command.targetId,
+            )
+          ) {
+            throw new VoiceV2Error(
+              'MISSING_ENTITY',
+              'Valid transaction id is required',
+            );
+          }
+
+          result = {
+            type: 'DELETE_TRANSACTION',
+
+            reversal:
+              await reverseTransaction(
+                command.targetId,
+                userId,
+                session,
+              ),
+          };
+        }
+
+        /* ---------------------------------------------------------------- */
+        /* Unsupported                                                        */
+        /* ---------------------------------------------------------------- */
+
+        else {
+          throw new VoiceV2Error(
+            'UNSUPPORTED_ACTION',
+            `Action ${command.action} is not implemented yet.`,
+          );
+        }
+      },
+      {
+        readConcern: {
+          level: 'local',
+        },
+
+        writeConcern: {
+          w: 'majority',
+        },
+
+        maxCommitTimeMS: 10_000,
+      },
+    );
+  } catch (error) {
+    if (error instanceof VoiceV2Error) {
+      throw error;
+    }
+
+    if (
+      error instanceof
+      TransactionServiceError
+    ) {
+      throw new VoiceV2Error(
+        error.code,
+        error.message,
+        error.details,
+      );
+    }
+
+    throw error;
+  } finally {
+    await session.endSession();
+  }
+
+  /* ---------------------------------------------------------------------- */
+  /* Audit                                                                   */
+  /* ---------------------------------------------------------------------- */
+
+  if (commandId) {
+    await AuditLog.create({
+      userId: uid,
+
+      voiceTranscript:
+        transcript,
+
+      parsedIntent:
+        command,
+
+      status: 'SUCCESS',
+
+      commandId,
+
+      result,
+    }).catch(() => {});
+  }
+
+  return result;
+}
+
+/* -------------------------------------------------------------------------- */
+/* Local parser                                                               */
+/* -------------------------------------------------------------------------- */
+
+,
+    'iu',
+  ))
+    || value.match(new RegExp(
+      '^(.+?)\s*(?:কে|ke)\s*' + numberPattern +
+      '\s*(?:টাকা|tk|taka)?\s*(?:বাকি\s*)?(?:দিলাম|দিল|দিয়েছি|দিয়েছি|দিয়ে দিলাম|দিয়ে দিলাম|দিয়ে দিল|দিয়ে দিল|দেবো|দেব|দিবো|দিব|dilam|dil|diyechi|diye dilam|diye dilo|debo|deb|dibo)(?:\s+.*)?
+  if (match?.[1]) return command('CREATE_DUE', match[1]);
+
+  match = value.match(new RegExp(
+    '^(.+?)\s+(?:বাকি|বাকিতে|ধারে|উধারে|due|baki|bakite|dhare|credit)\s*' +
+    numberPattern + '\s*(?:টাকা|tk|taka)?\s*(?:নিল|নিলো|নিয়েছে|নিয়েছে|নেবে|নিবে|নেবো|নিবো|নিলাম|nil|nilo|niyeche|niyechi|nibe|nebe|nebo|nibo|nilam|took|take|taken)$',
+    'iu',
+  ))
+    || value.match(new RegExp(
+      '^(.+?)\s*' + numberPattern + '\s*(?:টাকা|tk|taka)?\s*(?:বাকি|বাকিতে|ধারে|উধারে|due|baki|bakite|dhare|credit)\s*(?:নিল|নিলো|নিয়েছে|নিয়েছে|নেবে|নিবে|নেবো|নিবো|নিলাম|nil|nilo|niyeche|niyechi|nibe|nebe|nebo|nibo|nilam|took|take|taken)$',
+      'iu',
+    ))
+    || value.match(new RegExp(
+      '^(.+?)\s*(?:নিল|নিলো|নিয়েছে|নিয়েছে|নেবে|নিবে|নেবো|নিবো|নিলাম|nil|nilo|niyeche|niyechi|nibe|nebe|nebo|nibo|nilam|took|take|taken)\s*' +
+      numberPattern + '\s*(?:টাকা|tk|taka)?\s*(?:বাকি|বাকিতে|ধারে|উধারে|due|baki|bakite|dhare|credit)$',
+      'iu',
+    ));
+  if (match?.[1]) return command('CREATE_DUE', match[1]);
+
+  match = value.match(new RegExp(
+    '^(?:আমি|আমরা|i|we)\s+(.+?)\s*(?:এর|ের|র)?\s*(?:কাছ থেকে|কাছথেকে|থেকে)\s*' +
+    numberPattern + '\s*(?:টাকা|tk|taka)?\s*(?:নেবো|নেব|নিবো|নিব|পাবো|পাব|nebo|nibo|pabo)$',
+    'iu',
+  ));
+  if (match?.[1]) return command('RECEIVE_PAYMENT', match[1]);
+
+  return null;
+}
+
+/* -------------------------------------------------------------------------- */
+/* Local parser                                                               */
+/* -------------------------------------------------------------------------- */
+
+export function parseVoiceV2Local(text: string): VoiceV2Command | null {
+  const inventory = parseInventoryPurchaseCommand(text);
+  if (inventory) return inventory;
+
+  const createProduct = parseCreateProductCommand(text);
+  if (createProduct) return createProduct;
+
+  const sale = parseSaleCommand(text);
+  if (sale) return sale;
+
+  const shopFinance = parseShopFinanceCommand(text);
+  if (shopFinance) return shopFinance;
+
+  // Resolve high-confidence party-money direction before generic heuristics or AI.
+  const ledgerDirection = parseLedgerDirectionCommand(text);
+  if (ledgerDirection) return ledgerDirection;
+
+  const value = norm(text);
+  const amount = extractNumber(text);
+  const name = partyName(text);
+
+  const createParty = extractCreatePartyName(text);
+  if (createParty) {
+    const command = blank('CREATE_PARTY');
+    command.entityType = createParty.partyType;
+    command.entityName = createParty.name;
+    command.partyType = createParty.partyType;
+    return command;
+  }
+
+  // Defensive local fallback: create-party commands must never reach a paid AI
+  // provider just because a speech transcript used a slightly different ending.
+  const createPartyFallback = value.match(
+    /^(.*?)\s+(?:name|নামে)\s+নতুন\s+(customer|কাস্টমার|গ্রাহক|supplier|সাপ্লায়ার|সরবরাহকারী)\s+(?:যোগ|add|create)(?:\s+(?:কর|করো|করুন|করতে|দাও|দাওনা))?$/iu,
+  );
+  if (createPartyFallback?.[1]?.trim()) {
+    const partyType =
+      /^(supplier|সাপ্লায়ার|সরবরাহকারী)$/iu.test(createPartyFallback[2] || '')
+        ? 'SUPPLIER'
+        : 'CUSTOMER';
+    const command = blank('CREATE_PARTY');
+    command.entityType = partyType;
+    command.entityName = createPartyFallback[1].trim();
+    command.partyType = partyType;
+    return command;
+  }
+  const deletePartyMatch = value.match(
+    /^(.*?)\s+(?:customer|কাস্টমার|গ্রাহক|supplier|সাপ্লায়ার|সরবরাহকারী|party|পার্টি)?\s*(?:delete|remove|ডিলিট|মুছে দাও|মুছে ফেলো|মুছে ফেলুন|সরিয়ে দাও|সরিয়ে দাও|বাদ দাও|ডিলেট|delete koro|delete kor|remove koro|remove kor|মুছে দাও|মুছে ফেলো)\s*$/iu,
+  );
+  if (deletePartyMatch?.[1]?.trim()) {
+    const raw = deletePartyMatch[1].trim();
+    const partyType =
+      /(?:supplier|সাপ্লায়ার|সরবরাহকারী)/iu.test(raw)
+        ? 'SUPPLIER'
+        : /(?:customer|কাস্টমার|গ্রাহক)/iu.test(raw)
+          ? 'CUSTOMER'
+          : null;
+    const entityName = raw
+      .replace(/(?:customer|কাস্টমার|গ্রাহক|supplier|সাপ্লায়ার|সরবরাহকারী|party|পার্টি)\s*$/iu, '')
+      .trim();
+    if (entityName) {
+      const command = blank('DELETE_PARTY');
+      command.entityType = partyType || 'CUSTOMER';
+      command.entityName = entityName;
+      command.partyType = partyType;
+      command.confirmRequired = true;
+      return command;
+    }
+  }
+
+
+  const list = /(?:list|তালিকা|সব|সকল|দেখাও|দেখান|দেখতে চাই|show|dao|দাও|লিস্ট)/i.test(value);
+
+  if (/(?:customer|কাস্টমার|গ্রাহক|party|পার্টি)/i.test(value) && list) {
+    const command = blank('LIST_PARTIES');
+    command.entityType = 'CUSTOMER';
+    command.partyType = 'CUSTOMER';
+    return command;
+  }
+
+  if (/(?:supplier|সরবরাহকারী|সাপ্লায়ার|সাপ্লাইয়ার)/i.test(value) && list) {
+    const command = blank('LIST_PARTIES');
+    command.entityType = 'SUPPLIER';
+    command.partyType = 'SUPPLIER';
+    return command;
+  }
+
+  if (/(?:product|পণ্য|item|আইটেম|মাল)/i.test(value) && list) {
+    return blank('LIST_PRODUCTS');
+  }
+
+  if (/(?:transaction|লেনদেন|হিসাব|খাতা|ট্রানজেকশন)/i.test(value) && list) {
+    return blank('LIST_TRANSACTIONS');
+  }
+
+  const customerOwes =
+    /(?:বাকি|পাওনা|দেনা|due|baki|credit|খাতায়|খাতায়|হিসাবে|বাড়াও|বাড়াও|যোগ করো|যোগ করুন|রাখলাম|রাখো)/iu.test(value);
+
+  const customerPaid =
+    /(?:কাছ থেকে|কাছথেকে|থেকে).*?(?:পেলাম|পেয়েছি|পেয়েছি|নিলাম|নিয়েছি|নিয়েছি|আদায়|আদায়|পরিশোধ|জমা)|(?:পেলাম|পেয়েছি|পেয়েছি|দিল|দিয়েছে|দিয়েছে|পরিশোধ করেছে|জমা দিল|জমা দিয়েছে|জমা দিয়েছে|paid|received|payment|pelam|peyechi|nilam|diyeche)/iu.test(value);
+
+  const moneyGivenToParty =
+    /(?:কে|ke)\s*\d[\d,]*(?:\.\d+)?\s*(?:টাকা|tk|taka)?\s*(?:দিলাম|দিল|দিয়েছি|দিয়েছি|দেব|দিব|রাখলাম|রাখো|dilam|dil|dilo|diyechi|dibo)/iu.test(value);
+
+  const balanceQuery =
+    /(?:কত|কতো|বাকি কত|পাওনা কত|দেনা কত|হিসাব|খাতার হিসাব|balance|due|pabo|pabe|koto|hisab|how much|kototuku)/i.test(value);
+
+  if (name && balanceQuery && !amount) {
+    const command = blank('READ_BALANCE');
+    command.entityType = 'CUSTOMER';
+    command.entityName = name;
+    command.partyType = 'CUSTOMER';
+    return command;
+  }
+
+  if (name && amount && customerPaid && !moneyGivenToParty) {
+    const command = blank('RECEIVE_PAYMENT');
+    command.entityType = 'CUSTOMER';
+    command.entityName = name;
+    command.partyType = 'CUSTOMER';
+    command.amount = amount;
+    return command;
+  }
+
+  if (name && amount && (moneyGivenToParty || customerOwes)) {
+    const command = blank('CREATE_DUE');
+    command.entityType = 'CUSTOMER';
+    command.entityName = name;
+    command.partyType = 'CUSTOMER';
+    command.amount = amount;
+    return command;
+  }
+
+  if (name && amount && /(?:দিলাম|দিল|দিয়েছি|দিয়েছি|dilam|dil|dilo|diyechi)/iu.test(value)) {
+    const command = blank('CREATE_DUE');
+    command.entityType = 'CUSTOMER';
+    command.entityName = name;
+    command.partyType = 'CUSTOMER';
+    command.amount = amount;
+    return command;
+  }
+
+  return null;
+}
+
+/* -------------------------------------------------------------------------- */
+/* Semantic post-normalization                                                */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * Correct only high-confidence party-payment direction after the LLM.
+ * This prevents a provider from confusing "Rahim gave me 500" with
+ * "I gave Rahim 500", which is the most expensive class of voice error.
+ */
+function normalizeLedgerSemantics(
+  command: VoiceV2Command,
+  text: string,
+): VoiceV2Command {
+  const value = norm(text);
+  const name = partyName(text);
+  const amount = extractNumber(text);
+  if (!name || amount === null) return command;
+
+  if (command.partyType === 'SUPPLIER' || command.entityType === 'SUPPLIER') {
+    return { ...command, entityType: 'SUPPLIER', partyType: 'SUPPLIER', entityName: command.entityName || name, amount };
+  }
+
+  const outgoingToParty =
+    /(?:কে|ke)\s*\d[\d,]*(?:\.\d+)?\s*(?:টাকা|tk|taka)?\s*(?:দিলাম|দিল|দিয়েছি|দিয়েছি|দেব|দিব|রাখলাম|dilam|dil|dilo|diyechi|dibo)/iu.test(value);
+  const incomingFromParty =
+    /(?:কাছ থেকে|কাছথেকে|থেকে)\s*\d[\d,]*(?:\.\d+)?\s*(?:টাকা|tk|taka)?\s*(?:পেলাম|পেয়েছি|পেয়েছি|নিলাম|নিয়েছি|নিয়েছি|আদায়|আদায়|পরিশোধ|জমা)/iu.test(value) ||
+    /^(?:.+?)\s+\d[\d,]*(?:\.\d+)?\s*(?:টাকা|tk|taka)?\s*(?:দিল|দিলো|দিয়েছে|দিয়েছে|পরিশোধ করেছে|paid|received)$/iu.test(value);
+
+  if (outgoingToParty && ['RECEIVE_PAYMENT', 'CREATE_DUE'].includes(command.action)) {
+    return { ...command, action: 'CREATE_DUE', entityType: 'CUSTOMER', partyType: 'CUSTOMER', entityName: command.entityName || name, amount };
+  }
+  if (incomingFromParty && ['CREATE_DUE', 'RECEIVE_PAYMENT'].includes(command.action)) {
+    return { ...command, action: 'RECEIVE_PAYMENT', entityType: 'CUSTOMER', partyType: 'CUSTOMER', entityName: command.entityName || name, amount };
+  }
+  return validateVoiceCommandSafety(command);
+}
+
+/* -------------------------------------------------------------------------- */
+/* AI system prompt                                                           */
+/* -------------------------------------------------------------------------- */
+
+const SYSTEM = [
+  'TaliKhata AI command understanding layer.',
+  'Understand Bangla, Banglish, English, Bengali/Arabic digits, colloquial speech and natural phrasing.',
+  'Return exactly one emit_voice_command call. Its command argument must be a JSON string matching the TaliKhata command fields.',
+  'Never invent IDs, database facts, prices, stock, balances or names. Preserve spoken names exactly; normalize number words and units into numeric/standard values.',
+  'Choose intent only from the allowed action values. CREATE_SALE means selling stock; CREATE_PURCHASE means buying stock; CREATE_PARTY means creating a customer/supplier; CREATE_DUE means money the customer owes; RECEIVE_PAYMENT means money received from a customer; supplier payments must remain supplier-side.',
+  'If required information is genuinely missing, use null. Do not turn missing data into guesses.'
+].join('\\n');
+
+/* -------------------------------------------------------------------------- */
+/* OpenAI tool                                                                */
+/* -------------------------------------------------------------------------- */
+
+const VOICE_V2_TOOL = {
+  type: 'function' as const,
+
+  function: {
+    name: 'emit_voice_command',
+
+    description:
+      'Return the single validated TaliKhata command requested by the user.',
+
+    parameters: VoiceV2JsonSchema,
+  },
+};
+
+/* -------------------------------------------------------------------------- */
+/* Provider types                                                             */
+/* -------------------------------------------------------------------------- */
+
+type VoiceProvider = {
+  name: 'openai' | 'openrouter';
+  apiKey: string;
+  model: string;
+  baseURL?: string;
+};
+
+/* -------------------------------------------------------------------------- */
+/* Provider configuration                                                      */
+/* -------------------------------------------------------------------------- */
+
+function getProviders(): VoiceProvider[] {
+  const providers: VoiceProvider[] = [];
+
+  const openAIKey = process.env.OPENAI_API_KEY?.trim();
+
+  if (openAIKey) {
+    providers.push({
+      name: 'openai',
+      apiKey: openAIKey,
+      model:
+        process.env.OPENAI_VOICE_MODEL?.trim() ||
+        'gpt-4.1-mini',
+    });
+  }
+
+  const openRouterKey =
+    process.env.OPENROUTER_API_KEY?.trim();
+
+  if (openRouterKey) {
+    providers.push({
+      name: 'openrouter',
+      apiKey: openRouterKey,
+      model:
+        process.env.OPENROUTER_VOICE_MODEL?.trim() ||
+        'openai/gpt-4.1-mini',
+      baseURL: 'https://openrouter.ai/api/v1',
+    });
+  }
+
+  return providers;
+}
+
+/* -------------------------------------------------------------------------- */
+/* Tool-call extraction                                                       */
+/* -------------------------------------------------------------------------- */
+
+function getToolArguments(response: OpenAI.Chat.Completions.ChatCompletion): string {
+  const toolCalls = response.choices[0]?.message?.tool_calls;
+
+  if (!toolCalls?.length) {
+    throw new Error(
+      'Provider returned no tool calls.',
+    );
+  }
+
+  const functionCall = toolCalls.find(
+    (
+      call,
+    ): call is Extract<
+      OpenAI.Chat.Completions.ChatCompletionMessageToolCall,
+      { type: 'function' }
+    > => call.type === 'function',
+  );
+
+  if (!functionCall?.function?.arguments) {
+    throw new Error(
+      'Provider returned no function arguments.',
+    );
+  }
+
+  return functionCall.function.arguments;
+}
+
+/* -------------------------------------------------------------------------- */
+/* AI parser                                                                  */
+/* -------------------------------------------------------------------------- */
+
+async function aiParse(
+  text: string,
+): Promise<VoiceV2Command> {
+  const providers = getProviders();
+  if (!providers.length) throw new VoiceV2Error('AI_NOT_CONFIGURED','No voice AI provider is configured. Add OPENAI_API_KEY or OPENROUTER_API_KEY to .env.local.',{providers:[]});
+  const errors: Array<{ provider: string; model: string; message: string }> = [];
+  for (const provider of providers) {
+    try {
+      console.info('[VoiceV2] Trying ' + provider.name + ' with ' + provider.model);
+      const client = new OpenAI({
+        apiKey: provider.apiKey,
+        baseURL: provider.baseURL,
+        timeout: 10_000,
+        maxRetries: 0,
+        defaultHeaders: provider.name === 'openrouter' ? {
+          'HTTP-Referer': process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000',
+          'X-Title': 'TaliKhata Voice V2',
+        } : undefined,
+      });
+      const response = await client.chat.completions.create({
+        model: provider.model,
+        messages: [{ role: 'system', content: SYSTEM }, { role: 'user', content: text }],
+        temperature: 0,
+        max_completion_tokens: 128,
+        tools: [VOICE_V2_TOOL],
+        tool_choice: { type: 'function', function: { name: 'emit_voice_command' } },
+      });
+      const argumentsJSON = getToolArguments(response);
+      let envelope: unknown;
+      try { envelope = JSON.parse(argumentsJSON); } catch { throw new Error('Provider returned invalid tool-call JSON.'); }
+      const commandPayload = envelope && typeof envelope === 'object' && 'command' in envelope && typeof (envelope as { command?: unknown }).command === 'string'
+        ? (envelope as { command: string }).command
+        : argumentsJSON;
+      let parsed: unknown;
+      try { parsed = JSON.parse(commandPayload); } catch { throw new Error('Provider returned invalid command JSON.'); }
+      const validated = VoiceV2Schema.safeParse(parsed);
+      if (!validated.success) {
+        const issues = validated.error.issues.map((issue) => ({ path: issue.path.join('.'), code: issue.code, message: issue.message }));
+        console.error('[VoiceV2] Invalid AI command:', issues);
+        throw new Error('Provider returned a command that failed TaliKhata validation: ' + issues.map((issue) => (issue.path || 'command') + ': ' + issue.message).join('; '));
+      }
+      console.info('[VoiceV2] ' + provider.name + ' succeeded');
+      return normalizeLedgerSemantics(validated.data, text);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      errors.push({ provider: provider.name, model: provider.model, message });
+      console.error('[VoiceV2] ' + provider.name + ' failed', { model: provider.model, message, error });
+    }
+  }
+  throw new VoiceV2Error('AI_UNAVAILABLE','Voice AI providers are temporarily unavailable. Please try again.',{providers:errors});
+}
+
+/* -------------------------------------------------------------------------- */
+/* Public parser                                                              */
+/* -------------------------------------------------------------------------- */
+
+export async function parseVoiceV2(
+  text: string,
+): Promise<VoiceV2Command> {
+  const normalized = text.trim();
+  if (!normalized) throw new VoiceV2Error('EMPTY_COMMAND', 'Voice command is empty.');
+  // AI is the primary understanding layer. Local regex parsers are emergency fallback only.
+  try {
+    return validateVoiceCommandSafety(await aiParse(normalized));
+  } catch (error) {
+    if (!(error instanceof VoiceV2Error) || !['AI_UNAVAILABLE', 'AI_NOT_CONFIGURED'].includes(error.code)) throw error;
+    const local = parseVoiceV2Local(normalized);
+    if (local) return normalizeLedgerSemantics(local, normalized);
+    throw error;
+  }
+}
+
+/* -------------------------------------------------------------------------- */
+/* Party resolver                                                             */
+/* -------------------------------------------------------------------------- */
+
+async function findParty(
+  userId: string,
+  name: string,
+  session: any,
+  type?: 'CUSTOMER' | 'SUPPLIER',
+) {
+  const all = await resolveParty(
+    userId,
+    name,
+    session,
+  );
+
+  const rows = type
+    ? all.filter(
+        (party: any) =>
+          party.partyType === type,
+      )
+    : all;
+
+  if (!rows.length) {
+    throw new VoiceV2Error(
+      'NOT_FOUND',
+      `${
+        type === 'SUPPLIER'
+          ? 'Supplier'
+          : 'Customer'
+      } "${name}" was not found`,
+      {
+        name,
+      },
+    );
+  }
+
+  if (rows.length > 1) {
+    throw new VoiceV2Error(
+      'AMBIGUOUS_ENTITY',
+      `Multiple parties matched "${name}"`,
+      {
+        matches: rows
+          .slice(0, 10)
+          .map((party: any) => ({
+            id: String(party._id),
+            name: party.name,
+            phone: party.phone || null,
+            balance: party.currentBalance,
+          })),
+      },
+    );
+  }
+
+  return rows[0];
+}
+
+/* -------------------------------------------------------------------------- */
+/* Admin                                                                      */
+/* -------------------------------------------------------------------------- */
+
+async function requireAdmin(
+  userId: string,
+) {
+  const user = await User.findById(userId)
+    .select('role status')
+    .lean();
+
+  if (
+    !user ||
+    user.status !== 'ACTIVE' ||
+    user.role !== 'ADMIN'
+  ) {
+    throw new VoiceV2Error(
+      'FORBIDDEN',
+      'Admin permission is required for user management.',
+    );
+  }
+
+  return user;
+}
+
+/* -------------------------------------------------------------------------- */
+/* Product resolver                                                           */
+/* -------------------------------------------------------------------------- */
+
+async function findProduct(
+  userId: string,
+  name: string,
+  session: any,
+) {
+  const rows = await resolveProduct(
+    userId,
+    name,
+    session,
+  );
+
+  if (!rows.length) {
+    throw new VoiceV2Error(
+      'NOT_FOUND',
+      `Product "${name}" was not found`,
+      {
+        name,
+      },
+    );
+  }
+
+  if (rows.length > 1) {
+    throw new VoiceV2Error(
+      'AMBIGUOUS_ENTITY',
+      `Multiple products matched "${name}"`,
+      {
+        matches: rows
+          .slice(0, 10)
+          .map((product: any) => ({
+            id: String(product._id),
+            name: product.name,
+            stock: product.stockQuantity,
+            unit: product.unit,
+          })),
+      },
+    );
+  }
+
+  return rows[0];
+}
+
+async function findOrCreateProduct(
+  userId: string,
+  name: string,
+  session: any,
+  input: { unit?: string | null; quantity?: number | null; unitPrice?: number | null },
+) {
+  const normalizedName = name.trim();
+  if (!normalizedName) {
+    throw new VoiceV2Error('MISSING_ENTITY', 'Product name is required');
+  }
+
+  const candidates = await resolveProduct(userId, normalizedName, session);
+
+  if (candidates.length === 1) {
+    return { product: candidates[0], created: false };
+  }
+
+  if (candidates.length > 1) {
+    throw new VoiceV2Error(
+      'AMBIGUOUS_ENTITY',
+      `Multiple products matched "${normalizedName}"`,
+      {
+        matches: candidates.slice(0, 10).map((product: any) => ({
+          id: String(product._id),
+          name: product.name,
+          stock: product.stockQuantity,
+          unit: product.unit,
+        })),
+      },
+    );
+  }
+
+  const [created] = await Product.create(
+    [{
+      userId: new Types.ObjectId(userId),
+      name: normalizedName,
+      unit: input.unit?.trim() || 'unit',
+      stockQuantity: 0,
+      buyPrice: money(input.unitPrice),
+      sellPrice: 0,
+      lowStockThreshold: 5,
+    }],
+    { session },
+  );
+
+  return { product: created, created: true };
+}
+
+/* -------------------------------------------------------------------------- */
+/* Party creation / resolution                                                 */
+/* -------------------------------------------------------------------------- */
+
+async function findOrCreateParty(
+  userId: string,
+  name: string,
+  session: any,
+  type: 'CUSTOMER' | 'SUPPLIER',
+) {
+  const normalizedName = name.trim();
+
+  if (!normalizedName) {
+    throw new VoiceV2Error(
+      'MISSING_ENTITY',
+      type === 'SUPPLIER'
+        ? 'Supplier name is required'
+        : 'Customer name is required',
+    );
+  }
+
+  const candidates = await resolveParty(
+    userId,
+    normalizedName,
+    session,
+  );
+
+  const sameType = candidates.filter(
+    (party: any) => party.partyType === type,
+  );
+
+  if (sameType.length === 1) {
+    return { party: sameType[0], created: false };
+  }
+
+  if (sameType.length > 1) {
+    throw new VoiceV2Error(
+      'AMBIGUOUS_ENTITY',
+      'Multiple ' +
+        (type === 'SUPPLIER' ? 'suppliers' : 'customers') +
+        ' matched "' +
+        normalizedName +
+        '".',
+      {
+        matches: sameType.slice(0, 10).map((party: any) => ({
+          id: String(party._id),
+          name: party.name,
+          phone: party.phone || null,
+          balance: party.currentBalance,
+        })),
+      },
+    );
+  }
+
+  try {
+    const [created] = await Party.create(
+      [
+        {
+          userId: new Types.ObjectId(userId),
+          name: normalizedName,
+          partyType: type,
+          currentBalance: 0,
+        },
+      ],
+      { session },
+    );
+
+    return { party: created, created: true };
+  } catch (error) {
+    if (
+      error instanceof Error &&
+      /E11000|duplicate/i.test(error.message)
+    ) {
+      const retry = await resolveParty(
+        userId,
+        normalizedName,
+        session,
+      );
+
+      const retrySameType = retry.filter(
+        (party: any) => party.partyType === type,
+      );
+
+      if (retrySameType.length === 1) {
+        return {
+          party: retrySameType[0],
+          created: false,
+        };
+      }
+    }
+
+    throw error;
+  }
+}
+
+/* -------------------------------------------------------------------------- */
+/* Confirmation                                                               */
+/* -------------------------------------------------------------------------- */
+
+function confirm(
+  command: VoiceV2Command,
+  confirmed: boolean,
+) {
+  const destructiveActions = new Set([
+    'DELETE_PARTY',
+    'DELETE_PRODUCT',
+    'DELETE_TRANSACTION',
+    'DELETE_USER',
+  ]);
+
+  const amount = money(command.amount);
+
+  const highValueWrite =
+    amount >= 10000 &&
+    [
+      'CREATE_DUE',
+      'RECEIVE_PAYMENT',
+      'CREATE_SALE',
+      'CREATE_PURCHASE',
+      'CREATE_EXPENSE',
+      'CREATE_INCOME',
+    ].includes(command.action);
+
+  const needsConfirmation =
+    command.confirmRequired ||
+    destructiveActions.has(command.action) ||
+    highValueWrite;
+
+  if (needsConfirmation && !confirmed) {
+    throw new VoiceV2Error(
+      'CONFIRMATION_REQUIRED',
+      highValueWrite
+        ? '৳১০,০০০ বা তার বেশি আর্থিক লেনদেন করার আগে confirmation প্রয়োজন।'
+        : 'এই কাজটি করার আগে confirmation প্রয়োজন।',
+      {
+        action: command.action,
+        amount: amount || null,
+        reason: highValueWrite
+          ? 'HIGH_VALUE_FINANCIAL_WRITE'
+          : 'DESTRUCTIVE_ACTION',
+      },
+    );
+  }
+}
+
+/* -------------------------------------------------------------------------- */
+/* Execute Voice V2                                                           */
+/* -------------------------------------------------------------------------- */
+
+export async function executeVoiceV2(
+  commandInput: VoiceV2Command,
+  userId: string,
+  transcript = '',
+  confirmed = false,
+  commandId?: string,
+) {
+  /* ---------------------------------------------------------------------- */
+  /* Authentication                                                         */
+  /* ---------------------------------------------------------------------- */
+
+  const sessionUser = await auth();
+
+  if (
+    !sessionUser?.user?.id ||
+    sessionUser.user.id !== userId
+  ) {
+    throw new VoiceV2Error(
+      'UNAUTHORIZED',
+      'Unauthorized',
+    );
+  }
+
+  if (!Types.ObjectId.isValid(userId)) {
+    throw new VoiceV2Error(
+      'UNAUTHORIZED',
+      'Invalid user',
+    );
+  }
+
+  /* ---------------------------------------------------------------------- */
+  /* Validate command                                                       */
+  /* ---------------------------------------------------------------------- */
+
+  const parsedCommand =
+    VoiceV2Schema.parse(commandInput);
+
+  // Product creation is intentionally tolerant of omitted units in natural voice.
+  // Mongo still receives a valid unit so commands such as "চাল ৭০ টাকা দরে পণ্য হিসেবে যোগ করো"
+  // can create the catalog item instead of failing only because the spoken unit was omitted.
+  const command: VoiceV2Command =
+    parsedCommand.action === 'CREATE_PRODUCT'
+      ? { ...parsedCommand, unit: parsedCommand.unit || 'unit' }
+      : parsedCommand;
+
+  confirm(command, confirmed);
+
+  /* ---------------------------------------------------------------------- */
+  /* Database                                                               */
+  /* ---------------------------------------------------------------------- */
+
+  await connectDB();
+
+  const uid = new Types.ObjectId(userId);
+
+  /* ---------------------------------------------------------------------- */
+  /* Idempotency                                                             */
+  /* ---------------------------------------------------------------------- */
+
+  if (commandId) {
+    const old = await AuditLog.findOne({
+      userId: uid,
+      commandId,
+      status: 'SUCCESS',
+    }).lean();
+
+    if (old?.result) {
+      return old.result;
+    }
+
+    // Transaction-level idempotency protects against duplicate execution
+    // even when the audit write has not completed yet.
+    const existingTransaction = await Transaction.findOne({
+      userId: uid,
+      commandId,
+    }).lean();
+
+    if (existingTransaction) {
+      return {
+        type: command.action,
+        amount: existingTransaction.amount,
+        quantity: existingTransaction.quantity,
+        transaction: {
+          id: String(existingTransaction._id),
+          type: existingTransaction.type,
+          amount: existingTransaction.amount,
+          quantity: existingTransaction.quantity,
+        },
+      };
+    }
+  }
+
+  /* ---------------------------------------------------------------------- */
+  /* Balance                                                                */
+  /* ---------------------------------------------------------------------- */
+
+  if (command.action === 'READ_BALANCE') {
+    if (!command.entityName) {
+      throw new VoiceV2Error(
+        'MISSING_ENTITY',
+        'Customer name is required',
+      );
+    }
+
+    const party = await findParty(
+      userId,
+      command.entityName,
+      null,
+      'CUSTOMER',
+    );
+
+    const balance = money(
+      party.currentBalance,
+    );
+
+    return {
+      type: 'READ_BALANCE',
+
+      party: {
+        id: String(party._id),
+        name: party.name,
+        phone: party.phone || null,
+      },
+
+      balance,
+
+      receivable: Math.max(
+        0,
+        balance,
+      ),
+
+      payable: Math.max(
+        0,
+        -balance,
+      ),
+    };
+  }
+
+  /* ---------------------------------------------------------------------- */
+  /* Read / List                                                             */
+  /* ---------------------------------------------------------------------- */
+
+  if (
+    [
+      'READ_PARTY',
+      'READ_PRODUCT',
+      'LIST_PARTIES',
+      'LIST_PRODUCTS',
+      'LIST_TRANSACTIONS',
+      'READ_USER',
+      'LIST_USERS',
+    ].includes(command.action)
+  ) {
+    if (command.action === 'READ_PARTY') {
+      if (!command.entityName) {
+        throw new VoiceV2Error(
+          'MISSING_ENTITY',
+          'Party name is required',
+        );
+      }
+
+      return {
+        type: 'READ_PARTY',
+        party: await findParty(
+          userId,
+          command.entityName,
+          null,
+          command.partyType || undefined,
+        ),
+      };
+    }
+
+    if (command.action === 'READ_PRODUCT') {
+      if (!command.entityName) {
+        throw new VoiceV2Error(
+          'MISSING_ENTITY',
+          'Product name is required',
+        );
+      }
+
+      return {
+        type: 'READ_PRODUCT',
+        product: await findProduct(
+          userId,
+          command.entityName,
+          null,
+        ),
+      };
+    }
+
+    if (command.action === 'READ_USER') {
+      await requireAdmin(userId);
+
+      const user =
+        await User.findOne(
+          command.query
+            ? {
+                email:
+                  command.query.toLowerCase(),
+                _id: {
+                  $ne: uid,
+                },
+              }
+            : {
+                _id:
+                  command.targetId &&
+                  Types.ObjectId.isValid(
+                    command.targetId,
+                  )
+                    ? new Types.ObjectId(
+                        command.targetId,
+                      )
+                    : uid,
+              },
+        )
+          .select('-password')
+          .lean();
+
+      if (!user) {
+        throw new VoiceV2Error(
+          'NOT_FOUND',
+          'User was not found',
+        );
+      }
+
+      return {
+        type: 'READ_USER',
+        user,
+      };
+    }
+
+    if (command.action === 'LIST_USERS') {
+      await requireAdmin(userId);
+
+      const rows = await User.find({})
+        .select('-password')
+        .sort({
+          createdAt: -1,
+        })
+        .limit(200)
+        .lean();
+
+      return {
+        type: 'LIST_USERS',
+        items: rows,
+      };
+    }
+
+    if (
+      command.action === 'LIST_PARTIES'
+    ) {
+      const query: any = {
+        userId: uid,
+      };
+
+      if (command.partyType) {
+        query.partyType =
+          command.partyType;
+      }
+
+      const rows = await Party.find(query)
+        .sort({
+          name: 1,
+        })
+        .limit(200)
+        .lean();
+
+      return {
+        type: 'LIST_PARTIES',
+        items: rows.map(
+          (party: any) => ({
+            id: String(party._id),
+            name: party.name,
+            phone: party.phone || null,
+            partyType: party.partyType,
+            balance:
+              party.currentBalance,
+          }),
+        ),
+      };
+    }
+
+    if (
+      command.action === 'LIST_PRODUCTS'
+    ) {
+      const rows = await Product.find({
+        userId: uid,
+      })
+        .sort({
+          name: 1,
+        })
+        .limit(200)
+        .lean();
+
+      return {
+        type: 'LIST_PRODUCTS',
+        items: rows,
+      };
+    }
+
+    const rows =
+      await Transaction.find({
+        userId: uid,
+        isDeleted: {
+          $ne: true,
+        },
+      })
+        .sort({
+          timestamp: -1,
+        })
+        .limit(100)
+        .lean();
+
+    return {
+      type: 'LIST_TRANSACTIONS',
+      items: rows,
+    };
+  }
+
+  /* ---------------------------------------------------------------------- */
+  /* Transaction session                                                    */
+  /* ---------------------------------------------------------------------- */
+
+  const session =
+    await Party.startSession();
+
+  let result: any;
+
+  try {
+    await session.withTransaction(
+      async () => {
+        /* ---------------------------------------------------------------- */
+        /* USER CRUD                                                         */
+        /* ---------------------------------------------------------------- */
+
+        if (
+          command.action ===
+            'CREATE_USER' ||
+          command.action ===
+            'UPDATE_USER' ||
+          command.action ===
+            'DELETE_USER'
+        ) {
+          await requireAdmin(userId);
+
+          if (
+            command.action ===
+            'CREATE_USER'
+          ) {
+            const email =
+              clean(command.query)
+                ?.toLowerCase();
+
+            if (
+              !command.entityName ||
+              !email ||
+              !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(
+                email,
+              )
+            ) {
+              throw new VoiceV2Error(
+                'INVALID_USER',
+                'Name and valid email are required',
+              );
+            }
+
+            const duplicate =
+              await User.findOne({
+                email,
+              }).session(session);
+
+            if (duplicate) {
+              throw new VoiceV2Error(
+                'DUPLICATE_ENTITY',
+                'A user with this email already exists',
+              );
+            }
+
+            const [user] =
+              await User.create(
+                [
+                  {
+                    name:
+                      command.entityName,
+
+                    email,
+
+                    phone:
+                      command.phone ||
+                      undefined,
+
+                    role: 'USER',
+
+                    status: 'ACTIVE',
+                  },
+                ],
+                {
+                  session,
+                },
+              );
+
+            result = {
+              type: 'CREATE_USER',
+
+              user: {
+                id: String(user._id),
+                name: user.name,
+                email: user.email,
+                phone:
+                  user.phone || null,
+                role: user.role,
+                status: user.status,
+              },
+            };
+          } else {
+            const target =
+              command.query
+                ?.toLowerCase();
+
+            const filter: any =
+              target
+                ? {
+                    email: target,
+                  }
+                : {
+                    _id:
+                      command.targetId &&
+                      Types.ObjectId.isValid(
+                        command.targetId,
+                      )
+                        ? new Types.ObjectId(
+                            command.targetId,
+                          )
+                        : null,
+                  };
+
+            if (
+              !filter._id &&
+              !filter.email
+            ) {
+              throw new VoiceV2Error(
+                'MISSING_ENTITY',
+                'User email or id is required',
+              );
+            }
+
+            const user =
+              await User.findOne(
+                filter,
+              ).session(session);
+
+            if (!user) {
+              throw new VoiceV2Error(
+                'NOT_FOUND',
+                'User was not found',
+              );
+            }
+
+            if (
+              String(user._id) ===
+                userId &&
+              command.action ===
+                'DELETE_USER'
+            ) {
+              throw new VoiceV2Error(
+                'DELETE_BLOCKED',
+                'You cannot delete your own account by voice.',
+              );
+            }
+
+            if (
+              command.action ===
+              'UPDATE_USER'
+            ) {
+              const update: any = {};
+
+              if (command.entityName) {
+                update.name =
+                  command.entityName;
+              }
+
+              if (command.phone) {
+                update.phone =
+                  command.phone;
+              }
+
+              if (
+                command.notes &&
+                [
+                  'ACTIVE',
+                  'SUSPENDED',
+                ].includes(
+                  command.notes,
+                )
+              ) {
+                update.status =
+                  command.notes;
+              }
+
+              if (
+                command.partyType ===
+                'CUSTOMER'
+              ) {
+                update.role = 'USER';
+              }
+
+              if (
+                !Object.keys(update)
+                  .length
+              ) {
+                throw new VoiceV2Error(
+                  'INVALID_UPDATE',
+                  'No user fields to update',
+                );
+              }
+
+              const updated =
+                await User.findOneAndUpdate(
+                  {
+                    _id: user._id,
+                  },
+                  {
+                    $set: update,
+                  },
+                  {
+                    new: true,
+                    session,
+                  },
+                )
+                  .select('-password')
+                  .lean();
+
+              result = {
+                type: 'UPDATE_USER',
+                user: updated,
+              };
+            } else {
+              const hasData =
+                await Promise.all([
+                  Party.exists({
+                    userId: user._id,
+                  }).session(session),
+
+                  Product.exists({
+                    userId: user._id,
+                  }).session(session),
+
+                  Transaction.exists({
+                    userId: user._id,
+                  }).session(session),
+                ]);
+
+              if (hasData.some(Boolean)) {
+                throw new VoiceV2Error(
+                  'DELETE_BLOCKED',
+                  'This user owns ledger data and cannot be deleted safely.',
+                );
+              }
+
+              await User.deleteOne(
+                {
+                  _id: user._id,
+                },
+                {
+                  session,
+                },
+              );
+
+              result = {
+                type: 'DELETE_USER',
+                id: String(
+                  user._id,
+                ),
+                email: user.email,
+              };
+            }
+          }
+        }
+
+        /* ---------------------------------------------------------------- */
+        /* CREATE PARTY                                                      */
+        /* ---------------------------------------------------------------- */
+
+        else if (
+          command.action ===
+          'CREATE_PARTY'
+        ) {
+          if (!command.entityName) {
+            throw new VoiceV2Error(
+              'MISSING_ENTITY',
+              'Party name is required',
+            );
+          }
+
+          const partyType =
+            command.partyType ||
+            'CUSTOMER';
+
+          const escaped =
+            command.entityName.replace(
+              /[.*+?^\${}()|[\]\\]/g,
+              '\\$&',
+            );
+
+          const duplicate =
+            await Party.findOne({
+              userId: uid,
+              name: new RegExp(
+                `^${escaped}$`,
+                'i',
+              ),
+            }).session(session);
+
+          if (duplicate) {
+            throw new VoiceV2Error(
+              'DUPLICATE_ENTITY',
+              `A party named "${command.entityName}" already exists`,
+              {
+                matches: [
+                  {
+                    id: String(
+                      duplicate._id,
+                    ),
+                    name: duplicate.name,
+                    phone:
+                      duplicate.phone ||
+                      null,
+                    balance:
+                      duplicate.currentBalance,
+                  },
+                ],
+              },
+            );
+          }
+
+          const [party] =
+            await Party.create(
+              [
+                {
+                  userId: uid,
+                  name:
+                    command.entityName,
+                  phone:
+                    command.phone ||
+                    undefined,
+                  partyType,
+                  currentBalance: 0,
+                },
+              ],
+              {
+                session,
+              },
+            );
+
+          result = {
+            type: 'CREATE_PARTY',
+            id: String(party._id),
+            name: party.name,
+            phone:
+              party.phone || null,
+            partyType:
+              party.partyType,
+            balance: 0,
+          };
+        }
+
+        /* ---------------------------------------------------------------- */
+        /* UPDATE PARTY                                                      */
+        /* ---------------------------------------------------------------- */
+
+        else if (
+          command.action ===
+          'UPDATE_PARTY'
+        ) {
+          if (!command.entityName) {
+            throw new VoiceV2Error(
+              'MISSING_ENTITY',
+              'Party name is required',
+            );
+          }
+
+          const party =
+            await findParty(
+              userId,
+              command.entityName,
+              session,
+              command.partyType ||
+                undefined,
+            );
+
+          const update: any = {};
+
+          if (command.phone) {
+            update.phone =
+              command.phone;
+          }
+
+          if (command.query) {
+            update.name =
+              command.query;
+          }
+
+          if (
+            !Object.keys(update).length
+          ) {
+            throw new VoiceV2Error(
+              'INVALID_UPDATE',
+              'No party fields to update',
+            );
+          }
+
+          result = {
+            type: 'UPDATE_PARTY',
+
+            party:
+              await Party.findOneAndUpdate(
+                {
+                  _id: party._id,
+                  userId: uid,
+                },
+                {
+                  $set: update,
+                },
+                {
+                  new: true,
+                  session,
+                },
+              ).lean(),
+          };
+        }
+
+        /* ---------------------------------------------------------------- */
+        /* DELETE PARTY                                                      */
+        /* ---------------------------------------------------------------- */
+
+        else if (
+          command.action ===
+          'DELETE_PARTY'
+        ) {
+          if (!command.entityName) {
+            throw new VoiceV2Error(
+              'MISSING_ENTITY',
+              'Party name is required',
+            );
+          }
+
+          const party =
+            await findParty(
+              userId,
+              command.entityName,
+              session,
+              command.partyType ||
+                undefined,
+            );
+
+          const hasTransactions =
+            await Transaction.exists({
+              userId: uid,
+              partyId: party._id,
+            }).session(session);
+
+          if (hasTransactions) {
+            throw new VoiceV2Error(
+              'DELETE_BLOCKED',
+              'This party has transaction history and cannot be deleted safely.',
+            );
+          }
+
+          await Party.deleteOne(
+            {
+              _id: party._id,
+              userId: uid,
+            },
+            {
+              session,
+            },
+          );
+
+          result = {
+            type: 'DELETE_PARTY',
+            id: String(party._id),
+            name: party.name,
+          };
+        }
+
+        /* ---------------------------------------------------------------- */
+        /* CREATE PRODUCT                                                    */
+        /* ---------------------------------------------------------------- */
+
+        else if (
+          command.action ===
+          'CREATE_PRODUCT'
+        ) {
+          if (
+            !command.entityName ||
+            !command.unit
+          ) {
+            throw new VoiceV2Error(
+              'INVALID_PRODUCT',
+              'Product name and unit are required',
+            );
+          }
+
+          const escaped =
+            command.entityName.replace(
+              /[.*+?^\${}()|[\]\\]/g,
+              '\\$&',
+            );
+
+          const duplicate =
+            await Product.findOne({
+              userId: uid,
+              name: new RegExp(
+                `^${escaped}$`,
+                'i',
+              ),
+            }).session(session);
+
+          if (duplicate) {
+            throw new VoiceV2Error(
+              'DUPLICATE_ENTITY',
+              `Product "${command.entityName}" already exists`,
+            );
+          }
+
+          const [product] =
+            await Product.create(
+              [
+                {
+                  userId: uid,
+                  name:
+                    command.entityName,
+                  unit:
+                    command.unit,
+                  stockQuantity:
+                    num(command.quantity),
+                  buyPrice:
+                    num(command.unitPrice),
+                  sellPrice: 0,
+                  lowStockThreshold: 5,
+                },
+              ],
+              {
+                session,
+              },
+            );
+
+          result = {
+            type: 'CREATE_PRODUCT',
+            id: String(
+              product._id,
+            ),
+            name: product.name,
+            unit: product.unit,
+            stock:
+              product.stockQuantity,
+            buyPrice:
+              product.buyPrice,
+            sellPrice:
+              product.sellPrice,
+          };
+        }
+
+        /* ---------------------------------------------------------------- */
+        /* UPDATE PRODUCT                                                    */
+        /* ---------------------------------------------------------------- */
+
+        else if (
+          command.action ===
+          'UPDATE_PRODUCT'
+        ) {
+          if (!command.entityName) {
+            throw new VoiceV2Error(
+              'MISSING_ENTITY',
+              'Product name is required',
+            );
+          }
+
+          const product =
+            await findProduct(
+              userId,
+              command.entityName,
+              session,
+            );
+
+          const update: any = {};
+
+          if (command.unit) {
+            update.unit =
+              command.unit;
+          }
+
+          if (
+            command.unitPrice !==
+            null
+          ) {
+            update.buyPrice =
+              num(command.unitPrice);
+          }
+
+          if (command.query) {
+            update.name =
+              command.query;
+          }
+
+          if (
+            !Object.keys(update).length
+          ) {
+            throw new VoiceV2Error(
+              'INVALID_UPDATE',
+              'No product fields to update',
+            );
+          }
+
+          result = {
+            type: 'UPDATE_PRODUCT',
+
+            product:
+              await Product.findOneAndUpdate(
+                {
+                  _id: product._id,
+                  userId: uid,
+                },
+                {
+                  $set: update,
+                },
+                {
+                  new: true,
+                  session,
+                },
+              ).lean(),
+          };
+        }
+
+        /* ---------------------------------------------------------------- */
+        /* DELETE PRODUCT                                                    */
+        /* ---------------------------------------------------------------- */
+
+        else if (
+          command.action ===
+          'DELETE_PRODUCT'
+        ) {
+          if (!command.entityName) {
+            throw new VoiceV2Error(
+              'MISSING_ENTITY',
+              'Product name is required',
+            );
+          }
+
+          const product =
+            await findProduct(
+              userId,
+              command.entityName,
+              session,
+            );
+
+          const hasTransactions =
+            await Transaction.exists({
+              userId: uid,
+              productId: product._id,
+            }).session(session);
+
+          if (hasTransactions) {
+            throw new VoiceV2Error(
+              'DELETE_BLOCKED',
+              'This product has transaction history and cannot be deleted safely.',
+            );
+          }
+
+          await Product.deleteOne(
+            {
+              _id: product._id,
+              userId: uid,
+            },
+            {
+              session,
+            },
+          );
+
+          result = {
+            type: 'DELETE_PRODUCT',
+            id: String(
+              product._id,
+            ),
+            name: product.name,
+          };
+        }
+
+        /* ---------------------------------------------------------------- */
+        /* DUE / PAYMENT                                                     */
+        /* ---------------------------------------------------------------- */
+
+        else if (
+          command.action ===
+            'CREATE_DUE' ||
+          command.action ===
+            'RECEIVE_PAYMENT'
+        ) {
+          if (
+            !command.entityName ||
+            !command.amount ||
+            command.amount <= 0
+          ) {
+            throw new VoiceV2Error(
+              'INVALID_TRANSACTION',
+              'Customer and positive amount are required',
+            );
+          }
+
+          let party;
+          let partyCreated = false;
+
+          if (command.partyType === 'SUPPLIER' || command.entityType === 'SUPPLIER') {
+            const resolved = await findOrCreateParty(
+              userId,
+              command.entityName,
+              session,
+              'SUPPLIER',
+            );
+            party = resolved.party;
+            partyCreated = resolved.created;
+          } else {
+            const existingSupplier = await Party.findOne({
+              userId: new Types.ObjectId(userId),
+              name: command.entityName,
+              partyType: 'SUPPLIER',
+            }).session(session);
+
+            if (existingSupplier) {
+              party = existingSupplier;
+            } else {
+              const resolved = await findOrCreateParty(
+                userId,
+                command.entityName,
+                session,
+                'CUSTOMER',
+              );
+              party = resolved.party;
+              partyCreated = resolved.created;
+            }
+          }
+
+          const isSupplier =
+            party.partyType === 'SUPPLIER' ||
+            command.partyType === 'SUPPLIER' ||
+            command.entityType === 'SUPPLIER';
+
+          // Balance convention:
+          // CUSTOMER: DUE_GIVEN +, DUE_RECEIVED -
+          // SUPPLIER: DUE_RECEIVED -, DUE_GIVEN +
+          // Therefore a supplier payable increases with CREATE_DUE,
+          // while a supplier payment uses DUE_GIVEN to reduce the payable.
+          const transactionType =
+            isSupplier
+              ? command.action === 'CREATE_DUE'
+                ? 'DUE_RECEIVED'
+                : 'DUE_GIVEN'
+              : command.action === 'CREATE_DUE'
+                ? 'DUE_GIVEN'
+                : 'DUE_RECEIVED';
+
+          const transaction =
+            await createTransaction(
+              {
+                type: transactionType,
+
+                partyId: String(party._id),
+
+                amount: command.amount,
+
+                quantity: 0,
+
+                notes: command.notes || undefined,
+                commandId,
+                source: 'VOICE',
+              },
+              userId,
+              session,
+            );
+
+          result = {
+            type: command.action,
+            ledgerType: transactionType,
+            partyType: party.partyType,
+            amount:
+              command.amount,
+
+            party: {
+              id: String(party._id),
+              name: party.name,
+              created: partyCreated,
+            },
+
+            transaction,
+          };
+        }
+
+        /* ---------------------------------------------------------------- */
+        /* STOCK                                                              */
+        /* ---------------------------------------------------------------- */
+
+        else if (
+          command.action ===
+            'STOCK_IN' ||
+          command.action ===
+            'STOCK_OUT'
+        ) {
+          if (
+            !command.entityName ||
+            !command.quantity ||
+            command.quantity <= 0
+          ) {
+            throw new VoiceV2Error(
+              'INVALID_STOCK',
+              'Product and positive quantity are required',
+            );
+          }
+
+          const resolvedProduct =
+            command.action === 'STOCK_IN'
+              ? await findOrCreateProduct(
+                  userId,
+                  command.entityName,
+                  session,
+                  {
+                    unit: command.unit,
+                    quantity: command.quantity,
+                    unitPrice: command.unitPrice,
+                  },
+                )
+              : { product: await findProduct(userId, command.entityName, session), created: false };
+
+          const product = resolvedProduct.product;
+
+          if (!product) {
+            throw new VoiceV2Error(
+              'PRODUCT_NOT_FOUND',
+              `Product "${command.entityName}" পাওয়া যায়নি।`,
+            );
+          }
+
+          const transaction =
+            await createTransaction(
+              {
+                type:
+                  command.action ===
+                  'STOCK_IN'
+                    ? 'STOCK_IN'
+                    : 'STOCK_OUT',
+
+                productId: String(
+                  product._id,
+                ),
+
+                amount: money(
+                  num(
+                    command.quantity,
+                  ) *
+                    num(
+                      command.unitPrice,
+                    ),
+                ),
+
+                quantity:
+                  command.quantity,
+
+                unitPrice:
+                  command.unitPrice ??
+                  undefined,
+
+                notes:
+                  command.notes ||
+                  undefined,
+                commandId,
+                source: 'VOICE',
+              },
+              userId,
+              session,
+            );
+
+          const fresh =
+            await Product.findById(
+              product._id,
+            )
+              .session(session)
+              .lean();
+
+          result = {
+            type: command.action,
+
+            product: {
+              id: String(product._id),
+              name: product.name,
+              unit: product.unit,
+              created: resolvedProduct.created,
+            },
+
+            quantity:
+              command.quantity,
+
+            stock: num(
+              fresh?.stockQuantity,
+            ),
+
+            transaction,
+          };
+        }
+
+        /* ---------------------------------------------------------------- */
+        /* SALE / PURCHASE                                                   */
+        /* ---------------------------------------------------------------- */
+
+        else if (
+          command.action ===
+            'CREATE_SALE' ||
+          command.action ===
+            'CREATE_PURCHASE'
+        ) {
+          const isAmountOnlySale =
+            command.action === 'CREATE_SALE' &&
+            !command.entityName &&
+            !command.quantity &&
+            !command.unitPrice &&
+            !!command.amount &&
+            command.amount > 0;
+
+          if (
+            !isAmountOnlySale &&
+            (!command.entityName ||
+              !command.quantity ||
+              command.quantity <= 0 ||
+              ((!command.unitPrice || command.unitPrice <= 0) &&
+                command.action !== 'CREATE_SALE'))
+          ) {
+            throw new VoiceV2Error(
+              'INVALID_TRADE',
+              'Product, quantity and unit price are required for an inventory sale or purchase',
+            );
+          }
+
+          const resolvedProduct =
+            isAmountOnlySale
+              ? { product: null, created: false }
+              : command.action === 'CREATE_PURCHASE'
+                ? await findOrCreateProduct(
+                    userId,
+                    command.entityName!,
+                    session,
+                    {
+                      unit: command.unit,
+                      // Inventory quantity is applied exactly once by the
+                      // STOCK_IN transaction below. Do not seed the new
+                      // product with the purchase quantity here.
+                      quantity: 0,
+                      unitPrice: command.unitPrice!,
+                    },
+                  )
+                : { product: await findProduct(userId, command.entityName!, session), created: false };
+
+          const product = resolvedProduct.product;
+
+          // A named credit sale may omit the price:
+          // "রহিমকে ২ কেজি চাল বাকিতে বিক্রি করলাম".
+          // In that case use the product's current selling price. We do this
+          // after product resolution so the database value is authoritative.
+          const resolvedUnitPrice =
+            !isAmountOnlySale &&
+            command.action === 'CREATE_SALE' &&
+            (!command.unitPrice || command.unitPrice <= 0)
+              ? money((product as any)?.sellPrice)
+              : money(command.unitPrice);
+
+          const resolvedAmount =
+            !isAmountOnlySale &&
+            command.action === 'CREATE_SALE' &&
+            (!command.amount || command.amount <= 0) &&
+            command.quantity &&
+            resolvedUnitPrice > 0
+              ? money(command.quantity * resolvedUnitPrice)
+              : money(command.amount);
+
+          if (!isAmountOnlySale && !product) {
+            throw new VoiceV2Error(
+              'PRODUCT_NOT_FOUND',
+              `Product "${command.entityName}" পাওয়া যায়নি। আগে product হিসেবে যোগ করুন।`,
+            );
+          }
+
+          const transactionProduct = product;
+          if (!isAmountOnlySale && !transactionProduct) {
+            throw new VoiceV2Error(
+              'PRODUCT_NOT_FOUND',
+              `Product "${command.entityName}" পাওয়া যায়নি। আগে product হিসেবে যোগ করুন।`,
+            );
+          }
+
+          const total = isAmountOnlySale
+            ? money(command.amount)
+            : resolvedAmount;
+
+          const paid = num(
+            command.paidAmount,
+          );
+
+          if (paid > total) {
+            throw new VoiceV2Error(
+              'INVALID_PAYMENT',
+              'Paid amount cannot exceed total amount',
+            );
+          }
+
+          if (
+            command.action ===
+            'CREATE_SALE'
+          ) {
+            let partyId:
+              | string
+              | undefined;
+
+            let customerCreated = false;
+
+            if (command.query) {
+              const resolved = await findOrCreateParty(userId, command.query, session, 'CUSTOMER');
+              partyId = String(resolved.party._id);
+              customerCreated = resolved.created;
+            } else if (paid < total) {
+              throw new VoiceV2Error(
+                'PARTY_REQUIRED',
+                'A customer is required for an unpaid or credit sale. For a walk-in sale, say "নগদে" or provide the customer name.',
+              );
+            }
+
+            const transaction =
+              await createTransaction(
+                {
+                  type: 'SALE',
+
+                  partyId,
+
+                  productId: product ? String(product._id) : undefined,
+
+                  amount: total,
+
+                  quantity: command.quantity ?? 0,
+
+                  unitPrice: resolvedUnitPrice > 0 ? resolvedUnitPrice : undefined,
+
+                  paidAmount: paid,
+
+                  notes:
+                    command.notes ||
+                    undefined,
+                },
+                userId,
+                session,
+              );
+
+            result = {
+              type: 'CREATE_SALE',
+
+              product:
+                product?.name ?? null,
+
+              total,
+
+              paidAmount: paid,
+
+              due: money(total - paid),
+              customerCreated,
+              transaction,
+            };
+          } else {
+            if (!command.query) {
+              throw new VoiceV2Error(
+                'PARTY_REQUIRED',
+                'Supplier name is required for a purchase',
+              );
+            }
+
+            const supplierResolved = await findOrCreateParty(userId, command.query, session, 'SUPPLIER');
+            if (supplierResolved.created) {
+              throw new VoiceV2Error('SUPPLIER_NOT_FOUND', `Supplier "${command.query}" পাওয়া যায়নি। আগে supplier হিসেবে যোগ করুন।`);
+            }
+            const supplier = supplierResolved.party;
+
+            const transaction =
+              await createTransaction(
+                {
+                  type: 'STOCK_IN',
+
+                  partyId: String(
+                    supplier._id,
+                  ),
+
+                  productId: String(
+                    transactionProduct!._id,
+                  ),
+
+                  amount: total,
+
+                  quantity:
+                    command.quantity!,
+
+                  unitPrice:
+                    command.unitPrice!,
+
+                  paidAmount: paid,
+
+                  notes:
+                    command.notes ||
+                    undefined,
+                },
+                userId,
+                session,
+              );
+
+            const due = money(
+              total - paid,
+            );
+
+            if (due > 0) {
+              await Party.updateOne(
+                {
+                  _id:
+                    supplier._id,
+                  userId: uid,
+                },
+                {
+                  $inc: {
+                    currentBalance:
+                      -due,
+                  },
+                },
+                {
+                  session,
+                },
+              );
+            }
+
+            result = {
+              type: 'CREATE_PURCHASE',
+
+              product:
+                transactionProduct!.name,
+
+              supplier: supplier.name,
+              supplierCreated: supplierResolved.created,
+              total,
+
+              paidAmount: paid,
+
+              due,
+
+              transaction,
+            };
+          }
+        }
+
+        /* ---------------------------------------------------------------- */
+        /* EXPENSE                                                            */
+        /* ---------------------------------------------------------------- */
+
+        else if (
+          command.action ===
+          'CREATE_EXPENSE'
+        ) {
+          if (
+            !command.amount ||
+            command.amount <= 0
+          ) {
+            throw new VoiceV2Error(
+              'INVALID_EXPENSE',
+              'Positive expense amount is required',
+            );
+          }
+
+          const transaction =
+            await createTransaction(
+              {
+                type: 'EXPENSE',
+
+                amount:
+                  command.amount,
+
+                quantity: 0,
+
+                notes:
+                  command.notes ||
+                  transcript,
+                commandId,
+                source: 'VOICE',
+              },
+              userId,
+              session,
+            );
+
+          result = {
+            type: 'CREATE_EXPENSE',
+            amount:
+              command.amount,
+            transaction,
+          };
+        }
+
+        /* ---------------------------------------------------------------- */
+        /* OTHER INCOME                                                     */
+        /* ---------------------------------------------------------------- */
+
+        else if (
+          command.action ===
+          'CREATE_INCOME'
+        ) {
+          if (!command.amount || command.amount <= 0) {
+            throw new VoiceV2Error(
+              'INVALID_INCOME',
+              'Positive income amount is required',
+            );
+          }
+
+          const transaction =
+            await createTransaction(
+              {
+                type: 'OTHER_INCOME',
+                amount: command.amount,
+                quantity: 0,
+                notes: command.notes || transcript,
+                commandId,
+                source: 'VOICE',
+              },
+              userId,
+              session,
+            );
+
+          result = {
+            type: 'CREATE_INCOME',
+            amount: command.amount,
+            transaction,
+          };
+        }
+
+        /* ---------------------------------------------------------------- */
+        /* DELETE TRANSACTION                                                */
+        /* ---------------------------------------------------------------- */
+
+        else if (
+          command.action ===
+          'DELETE_TRANSACTION'
+        ) {
+          if (
+            !command.targetId ||
+            !Types.ObjectId.isValid(
+              command.targetId,
+            )
+          ) {
+            throw new VoiceV2Error(
+              'MISSING_ENTITY',
+              'Valid transaction id is required',
+            );
+          }
+
+          result = {
+            type: 'DELETE_TRANSACTION',
+
+            reversal:
+              await reverseTransaction(
+                command.targetId,
+                userId,
+                session,
+              ),
+          };
+        }
+
+        /* ---------------------------------------------------------------- */
+        /* Unsupported                                                        */
+        /* ---------------------------------------------------------------- */
+
+        else {
+          throw new VoiceV2Error(
+            'UNSUPPORTED_ACTION',
+            `Action ${command.action} is not implemented yet.`,
+          );
+        }
+      },
+      {
+        readConcern: {
+          level: 'local',
+        },
+
+        writeConcern: {
+          w: 'majority',
+        },
+
+        maxCommitTimeMS: 10_000,
+      },
+    );
+  } catch (error) {
+    if (error instanceof VoiceV2Error) {
+      throw error;
+    }
+
+    if (
+      error instanceof
+      TransactionServiceError
+    ) {
+      throw new VoiceV2Error(
+        error.code,
+        error.message,
+        error.details,
+      );
+    }
+
+    throw error;
+  } finally {
+    await session.endSession();
+  }
+
+  /* ---------------------------------------------------------------------- */
+  /* Audit                                                                   */
+  /* ---------------------------------------------------------------------- */
+
+  if (commandId) {
+    await AuditLog.create({
+      userId: uid,
+
+      voiceTranscript:
+        transcript,
+
+      parsedIntent:
+        command,
+
+      status: 'SUCCESS',
+
+      commandId,
+
+      result,
+    }).catch(() => {});
+  }
+
+  return result;
+}
+
+/* -------------------------------------------------------------------------- */
+/* Local parser                                                               */
+/* -------------------------------------------------------------------------- */
+
+,
+      'iu',
+    ));
+  if (match?.[1]) return command('CREATE_DUE', match[1]);
+
+  match = value.match(new RegExp(
+    '^(.+?)\s+(?:বাকি|বাকিতে|ধারে|উধারে|due|baki|bakite|dhare|credit)\s*' +
+    numberPattern + '\s*(?:টাকা|tk|taka)?\s*(?:নিল|নিলো|নিয়েছে|নিয়েছে|নেবে|নিবে|নেবো|নিবো|নিলাম|nil|nilo|niyeche|niyechi|nibe|nebe|nebo|nibo|nilam|took|take|taken)$',
+    'iu',
+  ))
+    || value.match(new RegExp(
+      '^(.+?)\s*' + numberPattern + '\s*(?:টাকা|tk|taka)?\s*(?:বাকি|বাকিতে|ধারে|উধারে|due|baki|bakite|dhare|credit)\s*(?:নিল|নিলো|নিয়েছে|নিয়েছে|নেবে|নিবে|নেবো|নিবো|নিলাম|nil|nilo|niyeche|niyechi|nibe|nebe|nebo|nibo|nilam|took|take|taken)$',
+      'iu',
+    ))
+    || value.match(new RegExp(
+      '^(.+?)\s*(?:নিল|নিলো|নিয়েছে|নিয়েছে|নেবে|নিবে|নেবো|নিবো|নিলাম|nil|nilo|niyeche|niyechi|nibe|nebe|nebo|nibo|nilam|took|take|taken)\s*' +
+      numberPattern + '\s*(?:টাকা|tk|taka)?\s*(?:বাকি|বাকিতে|ধারে|উধারে|due|baki|bakite|dhare|credit)$',
+      'iu',
+    ));
+  if (match?.[1]) return command('CREATE_DUE', match[1]);
+
+  match = value.match(new RegExp(
+    '^(?:আমি|আমরা|i|we)\s+(.+?)\s*(?:এর|ের|র)?\s*(?:কাছ থেকে|কাছথেকে|থেকে)\s*' +
+    numberPattern + '\s*(?:টাকা|tk|taka)?\s*(?:নেবো|নেব|নিবো|নিব|পাবো|পাব|nebo|nibo|pabo)$',
+    'iu',
+  ));
+  if (match?.[1]) return command('RECEIVE_PAYMENT', match[1]);
+
+  return null;
+}
+
+/* -------------------------------------------------------------------------- */
+/* Local parser                                                               */
+/* -------------------------------------------------------------------------- */
+
+export function parseVoiceV2Local(text: string): VoiceV2Command | null {
+  const inventory = parseInventoryPurchaseCommand(text);
+  if (inventory) return inventory;
+
+  const createProduct = parseCreateProductCommand(text);
+  if (createProduct) return createProduct;
+
+  const sale = parseSaleCommand(text);
+  if (sale) return sale;
+
+  const shopFinance = parseShopFinanceCommand(text);
+  if (shopFinance) return shopFinance;
+
+  // Resolve high-confidence party-money direction before generic heuristics or AI.
+  const ledgerDirection = parseLedgerDirectionCommand(text);
+  if (ledgerDirection) return ledgerDirection;
+
+  const value = norm(text);
+  const amount = extractNumber(text);
+  const name = partyName(text);
+
+  const createParty = extractCreatePartyName(text);
+  if (createParty) {
+    const command = blank('CREATE_PARTY');
+    command.entityType = createParty.partyType;
+    command.entityName = createParty.name;
+    command.partyType = createParty.partyType;
+    return command;
+  }
+
+  // Defensive local fallback: create-party commands must never reach a paid AI
+  // provider just because a speech transcript used a slightly different ending.
+  const createPartyFallback = value.match(
+    /^(.*?)\s+(?:name|নামে)\s+নতুন\s+(customer|কাস্টমার|গ্রাহক|supplier|সাপ্লায়ার|সরবরাহকারী)\s+(?:যোগ|add|create)(?:\s+(?:কর|করো|করুন|করতে|দাও|দাওনা))?$/iu,
+  );
+  if (createPartyFallback?.[1]?.trim()) {
+    const partyType =
+      /^(supplier|সাপ্লায়ার|সরবরাহকারী)$/iu.test(createPartyFallback[2] || '')
+        ? 'SUPPLIER'
+        : 'CUSTOMER';
+    const command = blank('CREATE_PARTY');
+    command.entityType = partyType;
+    command.entityName = createPartyFallback[1].trim();
+    command.partyType = partyType;
+    return command;
+  }
+  const deletePartyMatch = value.match(
+    /^(.*?)\s+(?:customer|কাস্টমার|গ্রাহক|supplier|সাপ্লায়ার|সরবরাহকারী|party|পার্টি)?\s*(?:delete|remove|ডিলিট|মুছে দাও|মুছে ফেলো|মুছে ফেলুন|সরিয়ে দাও|সরিয়ে দাও|বাদ দাও|ডিলেট|delete koro|delete kor|remove koro|remove kor|মুছে দাও|মুছে ফেলো)\s*$/iu,
+  );
+  if (deletePartyMatch?.[1]?.trim()) {
+    const raw = deletePartyMatch[1].trim();
+    const partyType =
+      /(?:supplier|সাপ্লায়ার|সরবরাহকারী)/iu.test(raw)
+        ? 'SUPPLIER'
+        : /(?:customer|কাস্টমার|গ্রাহক)/iu.test(raw)
+          ? 'CUSTOMER'
+          : null;
+    const entityName = raw
+      .replace(/(?:customer|কাস্টমার|গ্রাহক|supplier|সাপ্লায়ার|সরবরাহকারী|party|পার্টি)\s*$/iu, '')
+      .trim();
+    if (entityName) {
+      const command = blank('DELETE_PARTY');
+      command.entityType = partyType || 'CUSTOMER';
+      command.entityName = entityName;
+      command.partyType = partyType;
+      command.confirmRequired = true;
+      return command;
+    }
+  }
+
+
+  const list = /(?:list|তালিকা|সব|সকল|দেখাও|দেখান|দেখতে চাই|show|dao|দাও|লিস্ট)/i.test(value);
+
+  if (/(?:customer|কাস্টমার|গ্রাহক|party|পার্টি)/i.test(value) && list) {
+    const command = blank('LIST_PARTIES');
+    command.entityType = 'CUSTOMER';
+    command.partyType = 'CUSTOMER';
+    return command;
+  }
+
+  if (/(?:supplier|সরবরাহকারী|সাপ্লায়ার|সাপ্লাইয়ার)/i.test(value) && list) {
+    const command = blank('LIST_PARTIES');
+    command.entityType = 'SUPPLIER';
+    command.partyType = 'SUPPLIER';
+    return command;
+  }
+
+  if (/(?:product|পণ্য|item|আইটেম|মাল)/i.test(value) && list) {
+    return blank('LIST_PRODUCTS');
+  }
+
+  if (/(?:transaction|লেনদেন|হিসাব|খাতা|ট্রানজেকশন)/i.test(value) && list) {
+    return blank('LIST_TRANSACTIONS');
+  }
+
+  const customerOwes =
+    /(?:বাকি|পাওনা|দেনা|due|baki|credit|খাতায়|খাতায়|হিসাবে|বাড়াও|বাড়াও|যোগ করো|যোগ করুন|রাখলাম|রাখো)/iu.test(value);
+
+  const customerPaid =
+    /(?:কাছ থেকে|কাছথেকে|থেকে).*?(?:পেলাম|পেয়েছি|পেয়েছি|নিলাম|নিয়েছি|নিয়েছি|আদায়|আদায়|পরিশোধ|জমা)|(?:পেলাম|পেয়েছি|পেয়েছি|দিল|দিয়েছে|দিয়েছে|পরিশোধ করেছে|জমা দিল|জমা দিয়েছে|জমা দিয়েছে|paid|received|payment|pelam|peyechi|nilam|diyeche)/iu.test(value);
+
+  const moneyGivenToParty =
+    /(?:কে|ke)\s*\d[\d,]*(?:\.\d+)?\s*(?:টাকা|tk|taka)?\s*(?:দিলাম|দিল|দিয়েছি|দিয়েছি|দেব|দিব|রাখলাম|রাখো|dilam|dil|dilo|diyechi|dibo)/iu.test(value);
+
+  const balanceQuery =
+    /(?:কত|কতো|বাকি কত|পাওনা কত|দেনা কত|হিসাব|খাতার হিসাব|balance|due|pabo|pabe|koto|hisab|how much|kototuku)/i.test(value);
+
+  if (name && balanceQuery && !amount) {
+    const command = blank('READ_BALANCE');
+    command.entityType = 'CUSTOMER';
+    command.entityName = name;
+    command.partyType = 'CUSTOMER';
+    return command;
+  }
+
+  if (name && amount && customerPaid && !moneyGivenToParty) {
+    const command = blank('RECEIVE_PAYMENT');
+    command.entityType = 'CUSTOMER';
+    command.entityName = name;
+    command.partyType = 'CUSTOMER';
+    command.amount = amount;
+    return command;
+  }
+
+  if (name && amount && (moneyGivenToParty || customerOwes)) {
+    const command = blank('CREATE_DUE');
+    command.entityType = 'CUSTOMER';
+    command.entityName = name;
+    command.partyType = 'CUSTOMER';
+    command.amount = amount;
+    return command;
+  }
+
+  if (name && amount && /(?:দিলাম|দিল|দিয়েছি|দিয়েছি|dilam|dil|dilo|diyechi)/iu.test(value)) {
+    const command = blank('CREATE_DUE');
+    command.entityType = 'CUSTOMER';
+    command.entityName = name;
+    command.partyType = 'CUSTOMER';
+    command.amount = amount;
+    return command;
+  }
+
+  return null;
+}
+
+/* -------------------------------------------------------------------------- */
+/* Semantic post-normalization                                                */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * Correct only high-confidence party-payment direction after the LLM.
+ * This prevents a provider from confusing "Rahim gave me 500" with
+ * "I gave Rahim 500", which is the most expensive class of voice error.
+ */
+function normalizeLedgerSemantics(
+  command: VoiceV2Command,
+  text: string,
+): VoiceV2Command {
+  const value = norm(text);
+  const name = partyName(text);
+  const amount = extractNumber(text);
+  if (!name || amount === null) return command;
+
+  if (command.partyType === 'SUPPLIER' || command.entityType === 'SUPPLIER') {
+    return { ...command, entityType: 'SUPPLIER', partyType: 'SUPPLIER', entityName: command.entityName || name, amount };
+  }
+
+  const outgoingToParty =
+    /(?:কে|ke)\s*\d[\d,]*(?:\.\d+)?\s*(?:টাকা|tk|taka)?\s*(?:দিলাম|দিল|দিয়েছি|দিয়েছি|দেব|দিব|রাখলাম|dilam|dil|dilo|diyechi|dibo)/iu.test(value);
+  const incomingFromParty =
+    /(?:কাছ থেকে|কাছথেকে|থেকে)\s*\d[\d,]*(?:\.\d+)?\s*(?:টাকা|tk|taka)?\s*(?:পেলাম|পেয়েছি|পেয়েছি|নিলাম|নিয়েছি|নিয়েছি|আদায়|আদায়|পরিশোধ|জমা)/iu.test(value) ||
+    /^(?:.+?)\s+\d[\d,]*(?:\.\d+)?\s*(?:টাকা|tk|taka)?\s*(?:দিল|দিলো|দিয়েছে|দিয়েছে|পরিশোধ করেছে|paid|received)$/iu.test(value);
+
+  if (outgoingToParty && ['RECEIVE_PAYMENT', 'CREATE_DUE'].includes(command.action)) {
+    return { ...command, action: 'CREATE_DUE', entityType: 'CUSTOMER', partyType: 'CUSTOMER', entityName: command.entityName || name, amount };
+  }
+  if (incomingFromParty && ['CREATE_DUE', 'RECEIVE_PAYMENT'].includes(command.action)) {
+    return { ...command, action: 'RECEIVE_PAYMENT', entityType: 'CUSTOMER', partyType: 'CUSTOMER', entityName: command.entityName || name, amount };
+  }
+  return validateVoiceCommandSafety(command);
+}
+
+/* -------------------------------------------------------------------------- */
+/* AI system prompt                                                           */
+/* -------------------------------------------------------------------------- */
+
+const SYSTEM = [
+  'TaliKhata AI command understanding layer.',
+  'Understand Bangla, Banglish, English, Bengali/Arabic digits, colloquial speech and natural phrasing.',
+  'Return exactly one emit_voice_command call. Its command argument must be a JSON string matching the TaliKhata command fields.',
+  'Never invent IDs, database facts, prices, stock, balances or names. Preserve spoken names exactly; normalize number words and units into numeric/standard values.',
+  'Choose intent only from the allowed action values. CREATE_SALE means selling stock; CREATE_PURCHASE means buying stock; CREATE_PARTY means creating a customer/supplier; CREATE_DUE means money the customer owes; RECEIVE_PAYMENT means money received from a customer; supplier payments must remain supplier-side.',
+  'If required information is genuinely missing, use null. Do not turn missing data into guesses.'
+].join('\\n');
+
+/* -------------------------------------------------------------------------- */
+/* OpenAI tool                                                                */
+/* -------------------------------------------------------------------------- */
+
+const VOICE_V2_TOOL = {
+  type: 'function' as const,
+
+  function: {
+    name: 'emit_voice_command',
+
+    description:
+      'Return the single validated TaliKhata command requested by the user.',
+
+    parameters: VoiceV2JsonSchema,
+  },
+};
+
+/* -------------------------------------------------------------------------- */
+/* Provider types                                                             */
+/* -------------------------------------------------------------------------- */
+
+type VoiceProvider = {
+  name: 'openai' | 'openrouter';
+  apiKey: string;
+  model: string;
+  baseURL?: string;
+};
+
+/* -------------------------------------------------------------------------- */
+/* Provider configuration                                                      */
+/* -------------------------------------------------------------------------- */
+
+function getProviders(): VoiceProvider[] {
+  const providers: VoiceProvider[] = [];
+
+  const openAIKey = process.env.OPENAI_API_KEY?.trim();
+
+  if (openAIKey) {
+    providers.push({
+      name: 'openai',
+      apiKey: openAIKey,
+      model:
+        process.env.OPENAI_VOICE_MODEL?.trim() ||
+        'gpt-4.1-mini',
+    });
+  }
+
+  const openRouterKey =
+    process.env.OPENROUTER_API_KEY?.trim();
+
+  if (openRouterKey) {
+    providers.push({
+      name: 'openrouter',
+      apiKey: openRouterKey,
+      model:
+        process.env.OPENROUTER_VOICE_MODEL?.trim() ||
+        'openai/gpt-4.1-mini',
+      baseURL: 'https://openrouter.ai/api/v1',
+    });
+  }
+
+  return providers;
+}
+
+/* -------------------------------------------------------------------------- */
+/* Tool-call extraction                                                       */
+/* -------------------------------------------------------------------------- */
+
+function getToolArguments(response: OpenAI.Chat.Completions.ChatCompletion): string {
+  const toolCalls = response.choices[0]?.message?.tool_calls;
+
+  if (!toolCalls?.length) {
+    throw new Error(
+      'Provider returned no tool calls.',
+    );
+  }
+
+  const functionCall = toolCalls.find(
+    (
+      call,
+    ): call is Extract<
+      OpenAI.Chat.Completions.ChatCompletionMessageToolCall,
+      { type: 'function' }
+    > => call.type === 'function',
+  );
+
+  if (!functionCall?.function?.arguments) {
+    throw new Error(
+      'Provider returned no function arguments.',
+    );
+  }
+
+  return functionCall.function.arguments;
+}
+
+/* -------------------------------------------------------------------------- */
+/* AI parser                                                                  */
+/* -------------------------------------------------------------------------- */
+
+async function aiParse(
+  text: string,
+): Promise<VoiceV2Command> {
+  const providers = getProviders();
+  if (!providers.length) throw new VoiceV2Error('AI_NOT_CONFIGURED','No voice AI provider is configured. Add OPENAI_API_KEY or OPENROUTER_API_KEY to .env.local.',{providers:[]});
+  const errors: Array<{ provider: string; model: string; message: string }> = [];
+  for (const provider of providers) {
+    try {
+      console.info('[VoiceV2] Trying ' + provider.name + ' with ' + provider.model);
+      const client = new OpenAI({
+        apiKey: provider.apiKey,
+        baseURL: provider.baseURL,
+        timeout: 10_000,
+        maxRetries: 0,
+        defaultHeaders: provider.name === 'openrouter' ? {
+          'HTTP-Referer': process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000',
+          'X-Title': 'TaliKhata Voice V2',
+        } : undefined,
+      });
+      const response = await client.chat.completions.create({
+        model: provider.model,
+        messages: [{ role: 'system', content: SYSTEM }, { role: 'user', content: text }],
+        temperature: 0,
+        max_completion_tokens: 128,
+        tools: [VOICE_V2_TOOL],
+        tool_choice: { type: 'function', function: { name: 'emit_voice_command' } },
+      });
+      const argumentsJSON = getToolArguments(response);
+      let envelope: unknown;
+      try { envelope = JSON.parse(argumentsJSON); } catch { throw new Error('Provider returned invalid tool-call JSON.'); }
+      const commandPayload = envelope && typeof envelope === 'object' && 'command' in envelope && typeof (envelope as { command?: unknown }).command === 'string'
+        ? (envelope as { command: string }).command
+        : argumentsJSON;
+      let parsed: unknown;
+      try { parsed = JSON.parse(commandPayload); } catch { throw new Error('Provider returned invalid command JSON.'); }
+      const validated = VoiceV2Schema.safeParse(parsed);
+      if (!validated.success) {
+        const issues = validated.error.issues.map((issue) => ({ path: issue.path.join('.'), code: issue.code, message: issue.message }));
+        console.error('[VoiceV2] Invalid AI command:', issues);
+        throw new Error('Provider returned a command that failed TaliKhata validation: ' + issues.map((issue) => (issue.path || 'command') + ': ' + issue.message).join('; '));
+      }
+      console.info('[VoiceV2] ' + provider.name + ' succeeded');
+      return normalizeLedgerSemantics(validated.data, text);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      errors.push({ provider: provider.name, model: provider.model, message });
+      console.error('[VoiceV2] ' + provider.name + ' failed', { model: provider.model, message, error });
+    }
+  }
+  throw new VoiceV2Error('AI_UNAVAILABLE','Voice AI providers are temporarily unavailable. Please try again.',{providers:errors});
+}
+
+/* -------------------------------------------------------------------------- */
+/* Public parser                                                              */
+/* -------------------------------------------------------------------------- */
+
+export async function parseVoiceV2(
+  text: string,
+): Promise<VoiceV2Command> {
+  const normalized = text.trim();
+  if (!normalized) throw new VoiceV2Error('EMPTY_COMMAND', 'Voice command is empty.');
+  // AI is the primary understanding layer. Local regex parsers are emergency fallback only.
+  try {
+    return validateVoiceCommandSafety(await aiParse(normalized));
+  } catch (error) {
+    if (!(error instanceof VoiceV2Error) || !['AI_UNAVAILABLE', 'AI_NOT_CONFIGURED'].includes(error.code)) throw error;
+    const local = parseVoiceV2Local(normalized);
+    if (local) return normalizeLedgerSemantics(local, normalized);
+    throw error;
+  }
+}
+
+/* -------------------------------------------------------------------------- */
+/* Party resolver                                                             */
+/* -------------------------------------------------------------------------- */
+
+async function findParty(
+  userId: string,
+  name: string,
+  session: any,
+  type?: 'CUSTOMER' | 'SUPPLIER',
+) {
+  const all = await resolveParty(
+    userId,
+    name,
+    session,
+  );
+
+  const rows = type
+    ? all.filter(
+        (party: any) =>
+          party.partyType === type,
+      )
+    : all;
+
+  if (!rows.length) {
+    throw new VoiceV2Error(
+      'NOT_FOUND',
+      `${
+        type === 'SUPPLIER'
+          ? 'Supplier'
+          : 'Customer'
+      } "${name}" was not found`,
+      {
+        name,
+      },
+    );
+  }
+
+  if (rows.length > 1) {
+    throw new VoiceV2Error(
+      'AMBIGUOUS_ENTITY',
+      `Multiple parties matched "${name}"`,
+      {
+        matches: rows
+          .slice(0, 10)
+          .map((party: any) => ({
+            id: String(party._id),
+            name: party.name,
+            phone: party.phone || null,
+            balance: party.currentBalance,
+          })),
+      },
+    );
+  }
+
+  return rows[0];
+}
+
+/* -------------------------------------------------------------------------- */
+/* Admin                                                                      */
+/* -------------------------------------------------------------------------- */
+
+async function requireAdmin(
+  userId: string,
+) {
+  const user = await User.findById(userId)
+    .select('role status')
+    .lean();
+
+  if (
+    !user ||
+    user.status !== 'ACTIVE' ||
+    user.role !== 'ADMIN'
+  ) {
+    throw new VoiceV2Error(
+      'FORBIDDEN',
+      'Admin permission is required for user management.',
+    );
+  }
+
+  return user;
+}
+
+/* -------------------------------------------------------------------------- */
+/* Product resolver                                                           */
+/* -------------------------------------------------------------------------- */
+
+async function findProduct(
+  userId: string,
+  name: string,
+  session: any,
+) {
+  const rows = await resolveProduct(
+    userId,
+    name,
+    session,
+  );
+
+  if (!rows.length) {
+    throw new VoiceV2Error(
+      'NOT_FOUND',
+      `Product "${name}" was not found`,
+      {
+        name,
+      },
+    );
+  }
+
+  if (rows.length > 1) {
+    throw new VoiceV2Error(
+      'AMBIGUOUS_ENTITY',
+      `Multiple products matched "${name}"`,
+      {
+        matches: rows
+          .slice(0, 10)
+          .map((product: any) => ({
+            id: String(product._id),
+            name: product.name,
+            stock: product.stockQuantity,
+            unit: product.unit,
+          })),
+      },
+    );
+  }
+
+  return rows[0];
+}
+
+async function findOrCreateProduct(
+  userId: string,
+  name: string,
+  session: any,
+  input: { unit?: string | null; quantity?: number | null; unitPrice?: number | null },
+) {
+  const normalizedName = name.trim();
+  if (!normalizedName) {
+    throw new VoiceV2Error('MISSING_ENTITY', 'Product name is required');
+  }
+
+  const candidates = await resolveProduct(userId, normalizedName, session);
+
+  if (candidates.length === 1) {
+    return { product: candidates[0], created: false };
+  }
+
+  if (candidates.length > 1) {
+    throw new VoiceV2Error(
+      'AMBIGUOUS_ENTITY',
+      `Multiple products matched "${normalizedName}"`,
+      {
+        matches: candidates.slice(0, 10).map((product: any) => ({
+          id: String(product._id),
+          name: product.name,
+          stock: product.stockQuantity,
+          unit: product.unit,
+        })),
+      },
+    );
+  }
+
+  const [created] = await Product.create(
+    [{
+      userId: new Types.ObjectId(userId),
+      name: normalizedName,
+      unit: input.unit?.trim() || 'unit',
+      stockQuantity: 0,
+      buyPrice: money(input.unitPrice),
+      sellPrice: 0,
+      lowStockThreshold: 5,
+    }],
+    { session },
+  );
+
+  return { product: created, created: true };
+}
+
+/* -------------------------------------------------------------------------- */
+/* Party creation / resolution                                                 */
+/* -------------------------------------------------------------------------- */
+
+async function findOrCreateParty(
+  userId: string,
+  name: string,
+  session: any,
+  type: 'CUSTOMER' | 'SUPPLIER',
+) {
+  const normalizedName = name.trim();
+
+  if (!normalizedName) {
+    throw new VoiceV2Error(
+      'MISSING_ENTITY',
+      type === 'SUPPLIER'
+        ? 'Supplier name is required'
+        : 'Customer name is required',
+    );
+  }
+
+  const candidates = await resolveParty(
+    userId,
+    normalizedName,
+    session,
+  );
+
+  const sameType = candidates.filter(
+    (party: any) => party.partyType === type,
+  );
+
+  if (sameType.length === 1) {
+    return { party: sameType[0], created: false };
+  }
+
+  if (sameType.length > 1) {
+    throw new VoiceV2Error(
+      'AMBIGUOUS_ENTITY',
+      'Multiple ' +
+        (type === 'SUPPLIER' ? 'suppliers' : 'customers') +
+        ' matched "' +
+        normalizedName +
+        '".',
+      {
+        matches: sameType.slice(0, 10).map((party: any) => ({
+          id: String(party._id),
+          name: party.name,
+          phone: party.phone || null,
+          balance: party.currentBalance,
+        })),
+      },
+    );
+  }
+
+  try {
+    const [created] = await Party.create(
+      [
+        {
+          userId: new Types.ObjectId(userId),
+          name: normalizedName,
+          partyType: type,
+          currentBalance: 0,
+        },
+      ],
+      { session },
+    );
+
+    return { party: created, created: true };
+  } catch (error) {
+    if (
+      error instanceof Error &&
+      /E11000|duplicate/i.test(error.message)
+    ) {
+      const retry = await resolveParty(
+        userId,
+        normalizedName,
+        session,
+      );
+
+      const retrySameType = retry.filter(
+        (party: any) => party.partyType === type,
+      );
+
+      if (retrySameType.length === 1) {
+        return {
+          party: retrySameType[0],
+          created: false,
+        };
+      }
+    }
+
+    throw error;
+  }
+}
+
+/* -------------------------------------------------------------------------- */
+/* Confirmation                                                               */
+/* -------------------------------------------------------------------------- */
+
+function confirm(
+  command: VoiceV2Command,
+  confirmed: boolean,
+) {
+  const destructiveActions = new Set([
+    'DELETE_PARTY',
+    'DELETE_PRODUCT',
+    'DELETE_TRANSACTION',
+    'DELETE_USER',
+  ]);
+
+  const amount = money(command.amount);
+
+  const highValueWrite =
+    amount >= 10000 &&
+    [
+      'CREATE_DUE',
+      'RECEIVE_PAYMENT',
+      'CREATE_SALE',
+      'CREATE_PURCHASE',
+      'CREATE_EXPENSE',
+      'CREATE_INCOME',
+    ].includes(command.action);
+
+  const needsConfirmation =
+    command.confirmRequired ||
+    destructiveActions.has(command.action) ||
+    highValueWrite;
+
+  if (needsConfirmation && !confirmed) {
+    throw new VoiceV2Error(
+      'CONFIRMATION_REQUIRED',
+      highValueWrite
+        ? '৳১০,০০০ বা তার বেশি আর্থিক লেনদেন করার আগে confirmation প্রয়োজন।'
+        : 'এই কাজটি করার আগে confirmation প্রয়োজন।',
+      {
+        action: command.action,
+        amount: amount || null,
+        reason: highValueWrite
+          ? 'HIGH_VALUE_FINANCIAL_WRITE'
+          : 'DESTRUCTIVE_ACTION',
+      },
+    );
+  }
+}
+
+/* -------------------------------------------------------------------------- */
+/* Execute Voice V2                                                           */
+/* -------------------------------------------------------------------------- */
+
+export async function executeVoiceV2(
+  commandInput: VoiceV2Command,
+  userId: string,
+  transcript = '',
+  confirmed = false,
+  commandId?: string,
+) {
+  /* ---------------------------------------------------------------------- */
+  /* Authentication                                                         */
+  /* ---------------------------------------------------------------------- */
+
+  const sessionUser = await auth();
+
+  if (
+    !sessionUser?.user?.id ||
+    sessionUser.user.id !== userId
+  ) {
+    throw new VoiceV2Error(
+      'UNAUTHORIZED',
+      'Unauthorized',
+    );
+  }
+
+  if (!Types.ObjectId.isValid(userId)) {
+    throw new VoiceV2Error(
+      'UNAUTHORIZED',
+      'Invalid user',
+    );
+  }
+
+  /* ---------------------------------------------------------------------- */
+  /* Validate command                                                       */
+  /* ---------------------------------------------------------------------- */
+
+  const parsedCommand =
+    VoiceV2Schema.parse(commandInput);
+
+  // Product creation is intentionally tolerant of omitted units in natural voice.
+  // Mongo still receives a valid unit so commands such as "চাল ৭০ টাকা দরে পণ্য হিসেবে যোগ করো"
+  // can create the catalog item instead of failing only because the spoken unit was omitted.
+  const command: VoiceV2Command =
+    parsedCommand.action === 'CREATE_PRODUCT'
+      ? { ...parsedCommand, unit: parsedCommand.unit || 'unit' }
+      : parsedCommand;
+
+  confirm(command, confirmed);
+
+  /* ---------------------------------------------------------------------- */
+  /* Database                                                               */
+  /* ---------------------------------------------------------------------- */
+
+  await connectDB();
+
+  const uid = new Types.ObjectId(userId);
+
+  /* ---------------------------------------------------------------------- */
+  /* Idempotency                                                             */
+  /* ---------------------------------------------------------------------- */
+
+  if (commandId) {
+    const old = await AuditLog.findOne({
+      userId: uid,
+      commandId,
+      status: 'SUCCESS',
+    }).lean();
+
+    if (old?.result) {
+      return old.result;
+    }
+
+    // Transaction-level idempotency protects against duplicate execution
+    // even when the audit write has not completed yet.
+    const existingTransaction = await Transaction.findOne({
+      userId: uid,
+      commandId,
+    }).lean();
+
+    if (existingTransaction) {
+      return {
+        type: command.action,
+        amount: existingTransaction.amount,
+        quantity: existingTransaction.quantity,
+        transaction: {
+          id: String(existingTransaction._id),
+          type: existingTransaction.type,
+          amount: existingTransaction.amount,
+          quantity: existingTransaction.quantity,
+        },
+      };
+    }
+  }
+
+  /* ---------------------------------------------------------------------- */
+  /* Balance                                                                */
+  /* ---------------------------------------------------------------------- */
+
+  if (command.action === 'READ_BALANCE') {
+    if (!command.entityName) {
+      throw new VoiceV2Error(
+        'MISSING_ENTITY',
+        'Customer name is required',
+      );
+    }
+
+    const party = await findParty(
+      userId,
+      command.entityName,
+      null,
+      'CUSTOMER',
+    );
+
+    const balance = money(
+      party.currentBalance,
+    );
+
+    return {
+      type: 'READ_BALANCE',
+
+      party: {
+        id: String(party._id),
+        name: party.name,
+        phone: party.phone || null,
+      },
+
+      balance,
+
+      receivable: Math.max(
+        0,
+        balance,
+      ),
+
+      payable: Math.max(
+        0,
+        -balance,
+      ),
+    };
+  }
+
+  /* ---------------------------------------------------------------------- */
+  /* Read / List                                                             */
+  /* ---------------------------------------------------------------------- */
+
+  if (
+    [
+      'READ_PARTY',
+      'READ_PRODUCT',
+      'LIST_PARTIES',
+      'LIST_PRODUCTS',
+      'LIST_TRANSACTIONS',
+      'READ_USER',
+      'LIST_USERS',
+    ].includes(command.action)
+  ) {
+    if (command.action === 'READ_PARTY') {
+      if (!command.entityName) {
+        throw new VoiceV2Error(
+          'MISSING_ENTITY',
+          'Party name is required',
+        );
+      }
+
+      return {
+        type: 'READ_PARTY',
+        party: await findParty(
+          userId,
+          command.entityName,
+          null,
+          command.partyType || undefined,
+        ),
+      };
+    }
+
+    if (command.action === 'READ_PRODUCT') {
+      if (!command.entityName) {
+        throw new VoiceV2Error(
+          'MISSING_ENTITY',
+          'Product name is required',
+        );
+      }
+
+      return {
+        type: 'READ_PRODUCT',
+        product: await findProduct(
+          userId,
+          command.entityName,
+          null,
+        ),
+      };
+    }
+
+    if (command.action === 'READ_USER') {
+      await requireAdmin(userId);
+
+      const user =
+        await User.findOne(
+          command.query
+            ? {
+                email:
+                  command.query.toLowerCase(),
+                _id: {
+                  $ne: uid,
+                },
+              }
+            : {
+                _id:
+                  command.targetId &&
+                  Types.ObjectId.isValid(
+                    command.targetId,
+                  )
+                    ? new Types.ObjectId(
+                        command.targetId,
+                      )
+                    : uid,
+              },
+        )
+          .select('-password')
+          .lean();
+
+      if (!user) {
+        throw new VoiceV2Error(
+          'NOT_FOUND',
+          'User was not found',
+        );
+      }
+
+      return {
+        type: 'READ_USER',
+        user,
+      };
+    }
+
+    if (command.action === 'LIST_USERS') {
+      await requireAdmin(userId);
+
+      const rows = await User.find({})
+        .select('-password')
+        .sort({
+          createdAt: -1,
+        })
+        .limit(200)
+        .lean();
+
+      return {
+        type: 'LIST_USERS',
+        items: rows,
+      };
+    }
+
+    if (
+      command.action === 'LIST_PARTIES'
+    ) {
+      const query: any = {
+        userId: uid,
+      };
+
+      if (command.partyType) {
+        query.partyType =
+          command.partyType;
+      }
+
+      const rows = await Party.find(query)
+        .sort({
+          name: 1,
+        })
+        .limit(200)
+        .lean();
+
+      return {
+        type: 'LIST_PARTIES',
+        items: rows.map(
+          (party: any) => ({
+            id: String(party._id),
+            name: party.name,
+            phone: party.phone || null,
+            partyType: party.partyType,
+            balance:
+              party.currentBalance,
+          }),
+        ),
+      };
+    }
+
+    if (
+      command.action === 'LIST_PRODUCTS'
+    ) {
+      const rows = await Product.find({
+        userId: uid,
+      })
+        .sort({
+          name: 1,
+        })
+        .limit(200)
+        .lean();
+
+      return {
+        type: 'LIST_PRODUCTS',
+        items: rows,
+      };
+    }
+
+    const rows =
+      await Transaction.find({
+        userId: uid,
+        isDeleted: {
+          $ne: true,
+        },
+      })
+        .sort({
+          timestamp: -1,
+        })
+        .limit(100)
+        .lean();
+
+    return {
+      type: 'LIST_TRANSACTIONS',
+      items: rows,
+    };
+  }
+
+  /* ---------------------------------------------------------------------- */
+  /* Transaction session                                                    */
+  /* ---------------------------------------------------------------------- */
+
+  const session =
+    await Party.startSession();
+
+  let result: any;
+
+  try {
+    await session.withTransaction(
+      async () => {
+        /* ---------------------------------------------------------------- */
+        /* USER CRUD                                                         */
+        /* ---------------------------------------------------------------- */
+
+        if (
+          command.action ===
+            'CREATE_USER' ||
+          command.action ===
+            'UPDATE_USER' ||
+          command.action ===
+            'DELETE_USER'
+        ) {
+          await requireAdmin(userId);
+
+          if (
+            command.action ===
+            'CREATE_USER'
+          ) {
+            const email =
+              clean(command.query)
+                ?.toLowerCase();
+
+            if (
+              !command.entityName ||
+              !email ||
+              !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(
+                email,
+              )
+            ) {
+              throw new VoiceV2Error(
+                'INVALID_USER',
+                'Name and valid email are required',
+              );
+            }
+
+            const duplicate =
+              await User.findOne({
+                email,
+              }).session(session);
+
+            if (duplicate) {
+              throw new VoiceV2Error(
+                'DUPLICATE_ENTITY',
+                'A user with this email already exists',
+              );
+            }
+
+            const [user] =
+              await User.create(
+                [
+                  {
+                    name:
+                      command.entityName,
+
+                    email,
+
+                    phone:
+                      command.phone ||
+                      undefined,
+
+                    role: 'USER',
+
+                    status: 'ACTIVE',
+                  },
+                ],
+                {
+                  session,
+                },
+              );
+
+            result = {
+              type: 'CREATE_USER',
+
+              user: {
+                id: String(user._id),
+                name: user.name,
+                email: user.email,
+                phone:
+                  user.phone || null,
+                role: user.role,
+                status: user.status,
+              },
+            };
+          } else {
+            const target =
+              command.query
+                ?.toLowerCase();
+
+            const filter: any =
+              target
+                ? {
+                    email: target,
+                  }
+                : {
+                    _id:
+                      command.targetId &&
+                      Types.ObjectId.isValid(
+                        command.targetId,
+                      )
+                        ? new Types.ObjectId(
+                            command.targetId,
+                          )
+                        : null,
+                  };
+
+            if (
+              !filter._id &&
+              !filter.email
+            ) {
+              throw new VoiceV2Error(
+                'MISSING_ENTITY',
+                'User email or id is required',
+              );
+            }
+
+            const user =
+              await User.findOne(
+                filter,
+              ).session(session);
+
+            if (!user) {
+              throw new VoiceV2Error(
+                'NOT_FOUND',
+                'User was not found',
+              );
+            }
+
+            if (
+              String(user._id) ===
+                userId &&
+              command.action ===
+                'DELETE_USER'
+            ) {
+              throw new VoiceV2Error(
+                'DELETE_BLOCKED',
+                'You cannot delete your own account by voice.',
+              );
+            }
+
+            if (
+              command.action ===
+              'UPDATE_USER'
+            ) {
+              const update: any = {};
+
+              if (command.entityName) {
+                update.name =
+                  command.entityName;
+              }
+
+              if (command.phone) {
+                update.phone =
+                  command.phone;
+              }
+
+              if (
+                command.notes &&
+                [
+                  'ACTIVE',
+                  'SUSPENDED',
+                ].includes(
+                  command.notes,
+                )
+              ) {
+                update.status =
+                  command.notes;
+              }
+
+              if (
+                command.partyType ===
+                'CUSTOMER'
+              ) {
+                update.role = 'USER';
+              }
+
+              if (
+                !Object.keys(update)
+                  .length
+              ) {
+                throw new VoiceV2Error(
+                  'INVALID_UPDATE',
+                  'No user fields to update',
+                );
+              }
+
+              const updated =
+                await User.findOneAndUpdate(
+                  {
+                    _id: user._id,
+                  },
+                  {
+                    $set: update,
+                  },
+                  {
+                    new: true,
+                    session,
+                  },
+                )
+                  .select('-password')
+                  .lean();
+
+              result = {
+                type: 'UPDATE_USER',
+                user: updated,
+              };
+            } else {
+              const hasData =
+                await Promise.all([
+                  Party.exists({
+                    userId: user._id,
+                  }).session(session),
+
+                  Product.exists({
+                    userId: user._id,
+                  }).session(session),
+
+                  Transaction.exists({
+                    userId: user._id,
+                  }).session(session),
+                ]);
+
+              if (hasData.some(Boolean)) {
+                throw new VoiceV2Error(
+                  'DELETE_BLOCKED',
+                  'This user owns ledger data and cannot be deleted safely.',
+                );
+              }
+
+              await User.deleteOne(
+                {
+                  _id: user._id,
+                },
+                {
+                  session,
+                },
+              );
+
+              result = {
+                type: 'DELETE_USER',
+                id: String(
+                  user._id,
+                ),
+                email: user.email,
+              };
+            }
+          }
+        }
+
+        /* ---------------------------------------------------------------- */
+        /* CREATE PARTY                                                      */
+        /* ---------------------------------------------------------------- */
+
+        else if (
+          command.action ===
+          'CREATE_PARTY'
+        ) {
+          if (!command.entityName) {
+            throw new VoiceV2Error(
+              'MISSING_ENTITY',
+              'Party name is required',
+            );
+          }
+
+          const partyType =
+            command.partyType ||
+            'CUSTOMER';
+
+          const escaped =
+            command.entityName.replace(
+              /[.*+?^\${}()|[\]\\]/g,
+              '\\$&',
+            );
+
+          const duplicate =
+            await Party.findOne({
+              userId: uid,
+              name: new RegExp(
+                `^${escaped}$`,
+                'i',
+              ),
+            }).session(session);
+
+          if (duplicate) {
+            throw new VoiceV2Error(
+              'DUPLICATE_ENTITY',
+              `A party named "${command.entityName}" already exists`,
+              {
+                matches: [
+                  {
+                    id: String(
+                      duplicate._id,
+                    ),
+                    name: duplicate.name,
+                    phone:
+                      duplicate.phone ||
+                      null,
+                    balance:
+                      duplicate.currentBalance,
+                  },
+                ],
+              },
+            );
+          }
+
+          const [party] =
+            await Party.create(
+              [
+                {
+                  userId: uid,
+                  name:
+                    command.entityName,
+                  phone:
+                    command.phone ||
+                    undefined,
+                  partyType,
+                  currentBalance: 0,
+                },
+              ],
+              {
+                session,
+              },
+            );
+
+          result = {
+            type: 'CREATE_PARTY',
+            id: String(party._id),
+            name: party.name,
+            phone:
+              party.phone || null,
+            partyType:
+              party.partyType,
+            balance: 0,
+          };
+        }
+
+        /* ---------------------------------------------------------------- */
+        /* UPDATE PARTY                                                      */
+        /* ---------------------------------------------------------------- */
+
+        else if (
+          command.action ===
+          'UPDATE_PARTY'
+        ) {
+          if (!command.entityName) {
+            throw new VoiceV2Error(
+              'MISSING_ENTITY',
+              'Party name is required',
+            );
+          }
+
+          const party =
+            await findParty(
+              userId,
+              command.entityName,
+              session,
+              command.partyType ||
+                undefined,
+            );
+
+          const update: any = {};
+
+          if (command.phone) {
+            update.phone =
+              command.phone;
+          }
+
+          if (command.query) {
+            update.name =
+              command.query;
+          }
+
+          if (
+            !Object.keys(update).length
+          ) {
+            throw new VoiceV2Error(
+              'INVALID_UPDATE',
+              'No party fields to update',
+            );
+          }
+
+          result = {
+            type: 'UPDATE_PARTY',
+
+            party:
+              await Party.findOneAndUpdate(
+                {
+                  _id: party._id,
+                  userId: uid,
+                },
+                {
+                  $set: update,
+                },
+                {
+                  new: true,
+                  session,
+                },
+              ).lean(),
+          };
+        }
+
+        /* ---------------------------------------------------------------- */
+        /* DELETE PARTY                                                      */
+        /* ---------------------------------------------------------------- */
+
+        else if (
+          command.action ===
+          'DELETE_PARTY'
+        ) {
+          if (!command.entityName) {
+            throw new VoiceV2Error(
+              'MISSING_ENTITY',
+              'Party name is required',
+            );
+          }
+
+          const party =
+            await findParty(
+              userId,
+              command.entityName,
+              session,
+              command.partyType ||
+                undefined,
+            );
+
+          const hasTransactions =
+            await Transaction.exists({
+              userId: uid,
+              partyId: party._id,
+            }).session(session);
+
+          if (hasTransactions) {
+            throw new VoiceV2Error(
+              'DELETE_BLOCKED',
+              'This party has transaction history and cannot be deleted safely.',
+            );
+          }
+
+          await Party.deleteOne(
+            {
+              _id: party._id,
+              userId: uid,
+            },
+            {
+              session,
+            },
+          );
+
+          result = {
+            type: 'DELETE_PARTY',
+            id: String(party._id),
+            name: party.name,
+          };
+        }
+
+        /* ---------------------------------------------------------------- */
+        /* CREATE PRODUCT                                                    */
+        /* ---------------------------------------------------------------- */
+
+        else if (
+          command.action ===
+          'CREATE_PRODUCT'
+        ) {
+          if (
+            !command.entityName ||
+            !command.unit
+          ) {
+            throw new VoiceV2Error(
+              'INVALID_PRODUCT',
+              'Product name and unit are required',
+            );
+          }
+
+          const escaped =
+            command.entityName.replace(
+              /[.*+?^\${}()|[\]\\]/g,
+              '\\$&',
+            );
+
+          const duplicate =
+            await Product.findOne({
+              userId: uid,
+              name: new RegExp(
+                `^${escaped}$`,
+                'i',
+              ),
+            }).session(session);
+
+          if (duplicate) {
+            throw new VoiceV2Error(
+              'DUPLICATE_ENTITY',
+              `Product "${command.entityName}" already exists`,
+            );
+          }
+
+          const [product] =
+            await Product.create(
+              [
+                {
+                  userId: uid,
+                  name:
+                    command.entityName,
+                  unit:
+                    command.unit,
+                  stockQuantity:
+                    num(command.quantity),
+                  buyPrice:
+                    num(command.unitPrice),
+                  sellPrice: 0,
+                  lowStockThreshold: 5,
+                },
+              ],
+              {
+                session,
+              },
+            );
+
+          result = {
+            type: 'CREATE_PRODUCT',
+            id: String(
+              product._id,
+            ),
+            name: product.name,
+            unit: product.unit,
+            stock:
+              product.stockQuantity,
+            buyPrice:
+              product.buyPrice,
+            sellPrice:
+              product.sellPrice,
+          };
+        }
+
+        /* ---------------------------------------------------------------- */
+        /* UPDATE PRODUCT                                                    */
+        /* ---------------------------------------------------------------- */
+
+        else if (
+          command.action ===
+          'UPDATE_PRODUCT'
+        ) {
+          if (!command.entityName) {
+            throw new VoiceV2Error(
+              'MISSING_ENTITY',
+              'Product name is required',
+            );
+          }
+
+          const product =
+            await findProduct(
+              userId,
+              command.entityName,
+              session,
+            );
+
+          const update: any = {};
+
+          if (command.unit) {
+            update.unit =
+              command.unit;
+          }
+
+          if (
+            command.unitPrice !==
+            null
+          ) {
+            update.buyPrice =
+              num(command.unitPrice);
+          }
+
+          if (command.query) {
+            update.name =
+              command.query;
+          }
+
+          if (
+            !Object.keys(update).length
+          ) {
+            throw new VoiceV2Error(
+              'INVALID_UPDATE',
+              'No product fields to update',
+            );
+          }
+
+          result = {
+            type: 'UPDATE_PRODUCT',
+
+            product:
+              await Product.findOneAndUpdate(
+                {
+                  _id: product._id,
+                  userId: uid,
+                },
+                {
+                  $set: update,
+                },
+                {
+                  new: true,
+                  session,
+                },
+              ).lean(),
+          };
+        }
+
+        /* ---------------------------------------------------------------- */
+        /* DELETE PRODUCT                                                    */
+        /* ---------------------------------------------------------------- */
+
+        else if (
+          command.action ===
+          'DELETE_PRODUCT'
+        ) {
+          if (!command.entityName) {
+            throw new VoiceV2Error(
+              'MISSING_ENTITY',
+              'Product name is required',
+            );
+          }
+
+          const product =
+            await findProduct(
+              userId,
+              command.entityName,
+              session,
+            );
+
+          const hasTransactions =
+            await Transaction.exists({
+              userId: uid,
+              productId: product._id,
+            }).session(session);
+
+          if (hasTransactions) {
+            throw new VoiceV2Error(
+              'DELETE_BLOCKED',
+              'This product has transaction history and cannot be deleted safely.',
+            );
+          }
+
+          await Product.deleteOne(
+            {
+              _id: product._id,
+              userId: uid,
+            },
+            {
+              session,
+            },
+          );
+
+          result = {
+            type: 'DELETE_PRODUCT',
+            id: String(
+              product._id,
+            ),
+            name: product.name,
+          };
+        }
+
+        /* ---------------------------------------------------------------- */
+        /* DUE / PAYMENT                                                     */
+        /* ---------------------------------------------------------------- */
+
+        else if (
+          command.action ===
+            'CREATE_DUE' ||
+          command.action ===
+            'RECEIVE_PAYMENT'
+        ) {
+          if (
+            !command.entityName ||
+            !command.amount ||
+            command.amount <= 0
+          ) {
+            throw new VoiceV2Error(
+              'INVALID_TRANSACTION',
+              'Customer and positive amount are required',
+            );
+          }
+
+          let party;
+          let partyCreated = false;
+
+          if (command.partyType === 'SUPPLIER' || command.entityType === 'SUPPLIER') {
+            const resolved = await findOrCreateParty(
+              userId,
+              command.entityName,
+              session,
+              'SUPPLIER',
+            );
+            party = resolved.party;
+            partyCreated = resolved.created;
+          } else {
+            const existingSupplier = await Party.findOne({
+              userId: new Types.ObjectId(userId),
+              name: command.entityName,
+              partyType: 'SUPPLIER',
+            }).session(session);
+
+            if (existingSupplier) {
+              party = existingSupplier;
+            } else {
+              const resolved = await findOrCreateParty(
+                userId,
+                command.entityName,
+                session,
+                'CUSTOMER',
+              );
+              party = resolved.party;
+              partyCreated = resolved.created;
+            }
+          }
+
+          const isSupplier =
+            party.partyType === 'SUPPLIER' ||
+            command.partyType === 'SUPPLIER' ||
+            command.entityType === 'SUPPLIER';
+
+          // Balance convention:
+          // CUSTOMER: DUE_GIVEN +, DUE_RECEIVED -
+          // SUPPLIER: DUE_RECEIVED -, DUE_GIVEN +
+          // Therefore a supplier payable increases with CREATE_DUE,
+          // while a supplier payment uses DUE_GIVEN to reduce the payable.
+          const transactionType =
+            isSupplier
+              ? command.action === 'CREATE_DUE'
+                ? 'DUE_RECEIVED'
+                : 'DUE_GIVEN'
+              : command.action === 'CREATE_DUE'
+                ? 'DUE_GIVEN'
+                : 'DUE_RECEIVED';
+
+          const transaction =
+            await createTransaction(
+              {
+                type: transactionType,
+
+                partyId: String(party._id),
+
+                amount: command.amount,
+
+                quantity: 0,
+
+                notes: command.notes || undefined,
+                commandId,
+                source: 'VOICE',
+              },
+              userId,
+              session,
+            );
+
+          result = {
+            type: command.action,
+            ledgerType: transactionType,
+            partyType: party.partyType,
+            amount:
+              command.amount,
+
+            party: {
+              id: String(party._id),
+              name: party.name,
+              created: partyCreated,
+            },
+
+            transaction,
+          };
+        }
+
+        /* ---------------------------------------------------------------- */
+        /* STOCK                                                              */
+        /* ---------------------------------------------------------------- */
+
+        else if (
+          command.action ===
+            'STOCK_IN' ||
+          command.action ===
+            'STOCK_OUT'
+        ) {
+          if (
+            !command.entityName ||
+            !command.quantity ||
+            command.quantity <= 0
+          ) {
+            throw new VoiceV2Error(
+              'INVALID_STOCK',
+              'Product and positive quantity are required',
+            );
+          }
+
+          const resolvedProduct =
+            command.action === 'STOCK_IN'
+              ? await findOrCreateProduct(
+                  userId,
+                  command.entityName,
+                  session,
+                  {
+                    unit: command.unit,
+                    quantity: command.quantity,
+                    unitPrice: command.unitPrice,
+                  },
+                )
+              : { product: await findProduct(userId, command.entityName, session), created: false };
+
+          const product = resolvedProduct.product;
+
+          if (!product) {
+            throw new VoiceV2Error(
+              'PRODUCT_NOT_FOUND',
+              `Product "${command.entityName}" পাওয়া যায়নি।`,
+            );
+          }
+
+          const transaction =
+            await createTransaction(
+              {
+                type:
+                  command.action ===
+                  'STOCK_IN'
+                    ? 'STOCK_IN'
+                    : 'STOCK_OUT',
+
+                productId: String(
+                  product._id,
+                ),
+
+                amount: money(
+                  num(
+                    command.quantity,
+                  ) *
+                    num(
+                      command.unitPrice,
+                    ),
+                ),
+
+                quantity:
+                  command.quantity,
+
+                unitPrice:
+                  command.unitPrice ??
+                  undefined,
+
+                notes:
+                  command.notes ||
+                  undefined,
+                commandId,
+                source: 'VOICE',
+              },
+              userId,
+              session,
+            );
+
+          const fresh =
+            await Product.findById(
+              product._id,
+            )
+              .session(session)
+              .lean();
+
+          result = {
+            type: command.action,
+
+            product: {
+              id: String(product._id),
+              name: product.name,
+              unit: product.unit,
+              created: resolvedProduct.created,
+            },
+
+            quantity:
+              command.quantity,
+
+            stock: num(
+              fresh?.stockQuantity,
+            ),
+
+            transaction,
+          };
+        }
+
+        /* ---------------------------------------------------------------- */
+        /* SALE / PURCHASE                                                   */
+        /* ---------------------------------------------------------------- */
+
+        else if (
+          command.action ===
+            'CREATE_SALE' ||
+          command.action ===
+            'CREATE_PURCHASE'
+        ) {
+          const isAmountOnlySale =
+            command.action === 'CREATE_SALE' &&
+            !command.entityName &&
+            !command.quantity &&
+            !command.unitPrice &&
+            !!command.amount &&
+            command.amount > 0;
+
+          if (
+            !isAmountOnlySale &&
+            (!command.entityName ||
+              !command.quantity ||
+              command.quantity <= 0 ||
+              ((!command.unitPrice || command.unitPrice <= 0) &&
+                command.action !== 'CREATE_SALE'))
+          ) {
+            throw new VoiceV2Error(
+              'INVALID_TRADE',
+              'Product, quantity and unit price are required for an inventory sale or purchase',
+            );
+          }
+
+          const resolvedProduct =
+            isAmountOnlySale
+              ? { product: null, created: false }
+              : command.action === 'CREATE_PURCHASE'
+                ? await findOrCreateProduct(
+                    userId,
+                    command.entityName!,
+                    session,
+                    {
+                      unit: command.unit,
+                      // Inventory quantity is applied exactly once by the
+                      // STOCK_IN transaction below. Do not seed the new
+                      // product with the purchase quantity here.
+                      quantity: 0,
+                      unitPrice: command.unitPrice!,
+                    },
+                  )
+                : { product: await findProduct(userId, command.entityName!, session), created: false };
+
+          const product = resolvedProduct.product;
+
+          // A named credit sale may omit the price:
+          // "রহিমকে ২ কেজি চাল বাকিতে বিক্রি করলাম".
+          // In that case use the product's current selling price. We do this
+          // after product resolution so the database value is authoritative.
+          const resolvedUnitPrice =
+            !isAmountOnlySale &&
+            command.action === 'CREATE_SALE' &&
+            (!command.unitPrice || command.unitPrice <= 0)
+              ? money((product as any)?.sellPrice)
+              : money(command.unitPrice);
+
+          const resolvedAmount =
+            !isAmountOnlySale &&
+            command.action === 'CREATE_SALE' &&
+            (!command.amount || command.amount <= 0) &&
+            command.quantity &&
+            resolvedUnitPrice > 0
+              ? money(command.quantity * resolvedUnitPrice)
+              : money(command.amount);
+
+          if (!isAmountOnlySale && !product) {
+            throw new VoiceV2Error(
+              'PRODUCT_NOT_FOUND',
+              `Product "${command.entityName}" পাওয়া যায়নি। আগে product হিসেবে যোগ করুন।`,
+            );
+          }
+
+          const transactionProduct = product;
+          if (!isAmountOnlySale && !transactionProduct) {
+            throw new VoiceV2Error(
+              'PRODUCT_NOT_FOUND',
+              `Product "${command.entityName}" পাওয়া যায়নি। আগে product হিসেবে যোগ করুন।`,
+            );
+          }
+
+          const total = isAmountOnlySale
+            ? money(command.amount)
+            : resolvedAmount;
+
+          const paid = num(
+            command.paidAmount,
+          );
+
+          if (paid > total) {
+            throw new VoiceV2Error(
+              'INVALID_PAYMENT',
+              'Paid amount cannot exceed total amount',
+            );
+          }
+
+          if (
+            command.action ===
+            'CREATE_SALE'
+          ) {
+            let partyId:
+              | string
+              | undefined;
+
+            let customerCreated = false;
+
+            if (command.query) {
+              const resolved = await findOrCreateParty(userId, command.query, session, 'CUSTOMER');
+              partyId = String(resolved.party._id);
+              customerCreated = resolved.created;
+            } else if (paid < total) {
+              throw new VoiceV2Error(
+                'PARTY_REQUIRED',
+                'A customer is required for an unpaid or credit sale. For a walk-in sale, say "নগদে" or provide the customer name.',
+              );
+            }
+
+            const transaction =
+              await createTransaction(
+                {
+                  type: 'SALE',
+
+                  partyId,
+
+                  productId: product ? String(product._id) : undefined,
+
+                  amount: total,
+
+                  quantity: command.quantity ?? 0,
+
+                  unitPrice: resolvedUnitPrice > 0 ? resolvedUnitPrice : undefined,
+
+                  paidAmount: paid,
+
+                  notes:
+                    command.notes ||
+                    undefined,
+                },
+                userId,
+                session,
+              );
+
+            result = {
+              type: 'CREATE_SALE',
+
+              product:
+                product?.name ?? null,
+
+              total,
+
+              paidAmount: paid,
+
+              due: money(total - paid),
+              customerCreated,
+              transaction,
+            };
+          } else {
+            if (!command.query) {
+              throw new VoiceV2Error(
+                'PARTY_REQUIRED',
+                'Supplier name is required for a purchase',
+              );
+            }
+
+            const supplierResolved = await findOrCreateParty(userId, command.query, session, 'SUPPLIER');
+            if (supplierResolved.created) {
+              throw new VoiceV2Error('SUPPLIER_NOT_FOUND', `Supplier "${command.query}" পাওয়া যায়নি। আগে supplier হিসেবে যোগ করুন।`);
+            }
+            const supplier = supplierResolved.party;
+
+            const transaction =
+              await createTransaction(
+                {
+                  type: 'STOCK_IN',
+
+                  partyId: String(
+                    supplier._id,
+                  ),
+
+                  productId: String(
+                    transactionProduct!._id,
+                  ),
+
+                  amount: total,
+
+                  quantity:
+                    command.quantity!,
+
+                  unitPrice:
+                    command.unitPrice!,
+
+                  paidAmount: paid,
+
+                  notes:
+                    command.notes ||
+                    undefined,
+                },
+                userId,
+                session,
+              );
+
+            const due = money(
+              total - paid,
+            );
+
+            if (due > 0) {
+              await Party.updateOne(
+                {
+                  _id:
+                    supplier._id,
+                  userId: uid,
+                },
+                {
+                  $inc: {
+                    currentBalance:
+                      -due,
+                  },
+                },
+                {
+                  session,
+                },
+              );
+            }
+
+            result = {
+              type: 'CREATE_PURCHASE',
+
+              product:
+                transactionProduct!.name,
+
+              supplier: supplier.name,
+              supplierCreated: supplierResolved.created,
+              total,
+
+              paidAmount: paid,
+
+              due,
+
+              transaction,
+            };
+          }
+        }
+
+        /* ---------------------------------------------------------------- */
+        /* EXPENSE                                                            */
+        /* ---------------------------------------------------------------- */
+
+        else if (
+          command.action ===
+          'CREATE_EXPENSE'
+        ) {
+          if (
+            !command.amount ||
+            command.amount <= 0
+          ) {
+            throw new VoiceV2Error(
+              'INVALID_EXPENSE',
+              'Positive expense amount is required',
+            );
+          }
+
+          const transaction =
+            await createTransaction(
+              {
+                type: 'EXPENSE',
+
+                amount:
+                  command.amount,
+
+                quantity: 0,
+
+                notes:
+                  command.notes ||
+                  transcript,
+                commandId,
+                source: 'VOICE',
+              },
+              userId,
+              session,
+            );
+
+          result = {
+            type: 'CREATE_EXPENSE',
+            amount:
+              command.amount,
+            transaction,
+          };
+        }
+
+        /* ---------------------------------------------------------------- */
+        /* OTHER INCOME                                                     */
+        /* ---------------------------------------------------------------- */
+
+        else if (
+          command.action ===
+          'CREATE_INCOME'
+        ) {
+          if (!command.amount || command.amount <= 0) {
+            throw new VoiceV2Error(
+              'INVALID_INCOME',
+              'Positive income amount is required',
+            );
+          }
+
+          const transaction =
+            await createTransaction(
+              {
+                type: 'OTHER_INCOME',
+                amount: command.amount,
+                quantity: 0,
+                notes: command.notes || transcript,
+                commandId,
+                source: 'VOICE',
+              },
+              userId,
+              session,
+            );
+
+          result = {
+            type: 'CREATE_INCOME',
+            amount: command.amount,
+            transaction,
+          };
+        }
+
+        /* ---------------------------------------------------------------- */
+        /* DELETE TRANSACTION                                                */
+        /* ---------------------------------------------------------------- */
+
+        else if (
+          command.action ===
+          'DELETE_TRANSACTION'
+        ) {
+          if (
+            !command.targetId ||
+            !Types.ObjectId.isValid(
+              command.targetId,
+            )
+          ) {
+            throw new VoiceV2Error(
+              'MISSING_ENTITY',
+              'Valid transaction id is required',
+            );
+          }
+
+          result = {
+            type: 'DELETE_TRANSACTION',
+
+            reversal:
+              await reverseTransaction(
+                command.targetId,
+                userId,
+                session,
+              ),
+          };
+        }
+
+        /* ---------------------------------------------------------------- */
+        /* Unsupported                                                        */
+        /* ---------------------------------------------------------------- */
+
+        else {
+          throw new VoiceV2Error(
+            'UNSUPPORTED_ACTION',
+            `Action ${command.action} is not implemented yet.`,
+          );
+        }
+      },
+      {
+        readConcern: {
+          level: 'local',
+        },
+
+        writeConcern: {
+          w: 'majority',
+        },
+
+        maxCommitTimeMS: 10_000,
+      },
+    );
+  } catch (error) {
+    if (error instanceof VoiceV2Error) {
+      throw error;
+    }
+
+    if (
+      error instanceof
+      TransactionServiceError
+    ) {
+      throw new VoiceV2Error(
+        error.code,
+        error.message,
+        error.details,
+      );
+    }
+
+    throw error;
+  } finally {
+    await session.endSession();
+  }
+
+  /* ---------------------------------------------------------------------- */
+  /* Audit                                                                   */
+  /* ---------------------------------------------------------------------- */
+
+  if (commandId) {
+    await AuditLog.create({
+      userId: uid,
+
+      voiceTranscript:
+        transcript,
+
+      parsedIntent:
+        command,
+
+      status: 'SUCCESS',
+
+      commandId,
+
+      result,
+    }).catch(() => {});
+  }
+
+  return result;
+}
+
+/* -------------------------------------------------------------------------- */
+/* Local parser                                                               */
+/* -------------------------------------------------------------------------- */
+
+,
+    'iu',
+  ))
+    || value.match(new RegExp(
+      '^(.+?)\s*(?:কে|ke)\s*' + numberPattern +
+      '\s*(?:টাকা|tk|taka)?\s*(?:বাকি\s*)?(?:দিলাম|দিল|দিয়েছি|দিয়েছি|দিয়ে দিলাম|দিয়ে দিলাম|দিয়ে দিল|দিয়ে দিল|দেবো|দেব|দিবো|দিব|dilam|dil|diyechi|diye dilam|diye dilo|debo|deb|dibo)(?:\s+.*)?
+
+  match = value.match(new RegExp(
+    '^(.+?)\s+(?:বাকি|বাকিতে|ধারে|উধারে|due|baki|bakite|dhare|credit)\s*' +
+    numberPattern + '\s*(?:টাকা|tk|taka)?\s*(?:নিল|নিলো|নিয়েছে|নিয়েছে|নেবে|নিবে|নেবো|নিবো|নিলাম|nil|nilo|niyeche|niyechi|nibe|nebe|nebo|nibo|nilam|took|take|taken)$',
+    'iu',
+  ))
+    || value.match(new RegExp(
+      '^(.+?)\s*' + numberPattern + '\s*(?:টাকা|tk|taka)?\s*(?:বাকি|বাকিতে|ধারে|উধারে|due|baki|bakite|dhare|credit)\s*(?:নিল|নিলো|নিয়েছে|নিয়েছে|নেবে|নিবে|নেবো|নিবো|নিলাম|nil|nilo|niyeche|niyechi|nibe|nebe|nebo|nibo|nilam|took|take|taken)$',
+      'iu',
+    ))
+    || value.match(new RegExp(
+      '^(.+?)\s*(?:নিল|নিলো|নিয়েছে|নিয়েছে|নেবে|নিবে|নেবো|নিবো|নিলাম|nil|nilo|niyeche|niyechi|nibe|nebe|nebo|nibo|nilam|took|take|taken)\s*' +
+      numberPattern + '\s*(?:টাকা|tk|taka)?\s*(?:বাকি|বাকিতে|ধারে|উধারে|due|baki|bakite|dhare|credit)$',
+      'iu',
+    ));
+  if (match?.[1]) return command('CREATE_DUE', match[1]);
+
+  match = value.match(new RegExp(
+    '^(?:আমি|আমরা|i|we)\s+(.+?)\s*(?:এর|ের|র)?\s*(?:কাছ থেকে|কাছথেকে|থেকে)\s*' +
+    numberPattern + '\s*(?:টাকা|tk|taka)?\s*(?:নেবো|নেব|নিবো|নিব|পাবো|পাব|nebo|nibo|pabo)$',
+    'iu',
+  ));
+  if (match?.[1]) return command('RECEIVE_PAYMENT', match[1]);
+
+  return null;
+}
+
+/* -------------------------------------------------------------------------- */
+/* Local parser                                                               */
+/* -------------------------------------------------------------------------- */
+
+export function parseVoiceV2Local(text: string): VoiceV2Command | null {
+  const inventory = parseInventoryPurchaseCommand(text);
+  if (inventory) return inventory;
+
+  const createProduct = parseCreateProductCommand(text);
+  if (createProduct) return createProduct;
+
+  const sale = parseSaleCommand(text);
+  if (sale) return sale;
+
+  const shopFinance = parseShopFinanceCommand(text);
+  if (shopFinance) return shopFinance;
+
+  // Resolve high-confidence party-money direction before generic heuristics or AI.
+  const ledgerDirection = parseLedgerDirectionCommand(text);
+  if (ledgerDirection) return ledgerDirection;
+
+  const value = norm(text);
+  const amount = extractNumber(text);
+  const name = partyName(text);
+
+  const createParty = extractCreatePartyName(text);
+  if (createParty) {
+    const command = blank('CREATE_PARTY');
+    command.entityType = createParty.partyType;
+    command.entityName = createParty.name;
+    command.partyType = createParty.partyType;
+    return command;
+  }
+
+  // Defensive local fallback: create-party commands must never reach a paid AI
+  // provider just because a speech transcript used a slightly different ending.
+  const createPartyFallback = value.match(
+    /^(.*?)\s+(?:name|নামে)\s+নতুন\s+(customer|কাস্টমার|গ্রাহক|supplier|সাপ্লায়ার|সরবরাহকারী)\s+(?:যোগ|add|create)(?:\s+(?:কর|করো|করুন|করতে|দাও|দাওনা))?$/iu,
+  );
+  if (createPartyFallback?.[1]?.trim()) {
+    const partyType =
+      /^(supplier|সাপ্লায়ার|সরবরাহকারী)$/iu.test(createPartyFallback[2] || '')
+        ? 'SUPPLIER'
+        : 'CUSTOMER';
+    const command = blank('CREATE_PARTY');
+    command.entityType = partyType;
+    command.entityName = createPartyFallback[1].trim();
+    command.partyType = partyType;
+    return command;
+  }
+  const deletePartyMatch = value.match(
+    /^(.*?)\s+(?:customer|কাস্টমার|গ্রাহক|supplier|সাপ্লায়ার|সরবরাহকারী|party|পার্টি)?\s*(?:delete|remove|ডিলিট|মুছে দাও|মুছে ফেলো|মুছে ফেলুন|সরিয়ে দাও|সরিয়ে দাও|বাদ দাও|ডিলেট|delete koro|delete kor|remove koro|remove kor|মুছে দাও|মুছে ফেলো)\s*$/iu,
+  );
+  if (deletePartyMatch?.[1]?.trim()) {
+    const raw = deletePartyMatch[1].trim();
+    const partyType =
+      /(?:supplier|সাপ্লায়ার|সরবরাহকারী)/iu.test(raw)
+        ? 'SUPPLIER'
+        : /(?:customer|কাস্টমার|গ্রাহক)/iu.test(raw)
+          ? 'CUSTOMER'
+          : null;
+    const entityName = raw
+      .replace(/(?:customer|কাস্টমার|গ্রাহক|supplier|সাপ্লায়ার|সরবরাহকারী|party|পার্টি)\s*$/iu, '')
+      .trim();
+    if (entityName) {
+      const command = blank('DELETE_PARTY');
+      command.entityType = partyType || 'CUSTOMER';
+      command.entityName = entityName;
+      command.partyType = partyType;
+      command.confirmRequired = true;
+      return command;
+    }
+  }
+
+
+  const list = /(?:list|তালিকা|সব|সকল|দেখাও|দেখান|দেখতে চাই|show|dao|দাও|লিস্ট)/i.test(value);
+
+  if (/(?:customer|কাস্টমার|গ্রাহক|party|পার্টি)/i.test(value) && list) {
+    const command = blank('LIST_PARTIES');
+    command.entityType = 'CUSTOMER';
+    command.partyType = 'CUSTOMER';
+    return command;
+  }
+
+  if (/(?:supplier|সরবরাহকারী|সাপ্লায়ার|সাপ্লাইয়ার)/i.test(value) && list) {
+    const command = blank('LIST_PARTIES');
+    command.entityType = 'SUPPLIER';
+    command.partyType = 'SUPPLIER';
+    return command;
+  }
+
+  if (/(?:product|পণ্য|item|আইটেম|মাল)/i.test(value) && list) {
+    return blank('LIST_PRODUCTS');
+  }
+
+  if (/(?:transaction|লেনদেন|হিসাব|খাতা|ট্রানজেকশন)/i.test(value) && list) {
+    return blank('LIST_TRANSACTIONS');
+  }
+
+  const customerOwes =
+    /(?:বাকি|পাওনা|দেনা|due|baki|credit|খাতায়|খাতায়|হিসাবে|বাড়াও|বাড়াও|যোগ করো|যোগ করুন|রাখলাম|রাখো)/iu.test(value);
+
+  const customerPaid =
+    /(?:কাছ থেকে|কাছথেকে|থেকে).*?(?:পেলাম|পেয়েছি|পেয়েছি|নিলাম|নিয়েছি|নিয়েছি|আদায়|আদায়|পরিশোধ|জমা)|(?:পেলাম|পেয়েছি|পেয়েছি|দিল|দিয়েছে|দিয়েছে|পরিশোধ করেছে|জমা দিল|জমা দিয়েছে|জমা দিয়েছে|paid|received|payment|pelam|peyechi|nilam|diyeche)/iu.test(value);
+
+  const moneyGivenToParty =
+    /(?:কে|ke)\s*\d[\d,]*(?:\.\d+)?\s*(?:টাকা|tk|taka)?\s*(?:দিলাম|দিল|দিয়েছি|দিয়েছি|দেব|দিব|রাখলাম|রাখো|dilam|dil|dilo|diyechi|dibo)/iu.test(value);
+
+  const balanceQuery =
+    /(?:কত|কতো|বাকি কত|পাওনা কত|দেনা কত|হিসাব|খাতার হিসাব|balance|due|pabo|pabe|koto|hisab|how much|kototuku)/i.test(value);
+
+  if (name && balanceQuery && !amount) {
+    const command = blank('READ_BALANCE');
+    command.entityType = 'CUSTOMER';
+    command.entityName = name;
+    command.partyType = 'CUSTOMER';
+    return command;
+  }
+
+  if (name && amount && customerPaid && !moneyGivenToParty) {
+    const command = blank('RECEIVE_PAYMENT');
+    command.entityType = 'CUSTOMER';
+    command.entityName = name;
+    command.partyType = 'CUSTOMER';
+    command.amount = amount;
+    return command;
+  }
+
+  if (name && amount && (moneyGivenToParty || customerOwes)) {
+    const command = blank('CREATE_DUE');
+    command.entityType = 'CUSTOMER';
+    command.entityName = name;
+    command.partyType = 'CUSTOMER';
+    command.amount = amount;
+    return command;
+  }
+
+  if (name && amount && /(?:দিলাম|দিল|দিয়েছি|দিয়েছি|dilam|dil|dilo|diyechi)/iu.test(value)) {
+    const command = blank('CREATE_DUE');
+    command.entityType = 'CUSTOMER';
+    command.entityName = name;
+    command.partyType = 'CUSTOMER';
+    command.amount = amount;
+    return command;
+  }
+
+  return null;
+}
+
+/* -------------------------------------------------------------------------- */
+/* Semantic post-normalization                                                */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * Correct only high-confidence party-payment direction after the LLM.
+ * This prevents a provider from confusing "Rahim gave me 500" with
+ * "I gave Rahim 500", which is the most expensive class of voice error.
+ */
+function normalizeLedgerSemantics(
+  command: VoiceV2Command,
+  text: string,
+): VoiceV2Command {
+  const value = norm(text);
+  const name = partyName(text);
+  const amount = extractNumber(text);
+  if (!name || amount === null) return command;
+
+  if (command.partyType === 'SUPPLIER' || command.entityType === 'SUPPLIER') {
+    return { ...command, entityType: 'SUPPLIER', partyType: 'SUPPLIER', entityName: command.entityName || name, amount };
+  }
+
+  const outgoingToParty =
+    /(?:কে|ke)\s*\d[\d,]*(?:\.\d+)?\s*(?:টাকা|tk|taka)?\s*(?:দিলাম|দিল|দিয়েছি|দিয়েছি|দিয়ে দিলাম|দিয়ে দিলাম|দিয়ে দিল|দিয়ে দিল|দেব|দিব|dilam|dil|diyechi|diye dilam|diye dilo|dibo)/iu.test(value);
+  const incomingFromParty =
+    /(?:কাছ থেকে|কাছথেকে|থেকে)\s*\d[\d,]*(?:\.\d+)?\s*(?:টাকা|tk|taka)?\s*(?:পেলাম|পেয়েছি|পেয়েছি|নিলাম|নিয়েছি|নিয়েছি|আদায়|আদায়|পরিশোধ|জমা)/iu.test(value) ||
+    /^(?:.+?)\s+\d[\d,]*(?:\.\d+)?\s*(?:টাকা|tk|taka)?\s*(?:দিল|দিলো|দিয়েছে|দিয়েছে|পরিশোধ করেছে|paid|received)$/iu.test(value);
+
+  if (outgoingToParty && ['RECEIVE_PAYMENT', 'CREATE_DUE'].includes(command.action)) {
+    return { ...command, action: 'CREATE_DUE', entityType: 'CUSTOMER', partyType: 'CUSTOMER', entityName: command.entityName || name, amount };
+  }
+  if (incomingFromParty && ['CREATE_DUE', 'RECEIVE_PAYMENT'].includes(command.action)) {
+    return { ...command, action: 'RECEIVE_PAYMENT', entityType: 'CUSTOMER', partyType: 'CUSTOMER', entityName: command.entityName || name, amount };
+  }
+  return validateVoiceCommandSafety(command);
+}
+
+/* -------------------------------------------------------------------------- */
+/* AI system prompt                                                           */
+/* -------------------------------------------------------------------------- */
+
+const SYSTEM = [
+  'TaliKhata AI command understanding layer.',
+  'Understand Bangla, Banglish, English, Bengali/Arabic digits, colloquial speech and natural phrasing.',
+  'Return exactly one emit_voice_command call. Its command argument must be a JSON string matching the TaliKhata command fields.',
+  'Never invent IDs, database facts, prices, stock, balances or names. Preserve spoken names exactly; normalize number words and units into numeric/standard values.',
+  'Choose intent only from the allowed action values. CREATE_SALE means selling stock; CREATE_PURCHASE means buying stock; CREATE_PARTY means creating a customer/supplier; CREATE_DUE means money the customer owes; RECEIVE_PAYMENT means money received from a customer; supplier payments must remain supplier-side.',
+  'If required information is genuinely missing, use null. Do not turn missing data into guesses.'
+].join('\\n');
+
+/* -------------------------------------------------------------------------- */
+/* OpenAI tool                                                                */
+/* -------------------------------------------------------------------------- */
+
+const VOICE_V2_TOOL = {
+  type: 'function' as const,
+
+  function: {
+    name: 'emit_voice_command',
+
+    description:
+      'Return the single validated TaliKhata command requested by the user.',
+
+    parameters: VoiceV2JsonSchema,
+  },
+};
+
+/* -------------------------------------------------------------------------- */
+/* Provider types                                                             */
+/* -------------------------------------------------------------------------- */
+
+type VoiceProvider = {
+  name: 'openai' | 'openrouter';
+  apiKey: string;
+  model: string;
+  baseURL?: string;
+};
+
+/* -------------------------------------------------------------------------- */
+/* Provider configuration                                                      */
+/* -------------------------------------------------------------------------- */
+
+function getProviders(): VoiceProvider[] {
+  const providers: VoiceProvider[] = [];
+
+  const openAIKey = process.env.OPENAI_API_KEY?.trim();
+
+  if (openAIKey) {
+    providers.push({
+      name: 'openai',
+      apiKey: openAIKey,
+      model:
+        process.env.OPENAI_VOICE_MODEL?.trim() ||
+        'gpt-4.1-mini',
+    });
+  }
+
+  const openRouterKey =
+    process.env.OPENROUTER_API_KEY?.trim();
+
+  if (openRouterKey) {
+    providers.push({
+      name: 'openrouter',
+      apiKey: openRouterKey,
+      model:
+        process.env.OPENROUTER_VOICE_MODEL?.trim() ||
+        'openai/gpt-4.1-mini',
+      baseURL: 'https://openrouter.ai/api/v1',
+    });
+  }
+
+  return providers;
+}
+
+/* -------------------------------------------------------------------------- */
+/* Tool-call extraction                                                       */
+/* -------------------------------------------------------------------------- */
+
+function getToolArguments(response: OpenAI.Chat.Completions.ChatCompletion): string {
+  const toolCalls = response.choices[0]?.message?.tool_calls;
+
+  if (!toolCalls?.length) {
+    throw new Error(
+      'Provider returned no tool calls.',
+    );
+  }
+
+  const functionCall = toolCalls.find(
+    (
+      call,
+    ): call is Extract<
+      OpenAI.Chat.Completions.ChatCompletionMessageToolCall,
+      { type: 'function' }
+    > => call.type === 'function',
+  );
+
+  if (!functionCall?.function?.arguments) {
+    throw new Error(
+      'Provider returned no function arguments.',
+    );
+  }
+
+  return functionCall.function.arguments;
+}
+
+/* -------------------------------------------------------------------------- */
+/* AI parser                                                                  */
+/* -------------------------------------------------------------------------- */
+
+async function aiParse(
+  text: string,
+): Promise<VoiceV2Command> {
+  const providers = getProviders();
+  if (!providers.length) throw new VoiceV2Error('AI_NOT_CONFIGURED','No voice AI provider is configured. Add OPENAI_API_KEY or OPENROUTER_API_KEY to .env.local.',{providers:[]});
+  const errors: Array<{ provider: string; model: string; message: string }> = [];
+  for (const provider of providers) {
+    try {
+      console.info('[VoiceV2] Trying ' + provider.name + ' with ' + provider.model);
+      const client = new OpenAI({
+        apiKey: provider.apiKey,
+        baseURL: provider.baseURL,
+        timeout: 10_000,
+        maxRetries: 0,
+        defaultHeaders: provider.name === 'openrouter' ? {
+          'HTTP-Referer': process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000',
+          'X-Title': 'TaliKhata Voice V2',
+        } : undefined,
+      });
+      const response = await client.chat.completions.create({
+        model: provider.model,
+        messages: [{ role: 'system', content: SYSTEM }, { role: 'user', content: text }],
+        temperature: 0,
+        max_completion_tokens: 128,
+        tools: [VOICE_V2_TOOL],
+        tool_choice: { type: 'function', function: { name: 'emit_voice_command' } },
+      });
+      const argumentsJSON = getToolArguments(response);
+      let envelope: unknown;
+      try { envelope = JSON.parse(argumentsJSON); } catch { throw new Error('Provider returned invalid tool-call JSON.'); }
+      const commandPayload = envelope && typeof envelope === 'object' && 'command' in envelope && typeof (envelope as { command?: unknown }).command === 'string'
+        ? (envelope as { command: string }).command
+        : argumentsJSON;
+      let parsed: unknown;
+      try { parsed = JSON.parse(commandPayload); } catch { throw new Error('Provider returned invalid command JSON.'); }
+      const validated = VoiceV2Schema.safeParse(parsed);
+      if (!validated.success) {
+        const issues = validated.error.issues.map((issue) => ({ path: issue.path.join('.'), code: issue.code, message: issue.message }));
+        console.error('[VoiceV2] Invalid AI command:', issues);
+        throw new Error('Provider returned a command that failed TaliKhata validation: ' + issues.map((issue) => (issue.path || 'command') + ': ' + issue.message).join('; '));
+      }
+      console.info('[VoiceV2] ' + provider.name + ' succeeded');
+      return normalizeLedgerSemantics(validated.data, text);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      errors.push({ provider: provider.name, model: provider.model, message });
+      console.error('[VoiceV2] ' + provider.name + ' failed', { model: provider.model, message, error });
+    }
+  }
+  throw new VoiceV2Error('AI_UNAVAILABLE','Voice AI providers are temporarily unavailable. Please try again.',{providers:errors});
+}
+
+/* -------------------------------------------------------------------------- */
+/* Public parser                                                              */
+/* -------------------------------------------------------------------------- */
+
+export async function parseVoiceV2(
+  text: string,
+): Promise<VoiceV2Command> {
+  const normalized = text.trim();
+  if (!normalized) throw new VoiceV2Error('EMPTY_COMMAND', 'Voice command is empty.');
+  // AI is the primary understanding layer. Local regex parsers are emergency fallback only.
+  try {
+    return validateVoiceCommandSafety(await aiParse(normalized));
+  } catch (error) {
+    if (!(error instanceof VoiceV2Error) || !['AI_UNAVAILABLE', 'AI_NOT_CONFIGURED'].includes(error.code)) throw error;
+    const local = parseVoiceV2Local(normalized);
+    if (local) return normalizeLedgerSemantics(local, normalized);
+    throw error;
+  }
+}
+
+/* -------------------------------------------------------------------------- */
+/* Party resolver                                                             */
+/* -------------------------------------------------------------------------- */
+
+async function findParty(
+  userId: string,
+  name: string,
+  session: any,
+  type?: 'CUSTOMER' | 'SUPPLIER',
+) {
+  const all = await resolveParty(
+    userId,
+    name,
+    session,
+  );
+
+  const rows = type
+    ? all.filter(
+        (party: any) =>
+          party.partyType === type,
+      )
+    : all;
+
+  if (!rows.length) {
+    throw new VoiceV2Error(
+      'NOT_FOUND',
+      `${
+        type === 'SUPPLIER'
+          ? 'Supplier'
+          : 'Customer'
+      } "${name}" was not found`,
+      {
+        name,
+      },
+    );
+  }
+
+  if (rows.length > 1) {
+    throw new VoiceV2Error(
+      'AMBIGUOUS_ENTITY',
+      `Multiple parties matched "${name}"`,
+      {
+        matches: rows
+          .slice(0, 10)
+          .map((party: any) => ({
+            id: String(party._id),
+            name: party.name,
+            phone: party.phone || null,
+            balance: party.currentBalance,
+          })),
+      },
+    );
+  }
+
+  return rows[0];
+}
+
+/* -------------------------------------------------------------------------- */
+/* Admin                                                                      */
+/* -------------------------------------------------------------------------- */
+
+async function requireAdmin(
+  userId: string,
+) {
+  const user = await User.findById(userId)
+    .select('role status')
+    .lean();
+
+  if (
+    !user ||
+    user.status !== 'ACTIVE' ||
+    user.role !== 'ADMIN'
+  ) {
+    throw new VoiceV2Error(
+      'FORBIDDEN',
+      'Admin permission is required for user management.',
+    );
+  }
+
+  return user;
+}
+
+/* -------------------------------------------------------------------------- */
+/* Product resolver                                                           */
+/* -------------------------------------------------------------------------- */
+
+async function findProduct(
+  userId: string,
+  name: string,
+  session: any,
+) {
+  const rows = await resolveProduct(
+    userId,
+    name,
+    session,
+  );
+
+  if (!rows.length) {
+    throw new VoiceV2Error(
+      'NOT_FOUND',
+      `Product "${name}" was not found`,
+      {
+        name,
+      },
+    );
+  }
+
+  if (rows.length > 1) {
+    throw new VoiceV2Error(
+      'AMBIGUOUS_ENTITY',
+      `Multiple products matched "${name}"`,
+      {
+        matches: rows
+          .slice(0, 10)
+          .map((product: any) => ({
+            id: String(product._id),
+            name: product.name,
+            stock: product.stockQuantity,
+            unit: product.unit,
+          })),
+      },
+    );
+  }
+
+  return rows[0];
+}
+
+async function findOrCreateProduct(
+  userId: string,
+  name: string,
+  session: any,
+  input: { unit?: string | null; quantity?: number | null; unitPrice?: number | null },
+) {
+  const normalizedName = name.trim();
+  if (!normalizedName) {
+    throw new VoiceV2Error('MISSING_ENTITY', 'Product name is required');
+  }
+
+  const candidates = await resolveProduct(userId, normalizedName, session);
+
+  if (candidates.length === 1) {
+    return { product: candidates[0], created: false };
+  }
+
+  if (candidates.length > 1) {
+    throw new VoiceV2Error(
+      'AMBIGUOUS_ENTITY',
+      `Multiple products matched "${normalizedName}"`,
+      {
+        matches: candidates.slice(0, 10).map((product: any) => ({
+          id: String(product._id),
+          name: product.name,
+          stock: product.stockQuantity,
+          unit: product.unit,
+        })),
+      },
+    );
+  }
+
+  const [created] = await Product.create(
+    [{
+      userId: new Types.ObjectId(userId),
+      name: normalizedName,
+      unit: input.unit?.trim() || 'unit',
+      stockQuantity: 0,
+      buyPrice: money(input.unitPrice),
+      sellPrice: 0,
+      lowStockThreshold: 5,
+    }],
+    { session },
+  );
+
+  return { product: created, created: true };
+}
+
+/* -------------------------------------------------------------------------- */
+/* Party creation / resolution                                                 */
+/* -------------------------------------------------------------------------- */
+
+async function findOrCreateParty(
+  userId: string,
+  name: string,
+  session: any,
+  type: 'CUSTOMER' | 'SUPPLIER',
+) {
+  const normalizedName = name.trim();
+
+  if (!normalizedName) {
+    throw new VoiceV2Error(
+      'MISSING_ENTITY',
+      type === 'SUPPLIER'
+        ? 'Supplier name is required'
+        : 'Customer name is required',
+    );
+  }
+
+  const candidates = await resolveParty(
+    userId,
+    normalizedName,
+    session,
+  );
+
+  const sameType = candidates.filter(
+    (party: any) => party.partyType === type,
+  );
+
+  if (sameType.length === 1) {
+    return { party: sameType[0], created: false };
+  }
+
+  if (sameType.length > 1) {
+    throw new VoiceV2Error(
+      'AMBIGUOUS_ENTITY',
+      'Multiple ' +
+        (type === 'SUPPLIER' ? 'suppliers' : 'customers') +
+        ' matched "' +
+        normalizedName +
+        '".',
+      {
+        matches: sameType.slice(0, 10).map((party: any) => ({
+          id: String(party._id),
+          name: party.name,
+          phone: party.phone || null,
+          balance: party.currentBalance,
+        })),
+      },
+    );
+  }
+
+  try {
+    const [created] = await Party.create(
+      [
+        {
+          userId: new Types.ObjectId(userId),
+          name: normalizedName,
+          partyType: type,
+          currentBalance: 0,
+        },
+      ],
+      { session },
+    );
+
+    return { party: created, created: true };
+  } catch (error) {
+    if (
+      error instanceof Error &&
+      /E11000|duplicate/i.test(error.message)
+    ) {
+      const retry = await resolveParty(
+        userId,
+        normalizedName,
+        session,
+      );
+
+      const retrySameType = retry.filter(
+        (party: any) => party.partyType === type,
+      );
+
+      if (retrySameType.length === 1) {
+        return {
+          party: retrySameType[0],
+          created: false,
+        };
+      }
+    }
+
+    throw error;
+  }
+}
+
+/* -------------------------------------------------------------------------- */
+/* Confirmation                                                               */
+/* -------------------------------------------------------------------------- */
+
+function confirm(
+  command: VoiceV2Command,
+  confirmed: boolean,
+) {
+  const destructiveActions = new Set([
+    'DELETE_PARTY',
+    'DELETE_PRODUCT',
+    'DELETE_TRANSACTION',
+    'DELETE_USER',
+  ]);
+
+  const amount = money(command.amount);
+
+  const highValueWrite =
+    amount >= 10000 &&
+    [
+      'CREATE_DUE',
+      'RECEIVE_PAYMENT',
+      'CREATE_SALE',
+      'CREATE_PURCHASE',
+      'CREATE_EXPENSE',
+      'CREATE_INCOME',
+    ].includes(command.action);
+
+  const needsConfirmation =
+    command.confirmRequired ||
+    destructiveActions.has(command.action) ||
+    highValueWrite;
+
+  if (needsConfirmation && !confirmed) {
+    throw new VoiceV2Error(
+      'CONFIRMATION_REQUIRED',
+      highValueWrite
+        ? '৳১০,০০০ বা তার বেশি আর্থিক লেনদেন করার আগে confirmation প্রয়োজন।'
+        : 'এই কাজটি করার আগে confirmation প্রয়োজন।',
+      {
+        action: command.action,
+        amount: amount || null,
+        reason: highValueWrite
+          ? 'HIGH_VALUE_FINANCIAL_WRITE'
+          : 'DESTRUCTIVE_ACTION',
+      },
+    );
+  }
+}
+
+/* -------------------------------------------------------------------------- */
+/* Execute Voice V2                                                           */
+/* -------------------------------------------------------------------------- */
+
+export async function executeVoiceV2(
+  commandInput: VoiceV2Command,
+  userId: string,
+  transcript = '',
+  confirmed = false,
+  commandId?: string,
+) {
+  /* ---------------------------------------------------------------------- */
+  /* Authentication                                                         */
+  /* ---------------------------------------------------------------------- */
+
+  const sessionUser = await auth();
+
+  if (
+    !sessionUser?.user?.id ||
+    sessionUser.user.id !== userId
+  ) {
+    throw new VoiceV2Error(
+      'UNAUTHORIZED',
+      'Unauthorized',
+    );
+  }
+
+  if (!Types.ObjectId.isValid(userId)) {
+    throw new VoiceV2Error(
+      'UNAUTHORIZED',
+      'Invalid user',
+    );
+  }
+
+  /* ---------------------------------------------------------------------- */
+  /* Validate command                                                       */
+  /* ---------------------------------------------------------------------- */
+
+  const parsedCommand =
+    VoiceV2Schema.parse(commandInput);
+
+  // Product creation is intentionally tolerant of omitted units in natural voice.
+  // Mongo still receives a valid unit so commands such as "চাল ৭০ টাকা দরে পণ্য হিসেবে যোগ করো"
+  // can create the catalog item instead of failing only because the spoken unit was omitted.
+  const command: VoiceV2Command =
+    parsedCommand.action === 'CREATE_PRODUCT'
+      ? { ...parsedCommand, unit: parsedCommand.unit || 'unit' }
+      : parsedCommand;
+
+  confirm(command, confirmed);
+
+  /* ---------------------------------------------------------------------- */
+  /* Database                                                               */
+  /* ---------------------------------------------------------------------- */
+
+  await connectDB();
+
+  const uid = new Types.ObjectId(userId);
+
+  /* ---------------------------------------------------------------------- */
+  /* Idempotency                                                             */
+  /* ---------------------------------------------------------------------- */
+
+  if (commandId) {
+    const old = await AuditLog.findOne({
+      userId: uid,
+      commandId,
+      status: 'SUCCESS',
+    }).lean();
+
+    if (old?.result) {
+      return old.result;
+    }
+
+    // Transaction-level idempotency protects against duplicate execution
+    // even when the audit write has not completed yet.
+    const existingTransaction = await Transaction.findOne({
+      userId: uid,
+      commandId,
+    }).lean();
+
+    if (existingTransaction) {
+      return {
+        type: command.action,
+        amount: existingTransaction.amount,
+        quantity: existingTransaction.quantity,
+        transaction: {
+          id: String(existingTransaction._id),
+          type: existingTransaction.type,
+          amount: existingTransaction.amount,
+          quantity: existingTransaction.quantity,
+        },
+      };
+    }
+  }
+
+  /* ---------------------------------------------------------------------- */
+  /* Balance                                                                */
+  /* ---------------------------------------------------------------------- */
+
+  if (command.action === 'READ_BALANCE') {
+    if (!command.entityName) {
+      throw new VoiceV2Error(
+        'MISSING_ENTITY',
+        'Customer name is required',
+      );
+    }
+
+    const party = await findParty(
+      userId,
+      command.entityName,
+      null,
+      'CUSTOMER',
+    );
+
+    const balance = money(
+      party.currentBalance,
+    );
+
+    return {
+      type: 'READ_BALANCE',
+
+      party: {
+        id: String(party._id),
+        name: party.name,
+        phone: party.phone || null,
+      },
+
+      balance,
+
+      receivable: Math.max(
+        0,
+        balance,
+      ),
+
+      payable: Math.max(
+        0,
+        -balance,
+      ),
+    };
+  }
+
+  /* ---------------------------------------------------------------------- */
+  /* Read / List                                                             */
+  /* ---------------------------------------------------------------------- */
+
+  if (
+    [
+      'READ_PARTY',
+      'READ_PRODUCT',
+      'LIST_PARTIES',
+      'LIST_PRODUCTS',
+      'LIST_TRANSACTIONS',
+      'READ_USER',
+      'LIST_USERS',
+    ].includes(command.action)
+  ) {
+    if (command.action === 'READ_PARTY') {
+      if (!command.entityName) {
+        throw new VoiceV2Error(
+          'MISSING_ENTITY',
+          'Party name is required',
+        );
+      }
+
+      return {
+        type: 'READ_PARTY',
+        party: await findParty(
+          userId,
+          command.entityName,
+          null,
+          command.partyType || undefined,
+        ),
+      };
+    }
+
+    if (command.action === 'READ_PRODUCT') {
+      if (!command.entityName) {
+        throw new VoiceV2Error(
+          'MISSING_ENTITY',
+          'Product name is required',
+        );
+      }
+
+      return {
+        type: 'READ_PRODUCT',
+        product: await findProduct(
+          userId,
+          command.entityName,
+          null,
+        ),
+      };
+    }
+
+    if (command.action === 'READ_USER') {
+      await requireAdmin(userId);
+
+      const user =
+        await User.findOne(
+          command.query
+            ? {
+                email:
+                  command.query.toLowerCase(),
+                _id: {
+                  $ne: uid,
+                },
+              }
+            : {
+                _id:
+                  command.targetId &&
+                  Types.ObjectId.isValid(
+                    command.targetId,
+                  )
+                    ? new Types.ObjectId(
+                        command.targetId,
+                      )
+                    : uid,
+              },
+        )
+          .select('-password')
+          .lean();
+
+      if (!user) {
+        throw new VoiceV2Error(
+          'NOT_FOUND',
+          'User was not found',
+        );
+      }
+
+      return {
+        type: 'READ_USER',
+        user,
+      };
+    }
+
+    if (command.action === 'LIST_USERS') {
+      await requireAdmin(userId);
+
+      const rows = await User.find({})
+        .select('-password')
+        .sort({
+          createdAt: -1,
+        })
+        .limit(200)
+        .lean();
+
+      return {
+        type: 'LIST_USERS',
+        items: rows,
+      };
+    }
+
+    if (
+      command.action === 'LIST_PARTIES'
+    ) {
+      const query: any = {
+        userId: uid,
+      };
+
+      if (command.partyType) {
+        query.partyType =
+          command.partyType;
+      }
+
+      const rows = await Party.find(query)
+        .sort({
+          name: 1,
+        })
+        .limit(200)
+        .lean();
+
+      return {
+        type: 'LIST_PARTIES',
+        items: rows.map(
+          (party: any) => ({
+            id: String(party._id),
+            name: party.name,
+            phone: party.phone || null,
+            partyType: party.partyType,
+            balance:
+              party.currentBalance,
+          }),
+        ),
+      };
+    }
+
+    if (
+      command.action === 'LIST_PRODUCTS'
+    ) {
+      const rows = await Product.find({
+        userId: uid,
+      })
+        .sort({
+          name: 1,
+        })
+        .limit(200)
+        .lean();
+
+      return {
+        type: 'LIST_PRODUCTS',
+        items: rows,
+      };
+    }
+
+    const rows =
+      await Transaction.find({
+        userId: uid,
+        isDeleted: {
+          $ne: true,
+        },
+      })
+        .sort({
+          timestamp: -1,
+        })
+        .limit(100)
+        .lean();
+
+    return {
+      type: 'LIST_TRANSACTIONS',
+      items: rows,
+    };
+  }
+
+  /* ---------------------------------------------------------------------- */
+  /* Transaction session                                                    */
+  /* ---------------------------------------------------------------------- */
+
+  const session =
+    await Party.startSession();
+
+  let result: any;
+
+  try {
+    await session.withTransaction(
+      async () => {
+        /* ---------------------------------------------------------------- */
+        /* USER CRUD                                                         */
+        /* ---------------------------------------------------------------- */
+
+        if (
+          command.action ===
+            'CREATE_USER' ||
+          command.action ===
+            'UPDATE_USER' ||
+          command.action ===
+            'DELETE_USER'
+        ) {
+          await requireAdmin(userId);
+
+          if (
+            command.action ===
+            'CREATE_USER'
+          ) {
+            const email =
+              clean(command.query)
+                ?.toLowerCase();
+
+            if (
+              !command.entityName ||
+              !email ||
+              !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(
+                email,
+              )
+            ) {
+              throw new VoiceV2Error(
+                'INVALID_USER',
+                'Name and valid email are required',
+              );
+            }
+
+            const duplicate =
+              await User.findOne({
+                email,
+              }).session(session);
+
+            if (duplicate) {
+              throw new VoiceV2Error(
+                'DUPLICATE_ENTITY',
+                'A user with this email already exists',
+              );
+            }
+
+            const [user] =
+              await User.create(
+                [
+                  {
+                    name:
+                      command.entityName,
+
+                    email,
+
+                    phone:
+                      command.phone ||
+                      undefined,
+
+                    role: 'USER',
+
+                    status: 'ACTIVE',
+                  },
+                ],
+                {
+                  session,
+                },
+              );
+
+            result = {
+              type: 'CREATE_USER',
+
+              user: {
+                id: String(user._id),
+                name: user.name,
+                email: user.email,
+                phone:
+                  user.phone || null,
+                role: user.role,
+                status: user.status,
+              },
+            };
+          } else {
+            const target =
+              command.query
+                ?.toLowerCase();
+
+            const filter: any =
+              target
+                ? {
+                    email: target,
+                  }
+                : {
+                    _id:
+                      command.targetId &&
+                      Types.ObjectId.isValid(
+                        command.targetId,
+                      )
+                        ? new Types.ObjectId(
+                            command.targetId,
+                          )
+                        : null,
+                  };
+
+            if (
+              !filter._id &&
+              !filter.email
+            ) {
+              throw new VoiceV2Error(
+                'MISSING_ENTITY',
+                'User email or id is required',
+              );
+            }
+
+            const user =
+              await User.findOne(
+                filter,
+              ).session(session);
+
+            if (!user) {
+              throw new VoiceV2Error(
+                'NOT_FOUND',
+                'User was not found',
+              );
+            }
+
+            if (
+              String(user._id) ===
+                userId &&
+              command.action ===
+                'DELETE_USER'
+            ) {
+              throw new VoiceV2Error(
+                'DELETE_BLOCKED',
+                'You cannot delete your own account by voice.',
+              );
+            }
+
+            if (
+              command.action ===
+              'UPDATE_USER'
+            ) {
+              const update: any = {};
+
+              if (command.entityName) {
+                update.name =
+                  command.entityName;
+              }
+
+              if (command.phone) {
+                update.phone =
+                  command.phone;
+              }
+
+              if (
+                command.notes &&
+                [
+                  'ACTIVE',
+                  'SUSPENDED',
+                ].includes(
+                  command.notes,
+                )
+              ) {
+                update.status =
+                  command.notes;
+              }
+
+              if (
+                command.partyType ===
+                'CUSTOMER'
+              ) {
+                update.role = 'USER';
+              }
+
+              if (
+                !Object.keys(update)
+                  .length
+              ) {
+                throw new VoiceV2Error(
+                  'INVALID_UPDATE',
+                  'No user fields to update',
+                );
+              }
+
+              const updated =
+                await User.findOneAndUpdate(
+                  {
+                    _id: user._id,
+                  },
+                  {
+                    $set: update,
+                  },
+                  {
+                    new: true,
+                    session,
+                  },
+                )
+                  .select('-password')
+                  .lean();
+
+              result = {
+                type: 'UPDATE_USER',
+                user: updated,
+              };
+            } else {
+              const hasData =
+                await Promise.all([
+                  Party.exists({
+                    userId: user._id,
+                  }).session(session),
+
+                  Product.exists({
+                    userId: user._id,
+                  }).session(session),
+
+                  Transaction.exists({
+                    userId: user._id,
+                  }).session(session),
+                ]);
+
+              if (hasData.some(Boolean)) {
+                throw new VoiceV2Error(
+                  'DELETE_BLOCKED',
+                  'This user owns ledger data and cannot be deleted safely.',
+                );
+              }
+
+              await User.deleteOne(
+                {
+                  _id: user._id,
+                },
+                {
+                  session,
+                },
+              );
+
+              result = {
+                type: 'DELETE_USER',
+                id: String(
+                  user._id,
+                ),
+                email: user.email,
+              };
+            }
+          }
+        }
+
+        /* ---------------------------------------------------------------- */
+        /* CREATE PARTY                                                      */
+        /* ---------------------------------------------------------------- */
+
+        else if (
+          command.action ===
+          'CREATE_PARTY'
+        ) {
+          if (!command.entityName) {
+            throw new VoiceV2Error(
+              'MISSING_ENTITY',
+              'Party name is required',
+            );
+          }
+
+          const partyType =
+            command.partyType ||
+            'CUSTOMER';
+
+          const escaped =
+            command.entityName.replace(
+              /[.*+?^\${}()|[\]\\]/g,
+              '\\$&',
+            );
+
+          const duplicate =
+            await Party.findOne({
+              userId: uid,
+              name: new RegExp(
+                `^${escaped}$`,
+                'i',
+              ),
+            }).session(session);
+
+          if (duplicate) {
+            throw new VoiceV2Error(
+              'DUPLICATE_ENTITY',
+              `A party named "${command.entityName}" already exists`,
+              {
+                matches: [
+                  {
+                    id: String(
+                      duplicate._id,
+                    ),
+                    name: duplicate.name,
+                    phone:
+                      duplicate.phone ||
+                      null,
+                    balance:
+                      duplicate.currentBalance,
+                  },
+                ],
+              },
+            );
+          }
+
+          const [party] =
+            await Party.create(
+              [
+                {
+                  userId: uid,
+                  name:
+                    command.entityName,
+                  phone:
+                    command.phone ||
+                    undefined,
+                  partyType,
+                  currentBalance: 0,
+                },
+              ],
+              {
+                session,
+              },
+            );
+
+          result = {
+            type: 'CREATE_PARTY',
+            id: String(party._id),
+            name: party.name,
+            phone:
+              party.phone || null,
+            partyType:
+              party.partyType,
+            balance: 0,
+          };
+        }
+
+        /* ---------------------------------------------------------------- */
+        /* UPDATE PARTY                                                      */
+        /* ---------------------------------------------------------------- */
+
+        else if (
+          command.action ===
+          'UPDATE_PARTY'
+        ) {
+          if (!command.entityName) {
+            throw new VoiceV2Error(
+              'MISSING_ENTITY',
+              'Party name is required',
+            );
+          }
+
+          const party =
+            await findParty(
+              userId,
+              command.entityName,
+              session,
+              command.partyType ||
+                undefined,
+            );
+
+          const update: any = {};
+
+          if (command.phone) {
+            update.phone =
+              command.phone;
+          }
+
+          if (command.query) {
+            update.name =
+              command.query;
+          }
+
+          if (
+            !Object.keys(update).length
+          ) {
+            throw new VoiceV2Error(
+              'INVALID_UPDATE',
+              'No party fields to update',
+            );
+          }
+
+          result = {
+            type: 'UPDATE_PARTY',
+
+            party:
+              await Party.findOneAndUpdate(
+                {
+                  _id: party._id,
+                  userId: uid,
+                },
+                {
+                  $set: update,
+                },
+                {
+                  new: true,
+                  session,
+                },
+              ).lean(),
+          };
+        }
+
+        /* ---------------------------------------------------------------- */
+        /* DELETE PARTY                                                      */
+        /* ---------------------------------------------------------------- */
+
+        else if (
+          command.action ===
+          'DELETE_PARTY'
+        ) {
+          if (!command.entityName) {
+            throw new VoiceV2Error(
+              'MISSING_ENTITY',
+              'Party name is required',
+            );
+          }
+
+          const party =
+            await findParty(
+              userId,
+              command.entityName,
+              session,
+              command.partyType ||
+                undefined,
+            );
+
+          const hasTransactions =
+            await Transaction.exists({
+              userId: uid,
+              partyId: party._id,
+            }).session(session);
+
+          if (hasTransactions) {
+            throw new VoiceV2Error(
+              'DELETE_BLOCKED',
+              'This party has transaction history and cannot be deleted safely.',
+            );
+          }
+
+          await Party.deleteOne(
+            {
+              _id: party._id,
+              userId: uid,
+            },
+            {
+              session,
+            },
+          );
+
+          result = {
+            type: 'DELETE_PARTY',
+            id: String(party._id),
+            name: party.name,
+          };
+        }
+
+        /* ---------------------------------------------------------------- */
+        /* CREATE PRODUCT                                                    */
+        /* ---------------------------------------------------------------- */
+
+        else if (
+          command.action ===
+          'CREATE_PRODUCT'
+        ) {
+          if (
+            !command.entityName ||
+            !command.unit
+          ) {
+            throw new VoiceV2Error(
+              'INVALID_PRODUCT',
+              'Product name and unit are required',
+            );
+          }
+
+          const escaped =
+            command.entityName.replace(
+              /[.*+?^\${}()|[\]\\]/g,
+              '\\$&',
+            );
+
+          const duplicate =
+            await Product.findOne({
+              userId: uid,
+              name: new RegExp(
+                `^${escaped}$`,
+                'i',
+              ),
+            }).session(session);
+
+          if (duplicate) {
+            throw new VoiceV2Error(
+              'DUPLICATE_ENTITY',
+              `Product "${command.entityName}" already exists`,
+            );
+          }
+
+          const [product] =
+            await Product.create(
+              [
+                {
+                  userId: uid,
+                  name:
+                    command.entityName,
+                  unit:
+                    command.unit,
+                  stockQuantity:
+                    num(command.quantity),
+                  buyPrice:
+                    num(command.unitPrice),
+                  sellPrice: 0,
+                  lowStockThreshold: 5,
+                },
+              ],
+              {
+                session,
+              },
+            );
+
+          result = {
+            type: 'CREATE_PRODUCT',
+            id: String(
+              product._id,
+            ),
+            name: product.name,
+            unit: product.unit,
+            stock:
+              product.stockQuantity,
+            buyPrice:
+              product.buyPrice,
+            sellPrice:
+              product.sellPrice,
+          };
+        }
+
+        /* ---------------------------------------------------------------- */
+        /* UPDATE PRODUCT                                                    */
+        /* ---------------------------------------------------------------- */
+
+        else if (
+          command.action ===
+          'UPDATE_PRODUCT'
+        ) {
+          if (!command.entityName) {
+            throw new VoiceV2Error(
+              'MISSING_ENTITY',
+              'Product name is required',
+            );
+          }
+
+          const product =
+            await findProduct(
+              userId,
+              command.entityName,
+              session,
+            );
+
+          const update: any = {};
+
+          if (command.unit) {
+            update.unit =
+              command.unit;
+          }
+
+          if (
+            command.unitPrice !==
+            null
+          ) {
+            update.buyPrice =
+              num(command.unitPrice);
+          }
+
+          if (command.query) {
+            update.name =
+              command.query;
+          }
+
+          if (
+            !Object.keys(update).length
+          ) {
+            throw new VoiceV2Error(
+              'INVALID_UPDATE',
+              'No product fields to update',
+            );
+          }
+
+          result = {
+            type: 'UPDATE_PRODUCT',
+
+            product:
+              await Product.findOneAndUpdate(
+                {
+                  _id: product._id,
+                  userId: uid,
+                },
+                {
+                  $set: update,
+                },
+                {
+                  new: true,
+                  session,
+                },
+              ).lean(),
+          };
+        }
+
+        /* ---------------------------------------------------------------- */
+        /* DELETE PRODUCT                                                    */
+        /* ---------------------------------------------------------------- */
+
+        else if (
+          command.action ===
+          'DELETE_PRODUCT'
+        ) {
+          if (!command.entityName) {
+            throw new VoiceV2Error(
+              'MISSING_ENTITY',
+              'Product name is required',
+            );
+          }
+
+          const product =
+            await findProduct(
+              userId,
+              command.entityName,
+              session,
+            );
+
+          const hasTransactions =
+            await Transaction.exists({
+              userId: uid,
+              productId: product._id,
+            }).session(session);
+
+          if (hasTransactions) {
+            throw new VoiceV2Error(
+              'DELETE_BLOCKED',
+              'This product has transaction history and cannot be deleted safely.',
+            );
+          }
+
+          await Product.deleteOne(
+            {
+              _id: product._id,
+              userId: uid,
+            },
+            {
+              session,
+            },
+          );
+
+          result = {
+            type: 'DELETE_PRODUCT',
+            id: String(
+              product._id,
+            ),
+            name: product.name,
+          };
+        }
+
+        /* ---------------------------------------------------------------- */
+        /* DUE / PAYMENT                                                     */
+        /* ---------------------------------------------------------------- */
+
+        else if (
+          command.action ===
+            'CREATE_DUE' ||
+          command.action ===
+            'RECEIVE_PAYMENT'
+        ) {
+          if (
+            !command.entityName ||
+            !command.amount ||
+            command.amount <= 0
+          ) {
+            throw new VoiceV2Error(
+              'INVALID_TRANSACTION',
+              'Customer and positive amount are required',
+            );
+          }
+
+          let party;
+          let partyCreated = false;
+
+          if (command.partyType === 'SUPPLIER' || command.entityType === 'SUPPLIER') {
+            const resolved = await findOrCreateParty(
+              userId,
+              command.entityName,
+              session,
+              'SUPPLIER',
+            );
+            party = resolved.party;
+            partyCreated = resolved.created;
+          } else {
+            const existingSupplier = await Party.findOne({
+              userId: new Types.ObjectId(userId),
+              name: command.entityName,
+              partyType: 'SUPPLIER',
+            }).session(session);
+
+            if (existingSupplier) {
+              party = existingSupplier;
+            } else {
+              const resolved = await findOrCreateParty(
+                userId,
+                command.entityName,
+                session,
+                'CUSTOMER',
+              );
+              party = resolved.party;
+              partyCreated = resolved.created;
+            }
+          }
+
+          const isSupplier =
+            party.partyType === 'SUPPLIER' ||
+            command.partyType === 'SUPPLIER' ||
+            command.entityType === 'SUPPLIER';
+
+          // Balance convention:
+          // CUSTOMER: DUE_GIVEN +, DUE_RECEIVED -
+          // SUPPLIER: DUE_RECEIVED -, DUE_GIVEN +
+          // Therefore a supplier payable increases with CREATE_DUE,
+          // while a supplier payment uses DUE_GIVEN to reduce the payable.
+          const transactionType =
+            isSupplier
+              ? command.action === 'CREATE_DUE'
+                ? 'DUE_RECEIVED'
+                : 'DUE_GIVEN'
+              : command.action === 'CREATE_DUE'
+                ? 'DUE_GIVEN'
+                : 'DUE_RECEIVED';
+
+          const transaction =
+            await createTransaction(
+              {
+                type: transactionType,
+
+                partyId: String(party._id),
+
+                amount: command.amount,
+
+                quantity: 0,
+
+                notes: command.notes || undefined,
+                commandId,
+                source: 'VOICE',
+              },
+              userId,
+              session,
+            );
+
+          result = {
+            type: command.action,
+            ledgerType: transactionType,
+            partyType: party.partyType,
+            amount:
+              command.amount,
+
+            party: {
+              id: String(party._id),
+              name: party.name,
+              created: partyCreated,
+            },
+
+            transaction,
+          };
+        }
+
+        /* ---------------------------------------------------------------- */
+        /* STOCK                                                              */
+        /* ---------------------------------------------------------------- */
+
+        else if (
+          command.action ===
+            'STOCK_IN' ||
+          command.action ===
+            'STOCK_OUT'
+        ) {
+          if (
+            !command.entityName ||
+            !command.quantity ||
+            command.quantity <= 0
+          ) {
+            throw new VoiceV2Error(
+              'INVALID_STOCK',
+              'Product and positive quantity are required',
+            );
+          }
+
+          const resolvedProduct =
+            command.action === 'STOCK_IN'
+              ? await findOrCreateProduct(
+                  userId,
+                  command.entityName,
+                  session,
+                  {
+                    unit: command.unit,
+                    quantity: command.quantity,
+                    unitPrice: command.unitPrice,
+                  },
+                )
+              : { product: await findProduct(userId, command.entityName, session), created: false };
+
+          const product = resolvedProduct.product;
+
+          if (!product) {
+            throw new VoiceV2Error(
+              'PRODUCT_NOT_FOUND',
+              `Product "${command.entityName}" পাওয়া যায়নি।`,
+            );
+          }
+
+          const transaction =
+            await createTransaction(
+              {
+                type:
+                  command.action ===
+                  'STOCK_IN'
+                    ? 'STOCK_IN'
+                    : 'STOCK_OUT',
+
+                productId: String(
+                  product._id,
+                ),
+
+                amount: money(
+                  num(
+                    command.quantity,
+                  ) *
+                    num(
+                      command.unitPrice,
+                    ),
+                ),
+
+                quantity:
+                  command.quantity,
+
+                unitPrice:
+                  command.unitPrice ??
+                  undefined,
+
+                notes:
+                  command.notes ||
+                  undefined,
+                commandId,
+                source: 'VOICE',
+              },
+              userId,
+              session,
+            );
+
+          const fresh =
+            await Product.findById(
+              product._id,
+            )
+              .session(session)
+              .lean();
+
+          result = {
+            type: command.action,
+
+            product: {
+              id: String(product._id),
+              name: product.name,
+              unit: product.unit,
+              created: resolvedProduct.created,
+            },
+
+            quantity:
+              command.quantity,
+
+            stock: num(
+              fresh?.stockQuantity,
+            ),
+
+            transaction,
+          };
+        }
+
+        /* ---------------------------------------------------------------- */
+        /* SALE / PURCHASE                                                   */
+        /* ---------------------------------------------------------------- */
+
+        else if (
+          command.action ===
+            'CREATE_SALE' ||
+          command.action ===
+            'CREATE_PURCHASE'
+        ) {
+          const isAmountOnlySale =
+            command.action === 'CREATE_SALE' &&
+            !command.entityName &&
+            !command.quantity &&
+            !command.unitPrice &&
+            !!command.amount &&
+            command.amount > 0;
+
+          if (
+            !isAmountOnlySale &&
+            (!command.entityName ||
+              !command.quantity ||
+              command.quantity <= 0 ||
+              ((!command.unitPrice || command.unitPrice <= 0) &&
+                command.action !== 'CREATE_SALE'))
+          ) {
+            throw new VoiceV2Error(
+              'INVALID_TRADE',
+              'Product, quantity and unit price are required for an inventory sale or purchase',
+            );
+          }
+
+          const resolvedProduct =
+            isAmountOnlySale
+              ? { product: null, created: false }
+              : command.action === 'CREATE_PURCHASE'
+                ? await findOrCreateProduct(
+                    userId,
+                    command.entityName!,
+                    session,
+                    {
+                      unit: command.unit,
+                      // Inventory quantity is applied exactly once by the
+                      // STOCK_IN transaction below. Do not seed the new
+                      // product with the purchase quantity here.
+                      quantity: 0,
+                      unitPrice: command.unitPrice!,
+                    },
+                  )
+                : { product: await findProduct(userId, command.entityName!, session), created: false };
+
+          const product = resolvedProduct.product;
+
+          // A named credit sale may omit the price:
+          // "রহিমকে ২ কেজি চাল বাকিতে বিক্রি করলাম".
+          // In that case use the product's current selling price. We do this
+          // after product resolution so the database value is authoritative.
+          const resolvedUnitPrice =
+            !isAmountOnlySale &&
+            command.action === 'CREATE_SALE' &&
+            (!command.unitPrice || command.unitPrice <= 0)
+              ? money((product as any)?.sellPrice)
+              : money(command.unitPrice);
+
+          const resolvedAmount =
+            !isAmountOnlySale &&
+            command.action === 'CREATE_SALE' &&
+            (!command.amount || command.amount <= 0) &&
+            command.quantity &&
+            resolvedUnitPrice > 0
+              ? money(command.quantity * resolvedUnitPrice)
+              : money(command.amount);
+
+          if (!isAmountOnlySale && !product) {
+            throw new VoiceV2Error(
+              'PRODUCT_NOT_FOUND',
+              `Product "${command.entityName}" পাওয়া যায়নি। আগে product হিসেবে যোগ করুন।`,
+            );
+          }
+
+          const transactionProduct = product;
+          if (!isAmountOnlySale && !transactionProduct) {
+            throw new VoiceV2Error(
+              'PRODUCT_NOT_FOUND',
+              `Product "${command.entityName}" পাওয়া যায়নি। আগে product হিসেবে যোগ করুন।`,
+            );
+          }
+
+          const total = isAmountOnlySale
+            ? money(command.amount)
+            : resolvedAmount;
+
+          const paid = num(
+            command.paidAmount,
+          );
+
+          if (paid > total) {
+            throw new VoiceV2Error(
+              'INVALID_PAYMENT',
+              'Paid amount cannot exceed total amount',
+            );
+          }
+
+          if (
+            command.action ===
+            'CREATE_SALE'
+          ) {
+            let partyId:
+              | string
+              | undefined;
+
+            let customerCreated = false;
+
+            if (command.query) {
+              const resolved = await findOrCreateParty(userId, command.query, session, 'CUSTOMER');
+              partyId = String(resolved.party._id);
+              customerCreated = resolved.created;
+            } else if (paid < total) {
+              throw new VoiceV2Error(
+                'PARTY_REQUIRED',
+                'A customer is required for an unpaid or credit sale. For a walk-in sale, say "নগদে" or provide the customer name.',
+              );
+            }
+
+            const transaction =
+              await createTransaction(
+                {
+                  type: 'SALE',
+
+                  partyId,
+
+                  productId: product ? String(product._id) : undefined,
+
+                  amount: total,
+
+                  quantity: command.quantity ?? 0,
+
+                  unitPrice: resolvedUnitPrice > 0 ? resolvedUnitPrice : undefined,
+
+                  paidAmount: paid,
+
+                  notes:
+                    command.notes ||
+                    undefined,
+                },
+                userId,
+                session,
+              );
+
+            result = {
+              type: 'CREATE_SALE',
+
+              product:
+                product?.name ?? null,
+
+              total,
+
+              paidAmount: paid,
+
+              due: money(total - paid),
+              customerCreated,
+              transaction,
+            };
+          } else {
+            if (!command.query) {
+              throw new VoiceV2Error(
+                'PARTY_REQUIRED',
+                'Supplier name is required for a purchase',
+              );
+            }
+
+            const supplierResolved = await findOrCreateParty(userId, command.query, session, 'SUPPLIER');
+            if (supplierResolved.created) {
+              throw new VoiceV2Error('SUPPLIER_NOT_FOUND', `Supplier "${command.query}" পাওয়া যায়নি। আগে supplier হিসেবে যোগ করুন।`);
+            }
+            const supplier = supplierResolved.party;
+
+            const transaction =
+              await createTransaction(
+                {
+                  type: 'STOCK_IN',
+
+                  partyId: String(
+                    supplier._id,
+                  ),
+
+                  productId: String(
+                    transactionProduct!._id,
+                  ),
+
+                  amount: total,
+
+                  quantity:
+                    command.quantity!,
+
+                  unitPrice:
+                    command.unitPrice!,
+
+                  paidAmount: paid,
+
+                  notes:
+                    command.notes ||
+                    undefined,
+                },
+                userId,
+                session,
+              );
+
+            const due = money(
+              total - paid,
+            );
+
+            if (due > 0) {
+              await Party.updateOne(
+                {
+                  _id:
+                    supplier._id,
+                  userId: uid,
+                },
+                {
+                  $inc: {
+                    currentBalance:
+                      -due,
+                  },
+                },
+                {
+                  session,
+                },
+              );
+            }
+
+            result = {
+              type: 'CREATE_PURCHASE',
+
+              product:
+                transactionProduct!.name,
+
+              supplier: supplier.name,
+              supplierCreated: supplierResolved.created,
+              total,
+
+              paidAmount: paid,
+
+              due,
+
+              transaction,
+            };
+          }
+        }
+
+        /* ---------------------------------------------------------------- */
+        /* EXPENSE                                                            */
+        /* ---------------------------------------------------------------- */
+
+        else if (
+          command.action ===
+          'CREATE_EXPENSE'
+        ) {
+          if (
+            !command.amount ||
+            command.amount <= 0
+          ) {
+            throw new VoiceV2Error(
+              'INVALID_EXPENSE',
+              'Positive expense amount is required',
+            );
+          }
+
+          const transaction =
+            await createTransaction(
+              {
+                type: 'EXPENSE',
+
+                amount:
+                  command.amount,
+
+                quantity: 0,
+
+                notes:
+                  command.notes ||
+                  transcript,
+                commandId,
+                source: 'VOICE',
+              },
+              userId,
+              session,
+            );
+
+          result = {
+            type: 'CREATE_EXPENSE',
+            amount:
+              command.amount,
+            transaction,
+          };
+        }
+
+        /* ---------------------------------------------------------------- */
+        /* OTHER INCOME                                                     */
+        /* ---------------------------------------------------------------- */
+
+        else if (
+          command.action ===
+          'CREATE_INCOME'
+        ) {
+          if (!command.amount || command.amount <= 0) {
+            throw new VoiceV2Error(
+              'INVALID_INCOME',
+              'Positive income amount is required',
+            );
+          }
+
+          const transaction =
+            await createTransaction(
+              {
+                type: 'OTHER_INCOME',
+                amount: command.amount,
+                quantity: 0,
+                notes: command.notes || transcript,
+                commandId,
+                source: 'VOICE',
+              },
+              userId,
+              session,
+            );
+
+          result = {
+            type: 'CREATE_INCOME',
+            amount: command.amount,
+            transaction,
+          };
+        }
+
+        /* ---------------------------------------------------------------- */
+        /* DELETE TRANSACTION                                                */
+        /* ---------------------------------------------------------------- */
+
+        else if (
+          command.action ===
+          'DELETE_TRANSACTION'
+        ) {
+          if (
+            !command.targetId ||
+            !Types.ObjectId.isValid(
+              command.targetId,
+            )
+          ) {
+            throw new VoiceV2Error(
+              'MISSING_ENTITY',
+              'Valid transaction id is required',
+            );
+          }
+
+          result = {
+            type: 'DELETE_TRANSACTION',
+
+            reversal:
+              await reverseTransaction(
+                command.targetId,
+                userId,
+                session,
+              ),
+          };
+        }
+
+        /* ---------------------------------------------------------------- */
+        /* Unsupported                                                        */
+        /* ---------------------------------------------------------------- */
+
+        else {
+          throw new VoiceV2Error(
+            'UNSUPPORTED_ACTION',
+            `Action ${command.action} is not implemented yet.`,
+          );
+        }
+      },
+      {
+        readConcern: {
+          level: 'local',
+        },
+
+        writeConcern: {
+          w: 'majority',
+        },
+
+        maxCommitTimeMS: 10_000,
+      },
+    );
+  } catch (error) {
+    if (error instanceof VoiceV2Error) {
+      throw error;
+    }
+
+    if (
+      error instanceof
+      TransactionServiceError
+    ) {
+      throw new VoiceV2Error(
+        error.code,
+        error.message,
+        error.details,
+      );
+    }
+
+    throw error;
+  } finally {
+    await session.endSession();
+  }
+
+  /* ---------------------------------------------------------------------- */
+  /* Audit                                                                   */
+  /* ---------------------------------------------------------------------- */
+
+  if (commandId) {
+    await AuditLog.create({
+      userId: uid,
+
+      voiceTranscript:
+        transcript,
+
+      parsedIntent:
+        command,
+
+      status: 'SUCCESS',
+
+      commandId,
+
+      result,
+    }).catch(() => {});
+  }
+
+  return result;
+}
+
+/* -------------------------------------------------------------------------- */
+/* Local parser                                                               */
+/* -------------------------------------------------------------------------- */
+
+,
+    'iu',
+  ))
+    || value.match(new RegExp(
+      '^(.+?)\s*(?:কে|ke)\s*' + numberPattern +
+      '\s*(?:টাকা|tk|taka)?\s*(?:বাকি\s*)?(?:দিলাম|দিল|দিয়েছি|দিয়েছি|দিয়ে দিলাম|দিয়ে দিলাম|দিয়ে দিল|দিয়ে দিল|দেবো|দেব|দিবো|দিব|dilam|dil|diyechi|diye dilam|diye dilo|debo|deb|dibo)(?:\s+.*)?
+  if (match?.[1]) return command('CREATE_DUE', match[1]);
+
+  match = value.match(new RegExp(
+    '^(.+?)\s+(?:বাকি|বাকিতে|ধারে|উধারে|due|baki|bakite|dhare|credit)\s*' +
+    numberPattern + '\s*(?:টাকা|tk|taka)?\s*(?:নিল|নিলো|নিয়েছে|নিয়েছে|নেবে|নিবে|নেবো|নিবো|নিলাম|nil|nilo|niyeche|niyechi|nibe|nebe|nebo|nibo|nilam|took|take|taken)$',
+    'iu',
+  ))
+    || value.match(new RegExp(
+      '^(.+?)\s*' + numberPattern + '\s*(?:টাকা|tk|taka)?\s*(?:বাকি|বাকিতে|ধারে|উধারে|due|baki|bakite|dhare|credit)\s*(?:নিল|নিলো|নিয়েছে|নিয়েছে|নেবে|নিবে|নেবো|নিবো|নিলাম|nil|nilo|niyeche|niyechi|nibe|nebe|nebo|nibo|nilam|took|take|taken)$',
+      'iu',
+    ))
+    || value.match(new RegExp(
+      '^(.+?)\s*(?:নিল|নিলো|নিয়েছে|নিয়েছে|নেবে|নিবে|নেবো|নিবো|নিলাম|nil|nilo|niyeche|niyechi|nibe|nebe|nebo|nibo|nilam|took|take|taken)\s*' +
+      numberPattern + '\s*(?:টাকা|tk|taka)?\s*(?:বাকি|বাকিতে|ধারে|উধারে|due|baki|bakite|dhare|credit)$',
+      'iu',
+    ));
+  if (match?.[1]) return command('CREATE_DUE', match[1]);
+
+  match = value.match(new RegExp(
+    '^(?:আমি|আমরা|i|we)\s+(.+?)\s*(?:এর|ের|র)?\s*(?:কাছ থেকে|কাছথেকে|থেকে)\s*' +
+    numberPattern + '\s*(?:টাকা|tk|taka)?\s*(?:নেবো|নেব|নিবো|নিব|পাবো|পাব|nebo|nibo|pabo)$',
+    'iu',
+  ));
+  if (match?.[1]) return command('RECEIVE_PAYMENT', match[1]);
+
+  return null;
+}
+
+/* -------------------------------------------------------------------------- */
+/* Local parser                                                               */
+/* -------------------------------------------------------------------------- */
+
+export function parseVoiceV2Local(text: string): VoiceV2Command | null {
+  const inventory = parseInventoryPurchaseCommand(text);
+  if (inventory) return inventory;
+
+  const createProduct = parseCreateProductCommand(text);
+  if (createProduct) return createProduct;
+
+  const sale = parseSaleCommand(text);
+  if (sale) return sale;
+
+  const shopFinance = parseShopFinanceCommand(text);
+  if (shopFinance) return shopFinance;
+
+  // Resolve high-confidence party-money direction before generic heuristics or AI.
+  const ledgerDirection = parseLedgerDirectionCommand(text);
+  if (ledgerDirection) return ledgerDirection;
+
+  const value = norm(text);
+  const amount = extractNumber(text);
+  const name = partyName(text);
+
+  const createParty = extractCreatePartyName(text);
+  if (createParty) {
+    const command = blank('CREATE_PARTY');
+    command.entityType = createParty.partyType;
+    command.entityName = createParty.name;
+    command.partyType = createParty.partyType;
+    return command;
+  }
+
+  // Defensive local fallback: create-party commands must never reach a paid AI
+  // provider just because a speech transcript used a slightly different ending.
+  const createPartyFallback = value.match(
+    /^(.*?)\s+(?:name|নামে)\s+নতুন\s+(customer|কাস্টমার|গ্রাহক|supplier|সাপ্লায়ার|সরবরাহকারী)\s+(?:যোগ|add|create)(?:\s+(?:কর|করো|করুন|করতে|দাও|দাওনা))?$/iu,
+  );
+  if (createPartyFallback?.[1]?.trim()) {
+    const partyType =
+      /^(supplier|সাপ্লায়ার|সরবরাহকারী)$/iu.test(createPartyFallback[2] || '')
+        ? 'SUPPLIER'
+        : 'CUSTOMER';
+    const command = blank('CREATE_PARTY');
+    command.entityType = partyType;
+    command.entityName = createPartyFallback[1].trim();
+    command.partyType = partyType;
+    return command;
+  }
+  const deletePartyMatch = value.match(
+    /^(.*?)\s+(?:customer|কাস্টমার|গ্রাহক|supplier|সাপ্লায়ার|সরবরাহকারী|party|পার্টি)?\s*(?:delete|remove|ডিলিট|মুছে দাও|মুছে ফেলো|মুছে ফেলুন|সরিয়ে দাও|সরিয়ে দাও|বাদ দাও|ডিলেট|delete koro|delete kor|remove koro|remove kor|মুছে দাও|মুছে ফেলো)\s*$/iu,
+  );
+  if (deletePartyMatch?.[1]?.trim()) {
+    const raw = deletePartyMatch[1].trim();
+    const partyType =
+      /(?:supplier|সাপ্লায়ার|সরবরাহকারী)/iu.test(raw)
+        ? 'SUPPLIER'
+        : /(?:customer|কাস্টমার|গ্রাহক)/iu.test(raw)
+          ? 'CUSTOMER'
+          : null;
+    const entityName = raw
+      .replace(/(?:customer|কাস্টমার|গ্রাহক|supplier|সাপ্লায়ার|সরবরাহকারী|party|পার্টি)\s*$/iu, '')
+      .trim();
+    if (entityName) {
+      const command = blank('DELETE_PARTY');
+      command.entityType = partyType || 'CUSTOMER';
+      command.entityName = entityName;
+      command.partyType = partyType;
+      command.confirmRequired = true;
+      return command;
+    }
+  }
+
+
+  const list = /(?:list|তালিকা|সব|সকল|দেখাও|দেখান|দেখতে চাই|show|dao|দাও|লিস্ট)/i.test(value);
+
+  if (/(?:customer|কাস্টমার|গ্রাহক|party|পার্টি)/i.test(value) && list) {
+    const command = blank('LIST_PARTIES');
+    command.entityType = 'CUSTOMER';
+    command.partyType = 'CUSTOMER';
+    return command;
+  }
+
+  if (/(?:supplier|সরবরাহকারী|সাপ্লায়ার|সাপ্লাইয়ার)/i.test(value) && list) {
+    const command = blank('LIST_PARTIES');
+    command.entityType = 'SUPPLIER';
+    command.partyType = 'SUPPLIER';
+    return command;
+  }
+
+  if (/(?:product|পণ্য|item|আইটেম|মাল)/i.test(value) && list) {
+    return blank('LIST_PRODUCTS');
+  }
+
+  if (/(?:transaction|লেনদেন|হিসাব|খাতা|ট্রানজেকশন)/i.test(value) && list) {
+    return blank('LIST_TRANSACTIONS');
+  }
+
+  const customerOwes =
+    /(?:বাকি|পাওনা|দেনা|due|baki|credit|খাতায়|খাতায়|হিসাবে|বাড়াও|বাড়াও|যোগ করো|যোগ করুন|রাখলাম|রাখো)/iu.test(value);
+
+  const customerPaid =
+    /(?:কাছ থেকে|কাছথেকে|থেকে).*?(?:পেলাম|পেয়েছি|পেয়েছি|নিলাম|নিয়েছি|নিয়েছি|আদায়|আদায়|পরিশোধ|জমা)|(?:পেলাম|পেয়েছি|পেয়েছি|দিল|দিয়েছে|দিয়েছে|পরিশোধ করেছে|জমা দিল|জমা দিয়েছে|জমা দিয়েছে|paid|received|payment|pelam|peyechi|nilam|diyeche)/iu.test(value);
+
+  const moneyGivenToParty =
+    /(?:কে|ke)\s*\d[\d,]*(?:\.\d+)?\s*(?:টাকা|tk|taka)?\s*(?:দিলাম|দিল|দিয়েছি|দিয়েছি|দেব|দিব|রাখলাম|রাখো|dilam|dil|dilo|diyechi|dibo)/iu.test(value);
+
+  const balanceQuery =
+    /(?:কত|কতো|বাকি কত|পাওনা কত|দেনা কত|হিসাব|খাতার হিসাব|balance|due|pabo|pabe|koto|hisab|how much|kototuku)/i.test(value);
+
+  if (name && balanceQuery && !amount) {
+    const command = blank('READ_BALANCE');
+    command.entityType = 'CUSTOMER';
+    command.entityName = name;
+    command.partyType = 'CUSTOMER';
+    return command;
+  }
+
+  if (name && amount && customerPaid && !moneyGivenToParty) {
+    const command = blank('RECEIVE_PAYMENT');
+    command.entityType = 'CUSTOMER';
+    command.entityName = name;
+    command.partyType = 'CUSTOMER';
+    command.amount = amount;
+    return command;
+  }
+
+  if (name && amount && (moneyGivenToParty || customerOwes)) {
+    const command = blank('CREATE_DUE');
+    command.entityType = 'CUSTOMER';
+    command.entityName = name;
+    command.partyType = 'CUSTOMER';
+    command.amount = amount;
+    return command;
+  }
+
+  if (name && amount && /(?:দিলাম|দিল|দিয়েছি|দিয়েছি|dilam|dil|dilo|diyechi)/iu.test(value)) {
+    const command = blank('CREATE_DUE');
+    command.entityType = 'CUSTOMER';
+    command.entityName = name;
+    command.partyType = 'CUSTOMER';
+    command.amount = amount;
+    return command;
+  }
+
+  return null;
+}
+
+/* -------------------------------------------------------------------------- */
+/* Semantic post-normalization                                                */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * Correct only high-confidence party-payment direction after the LLM.
+ * This prevents a provider from confusing "Rahim gave me 500" with
+ * "I gave Rahim 500", which is the most expensive class of voice error.
+ */
+function normalizeLedgerSemantics(
+  command: VoiceV2Command,
+  text: string,
+): VoiceV2Command {
+  const value = norm(text);
+  const name = partyName(text);
+  const amount = extractNumber(text);
+  if (!name || amount === null) return command;
+
+  if (command.partyType === 'SUPPLIER' || command.entityType === 'SUPPLIER') {
+    return { ...command, entityType: 'SUPPLIER', partyType: 'SUPPLIER', entityName: command.entityName || name, amount };
+  }
+
+  const outgoingToParty =
+    /(?:কে|ke)\s*\d[\d,]*(?:\.\d+)?\s*(?:টাকা|tk|taka)?\s*(?:দিলাম|দিল|দিয়েছি|দিয়েছি|দেব|দিব|রাখলাম|dilam|dil|dilo|diyechi|dibo)/iu.test(value);
+  const incomingFromParty =
+    /(?:কাছ থেকে|কাছথেকে|থেকে)\s*\d[\d,]*(?:\.\d+)?\s*(?:টাকা|tk|taka)?\s*(?:পেলাম|পেয়েছি|পেয়েছি|নিলাম|নিয়েছি|নিয়েছি|আদায়|আদায়|পরিশোধ|জমা)/iu.test(value) ||
+    /^(?:.+?)\s+\d[\d,]*(?:\.\d+)?\s*(?:টাকা|tk|taka)?\s*(?:দিল|দিলো|দিয়েছে|দিয়েছে|পরিশোধ করেছে|paid|received)$/iu.test(value);
+
+  if (outgoingToParty && ['RECEIVE_PAYMENT', 'CREATE_DUE'].includes(command.action)) {
+    return { ...command, action: 'CREATE_DUE', entityType: 'CUSTOMER', partyType: 'CUSTOMER', entityName: command.entityName || name, amount };
+  }
+  if (incomingFromParty && ['CREATE_DUE', 'RECEIVE_PAYMENT'].includes(command.action)) {
+    return { ...command, action: 'RECEIVE_PAYMENT', entityType: 'CUSTOMER', partyType: 'CUSTOMER', entityName: command.entityName || name, amount };
+  }
+  return validateVoiceCommandSafety(command);
+}
+
+/* -------------------------------------------------------------------------- */
+/* AI system prompt                                                           */
+/* -------------------------------------------------------------------------- */
+
+const SYSTEM = [
+  'TaliKhata AI command understanding layer.',
+  'Understand Bangla, Banglish, English, Bengali/Arabic digits, colloquial speech and natural phrasing.',
+  'Return exactly one emit_voice_command call. Its command argument must be a JSON string matching the TaliKhata command fields.',
+  'Never invent IDs, database facts, prices, stock, balances or names. Preserve spoken names exactly; normalize number words and units into numeric/standard values.',
+  'Choose intent only from the allowed action values. CREATE_SALE means selling stock; CREATE_PURCHASE means buying stock; CREATE_PARTY means creating a customer/supplier; CREATE_DUE means money the customer owes; RECEIVE_PAYMENT means money received from a customer; supplier payments must remain supplier-side.',
+  'If required information is genuinely missing, use null. Do not turn missing data into guesses.'
+].join('\\n');
+
+/* -------------------------------------------------------------------------- */
+/* OpenAI tool                                                                */
+/* -------------------------------------------------------------------------- */
+
+const VOICE_V2_TOOL = {
+  type: 'function' as const,
+
+  function: {
+    name: 'emit_voice_command',
+
+    description:
+      'Return the single validated TaliKhata command requested by the user.',
+
+    parameters: VoiceV2JsonSchema,
+  },
+};
+
+/* -------------------------------------------------------------------------- */
+/* Provider types                                                             */
+/* -------------------------------------------------------------------------- */
+
+type VoiceProvider = {
+  name: 'openai' | 'openrouter';
+  apiKey: string;
+  model: string;
+  baseURL?: string;
+};
+
+/* -------------------------------------------------------------------------- */
+/* Provider configuration                                                      */
+/* -------------------------------------------------------------------------- */
+
+function getProviders(): VoiceProvider[] {
+  const providers: VoiceProvider[] = [];
+
+  const openAIKey = process.env.OPENAI_API_KEY?.trim();
+
+  if (openAIKey) {
+    providers.push({
+      name: 'openai',
+      apiKey: openAIKey,
+      model:
+        process.env.OPENAI_VOICE_MODEL?.trim() ||
+        'gpt-4.1-mini',
+    });
+  }
+
+  const openRouterKey =
+    process.env.OPENROUTER_API_KEY?.trim();
+
+  if (openRouterKey) {
+    providers.push({
+      name: 'openrouter',
+      apiKey: openRouterKey,
+      model:
+        process.env.OPENROUTER_VOICE_MODEL?.trim() ||
+        'openai/gpt-4.1-mini',
+      baseURL: 'https://openrouter.ai/api/v1',
+    });
+  }
+
+  return providers;
+}
+
+/* -------------------------------------------------------------------------- */
+/* Tool-call extraction                                                       */
+/* -------------------------------------------------------------------------- */
+
+function getToolArguments(response: OpenAI.Chat.Completions.ChatCompletion): string {
+  const toolCalls = response.choices[0]?.message?.tool_calls;
+
+  if (!toolCalls?.length) {
+    throw new Error(
+      'Provider returned no tool calls.',
+    );
+  }
+
+  const functionCall = toolCalls.find(
+    (
+      call,
+    ): call is Extract<
+      OpenAI.Chat.Completions.ChatCompletionMessageToolCall,
+      { type: 'function' }
+    > => call.type === 'function',
+  );
+
+  if (!functionCall?.function?.arguments) {
+    throw new Error(
+      'Provider returned no function arguments.',
+    );
+  }
+
+  return functionCall.function.arguments;
+}
+
+/* -------------------------------------------------------------------------- */
+/* AI parser                                                                  */
+/* -------------------------------------------------------------------------- */
+
+async function aiParse(
+  text: string,
+): Promise<VoiceV2Command> {
+  const providers = getProviders();
+  if (!providers.length) throw new VoiceV2Error('AI_NOT_CONFIGURED','No voice AI provider is configured. Add OPENAI_API_KEY or OPENROUTER_API_KEY to .env.local.',{providers:[]});
+  const errors: Array<{ provider: string; model: string; message: string }> = [];
+  for (const provider of providers) {
+    try {
+      console.info('[VoiceV2] Trying ' + provider.name + ' with ' + provider.model);
+      const client = new OpenAI({
+        apiKey: provider.apiKey,
+        baseURL: provider.baseURL,
+        timeout: 10_000,
+        maxRetries: 0,
+        defaultHeaders: provider.name === 'openrouter' ? {
+          'HTTP-Referer': process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000',
+          'X-Title': 'TaliKhata Voice V2',
+        } : undefined,
+      });
+      const response = await client.chat.completions.create({
+        model: provider.model,
+        messages: [{ role: 'system', content: SYSTEM }, { role: 'user', content: text }],
+        temperature: 0,
+        max_completion_tokens: 128,
+        tools: [VOICE_V2_TOOL],
+        tool_choice: { type: 'function', function: { name: 'emit_voice_command' } },
+      });
+      const argumentsJSON = getToolArguments(response);
+      let envelope: unknown;
+      try { envelope = JSON.parse(argumentsJSON); } catch { throw new Error('Provider returned invalid tool-call JSON.'); }
+      const commandPayload = envelope && typeof envelope === 'object' && 'command' in envelope && typeof (envelope as { command?: unknown }).command === 'string'
+        ? (envelope as { command: string }).command
+        : argumentsJSON;
+      let parsed: unknown;
+      try { parsed = JSON.parse(commandPayload); } catch { throw new Error('Provider returned invalid command JSON.'); }
+      const validated = VoiceV2Schema.safeParse(parsed);
+      if (!validated.success) {
+        const issues = validated.error.issues.map((issue) => ({ path: issue.path.join('.'), code: issue.code, message: issue.message }));
+        console.error('[VoiceV2] Invalid AI command:', issues);
+        throw new Error('Provider returned a command that failed TaliKhata validation: ' + issues.map((issue) => (issue.path || 'command') + ': ' + issue.message).join('; '));
+      }
+      console.info('[VoiceV2] ' + provider.name + ' succeeded');
+      return normalizeLedgerSemantics(validated.data, text);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      errors.push({ provider: provider.name, model: provider.model, message });
+      console.error('[VoiceV2] ' + provider.name + ' failed', { model: provider.model, message, error });
+    }
+  }
+  throw new VoiceV2Error('AI_UNAVAILABLE','Voice AI providers are temporarily unavailable. Please try again.',{providers:errors});
+}
+
+/* -------------------------------------------------------------------------- */
+/* Public parser                                                              */
+/* -------------------------------------------------------------------------- */
+
+export async function parseVoiceV2(
+  text: string,
+): Promise<VoiceV2Command> {
+  const normalized = text.trim();
+  if (!normalized) throw new VoiceV2Error('EMPTY_COMMAND', 'Voice command is empty.');
+  // AI is the primary understanding layer. Local regex parsers are emergency fallback only.
+  try {
+    return validateVoiceCommandSafety(await aiParse(normalized));
+  } catch (error) {
+    if (!(error instanceof VoiceV2Error) || !['AI_UNAVAILABLE', 'AI_NOT_CONFIGURED'].includes(error.code)) throw error;
+    const local = parseVoiceV2Local(normalized);
+    if (local) return normalizeLedgerSemantics(local, normalized);
+    throw error;
+  }
+}
+
+/* -------------------------------------------------------------------------- */
+/* Party resolver                                                             */
+/* -------------------------------------------------------------------------- */
+
+async function findParty(
+  userId: string,
+  name: string,
+  session: any,
+  type?: 'CUSTOMER' | 'SUPPLIER',
+) {
+  const all = await resolveParty(
+    userId,
+    name,
+    session,
+  );
+
+  const rows = type
+    ? all.filter(
+        (party: any) =>
+          party.partyType === type,
+      )
+    : all;
+
+  if (!rows.length) {
+    throw new VoiceV2Error(
+      'NOT_FOUND',
+      `${
+        type === 'SUPPLIER'
+          ? 'Supplier'
+          : 'Customer'
+      } "${name}" was not found`,
+      {
+        name,
+      },
+    );
+  }
+
+  if (rows.length > 1) {
+    throw new VoiceV2Error(
+      'AMBIGUOUS_ENTITY',
+      `Multiple parties matched "${name}"`,
+      {
+        matches: rows
+          .slice(0, 10)
+          .map((party: any) => ({
+            id: String(party._id),
+            name: party.name,
+            phone: party.phone || null,
+            balance: party.currentBalance,
+          })),
+      },
+    );
+  }
+
+  return rows[0];
+}
+
+/* -------------------------------------------------------------------------- */
+/* Admin                                                                      */
+/* -------------------------------------------------------------------------- */
+
+async function requireAdmin(
+  userId: string,
+) {
+  const user = await User.findById(userId)
+    .select('role status')
+    .lean();
+
+  if (
+    !user ||
+    user.status !== 'ACTIVE' ||
+    user.role !== 'ADMIN'
+  ) {
+    throw new VoiceV2Error(
+      'FORBIDDEN',
+      'Admin permission is required for user management.',
+    );
+  }
+
+  return user;
+}
+
+/* -------------------------------------------------------------------------- */
+/* Product resolver                                                           */
+/* -------------------------------------------------------------------------- */
+
+async function findProduct(
+  userId: string,
+  name: string,
+  session: any,
+) {
+  const rows = await resolveProduct(
+    userId,
+    name,
+    session,
+  );
+
+  if (!rows.length) {
+    throw new VoiceV2Error(
+      'NOT_FOUND',
+      `Product "${name}" was not found`,
+      {
+        name,
+      },
+    );
+  }
+
+  if (rows.length > 1) {
+    throw new VoiceV2Error(
+      'AMBIGUOUS_ENTITY',
+      `Multiple products matched "${name}"`,
+      {
+        matches: rows
+          .slice(0, 10)
+          .map((product: any) => ({
+            id: String(product._id),
+            name: product.name,
+            stock: product.stockQuantity,
+            unit: product.unit,
+          })),
+      },
+    );
+  }
+
+  return rows[0];
+}
+
+async function findOrCreateProduct(
+  userId: string,
+  name: string,
+  session: any,
+  input: { unit?: string | null; quantity?: number | null; unitPrice?: number | null },
+) {
+  const normalizedName = name.trim();
+  if (!normalizedName) {
+    throw new VoiceV2Error('MISSING_ENTITY', 'Product name is required');
+  }
+
+  const candidates = await resolveProduct(userId, normalizedName, session);
+
+  if (candidates.length === 1) {
+    return { product: candidates[0], created: false };
+  }
+
+  if (candidates.length > 1) {
+    throw new VoiceV2Error(
+      'AMBIGUOUS_ENTITY',
+      `Multiple products matched "${normalizedName}"`,
+      {
+        matches: candidates.slice(0, 10).map((product: any) => ({
+          id: String(product._id),
+          name: product.name,
+          stock: product.stockQuantity,
+          unit: product.unit,
+        })),
+      },
+    );
+  }
+
+  const [created] = await Product.create(
+    [{
+      userId: new Types.ObjectId(userId),
+      name: normalizedName,
+      unit: input.unit?.trim() || 'unit',
+      stockQuantity: 0,
+      buyPrice: money(input.unitPrice),
+      sellPrice: 0,
+      lowStockThreshold: 5,
+    }],
+    { session },
+  );
+
+  return { product: created, created: true };
+}
+
+/* -------------------------------------------------------------------------- */
+/* Party creation / resolution                                                 */
+/* -------------------------------------------------------------------------- */
+
+async function findOrCreateParty(
+  userId: string,
+  name: string,
+  session: any,
+  type: 'CUSTOMER' | 'SUPPLIER',
+) {
+  const normalizedName = name.trim();
+
+  if (!normalizedName) {
+    throw new VoiceV2Error(
+      'MISSING_ENTITY',
+      type === 'SUPPLIER'
+        ? 'Supplier name is required'
+        : 'Customer name is required',
+    );
+  }
+
+  const candidates = await resolveParty(
+    userId,
+    normalizedName,
+    session,
+  );
+
+  const sameType = candidates.filter(
+    (party: any) => party.partyType === type,
+  );
+
+  if (sameType.length === 1) {
+    return { party: sameType[0], created: false };
+  }
+
+  if (sameType.length > 1) {
+    throw new VoiceV2Error(
+      'AMBIGUOUS_ENTITY',
+      'Multiple ' +
+        (type === 'SUPPLIER' ? 'suppliers' : 'customers') +
+        ' matched "' +
+        normalizedName +
+        '".',
+      {
+        matches: sameType.slice(0, 10).map((party: any) => ({
+          id: String(party._id),
+          name: party.name,
+          phone: party.phone || null,
+          balance: party.currentBalance,
+        })),
+      },
+    );
+  }
+
+  try {
+    const [created] = await Party.create(
+      [
+        {
+          userId: new Types.ObjectId(userId),
+          name: normalizedName,
+          partyType: type,
+          currentBalance: 0,
+        },
+      ],
+      { session },
+    );
+
+    return { party: created, created: true };
+  } catch (error) {
+    if (
+      error instanceof Error &&
+      /E11000|duplicate/i.test(error.message)
+    ) {
+      const retry = await resolveParty(
+        userId,
+        normalizedName,
+        session,
+      );
+
+      const retrySameType = retry.filter(
+        (party: any) => party.partyType === type,
+      );
+
+      if (retrySameType.length === 1) {
+        return {
+          party: retrySameType[0],
+          created: false,
+        };
+      }
+    }
+
+    throw error;
+  }
+}
+
+/* -------------------------------------------------------------------------- */
+/* Confirmation                                                               */
+/* -------------------------------------------------------------------------- */
+
+function confirm(
+  command: VoiceV2Command,
+  confirmed: boolean,
+) {
+  const destructiveActions = new Set([
+    'DELETE_PARTY',
+    'DELETE_PRODUCT',
+    'DELETE_TRANSACTION',
+    'DELETE_USER',
+  ]);
+
+  const amount = money(command.amount);
+
+  const highValueWrite =
+    amount >= 10000 &&
+    [
+      'CREATE_DUE',
+      'RECEIVE_PAYMENT',
+      'CREATE_SALE',
+      'CREATE_PURCHASE',
+      'CREATE_EXPENSE',
+      'CREATE_INCOME',
+    ].includes(command.action);
+
+  const needsConfirmation =
+    command.confirmRequired ||
+    destructiveActions.has(command.action) ||
+    highValueWrite;
+
+  if (needsConfirmation && !confirmed) {
+    throw new VoiceV2Error(
+      'CONFIRMATION_REQUIRED',
+      highValueWrite
+        ? '৳১০,০০০ বা তার বেশি আর্থিক লেনদেন করার আগে confirmation প্রয়োজন।'
+        : 'এই কাজটি করার আগে confirmation প্রয়োজন।',
+      {
+        action: command.action,
+        amount: amount || null,
+        reason: highValueWrite
+          ? 'HIGH_VALUE_FINANCIAL_WRITE'
+          : 'DESTRUCTIVE_ACTION',
+      },
+    );
+  }
+}
+
+/* -------------------------------------------------------------------------- */
+/* Execute Voice V2                                                           */
+/* -------------------------------------------------------------------------- */
+
+export async function executeVoiceV2(
+  commandInput: VoiceV2Command,
+  userId: string,
+  transcript = '',
+  confirmed = false,
+  commandId?: string,
+) {
+  /* ---------------------------------------------------------------------- */
+  /* Authentication                                                         */
+  /* ---------------------------------------------------------------------- */
+
+  const sessionUser = await auth();
+
+  if (
+    !sessionUser?.user?.id ||
+    sessionUser.user.id !== userId
+  ) {
+    throw new VoiceV2Error(
+      'UNAUTHORIZED',
+      'Unauthorized',
+    );
+  }
+
+  if (!Types.ObjectId.isValid(userId)) {
+    throw new VoiceV2Error(
+      'UNAUTHORIZED',
+      'Invalid user',
+    );
+  }
+
+  /* ---------------------------------------------------------------------- */
+  /* Validate command                                                       */
+  /* ---------------------------------------------------------------------- */
+
+  const parsedCommand =
+    VoiceV2Schema.parse(commandInput);
+
+  // Product creation is intentionally tolerant of omitted units in natural voice.
+  // Mongo still receives a valid unit so commands such as "চাল ৭০ টাকা দরে পণ্য হিসেবে যোগ করো"
+  // can create the catalog item instead of failing only because the spoken unit was omitted.
+  const command: VoiceV2Command =
+    parsedCommand.action === 'CREATE_PRODUCT'
+      ? { ...parsedCommand, unit: parsedCommand.unit || 'unit' }
+      : parsedCommand;
+
+  confirm(command, confirmed);
+
+  /* ---------------------------------------------------------------------- */
+  /* Database                                                               */
+  /* ---------------------------------------------------------------------- */
+
+  await connectDB();
+
+  const uid = new Types.ObjectId(userId);
+
+  /* ---------------------------------------------------------------------- */
+  /* Idempotency                                                             */
+  /* ---------------------------------------------------------------------- */
+
+  if (commandId) {
+    const old = await AuditLog.findOne({
+      userId: uid,
+      commandId,
+      status: 'SUCCESS',
+    }).lean();
+
+    if (old?.result) {
+      return old.result;
+    }
+
+    // Transaction-level idempotency protects against duplicate execution
+    // even when the audit write has not completed yet.
+    const existingTransaction = await Transaction.findOne({
+      userId: uid,
+      commandId,
+    }).lean();
+
+    if (existingTransaction) {
+      return {
+        type: command.action,
+        amount: existingTransaction.amount,
+        quantity: existingTransaction.quantity,
+        transaction: {
+          id: String(existingTransaction._id),
+          type: existingTransaction.type,
+          amount: existingTransaction.amount,
+          quantity: existingTransaction.quantity,
+        },
+      };
+    }
+  }
+
+  /* ---------------------------------------------------------------------- */
+  /* Balance                                                                */
+  /* ---------------------------------------------------------------------- */
+
+  if (command.action === 'READ_BALANCE') {
+    if (!command.entityName) {
+      throw new VoiceV2Error(
+        'MISSING_ENTITY',
+        'Customer name is required',
+      );
+    }
+
+    const party = await findParty(
+      userId,
+      command.entityName,
+      null,
+      'CUSTOMER',
+    );
+
+    const balance = money(
+      party.currentBalance,
+    );
+
+    return {
+      type: 'READ_BALANCE',
+
+      party: {
+        id: String(party._id),
+        name: party.name,
+        phone: party.phone || null,
+      },
+
+      balance,
+
+      receivable: Math.max(
+        0,
+        balance,
+      ),
+
+      payable: Math.max(
+        0,
+        -balance,
+      ),
+    };
+  }
+
+  /* ---------------------------------------------------------------------- */
+  /* Read / List                                                             */
+  /* ---------------------------------------------------------------------- */
+
+  if (
+    [
+      'READ_PARTY',
+      'READ_PRODUCT',
+      'LIST_PARTIES',
+      'LIST_PRODUCTS',
+      'LIST_TRANSACTIONS',
+      'READ_USER',
+      'LIST_USERS',
+    ].includes(command.action)
+  ) {
+    if (command.action === 'READ_PARTY') {
+      if (!command.entityName) {
+        throw new VoiceV2Error(
+          'MISSING_ENTITY',
+          'Party name is required',
+        );
+      }
+
+      return {
+        type: 'READ_PARTY',
+        party: await findParty(
+          userId,
+          command.entityName,
+          null,
+          command.partyType || undefined,
+        ),
+      };
+    }
+
+    if (command.action === 'READ_PRODUCT') {
+      if (!command.entityName) {
+        throw new VoiceV2Error(
+          'MISSING_ENTITY',
+          'Product name is required',
+        );
+      }
+
+      return {
+        type: 'READ_PRODUCT',
+        product: await findProduct(
+          userId,
+          command.entityName,
+          null,
+        ),
+      };
+    }
+
+    if (command.action === 'READ_USER') {
+      await requireAdmin(userId);
+
+      const user =
+        await User.findOne(
+          command.query
+            ? {
+                email:
+                  command.query.toLowerCase(),
+                _id: {
+                  $ne: uid,
+                },
+              }
+            : {
+                _id:
+                  command.targetId &&
+                  Types.ObjectId.isValid(
+                    command.targetId,
+                  )
+                    ? new Types.ObjectId(
+                        command.targetId,
+                      )
+                    : uid,
+              },
+        )
+          .select('-password')
+          .lean();
+
+      if (!user) {
+        throw new VoiceV2Error(
+          'NOT_FOUND',
+          'User was not found',
+        );
+      }
+
+      return {
+        type: 'READ_USER',
+        user,
+      };
+    }
+
+    if (command.action === 'LIST_USERS') {
+      await requireAdmin(userId);
+
+      const rows = await User.find({})
+        .select('-password')
+        .sort({
+          createdAt: -1,
+        })
+        .limit(200)
+        .lean();
+
+      return {
+        type: 'LIST_USERS',
+        items: rows,
+      };
+    }
+
+    if (
+      command.action === 'LIST_PARTIES'
+    ) {
+      const query: any = {
+        userId: uid,
+      };
+
+      if (command.partyType) {
+        query.partyType =
+          command.partyType;
+      }
+
+      const rows = await Party.find(query)
+        .sort({
+          name: 1,
+        })
+        .limit(200)
+        .lean();
+
+      return {
+        type: 'LIST_PARTIES',
+        items: rows.map(
+          (party: any) => ({
+            id: String(party._id),
+            name: party.name,
+            phone: party.phone || null,
+            partyType: party.partyType,
+            balance:
+              party.currentBalance,
+          }),
+        ),
+      };
+    }
+
+    if (
+      command.action === 'LIST_PRODUCTS'
+    ) {
+      const rows = await Product.find({
+        userId: uid,
+      })
+        .sort({
+          name: 1,
+        })
+        .limit(200)
+        .lean();
+
+      return {
+        type: 'LIST_PRODUCTS',
+        items: rows,
+      };
+    }
+
+    const rows =
+      await Transaction.find({
+        userId: uid,
+        isDeleted: {
+          $ne: true,
+        },
+      })
+        .sort({
+          timestamp: -1,
+        })
+        .limit(100)
+        .lean();
+
+    return {
+      type: 'LIST_TRANSACTIONS',
+      items: rows,
+    };
+  }
+
+  /* ---------------------------------------------------------------------- */
+  /* Transaction session                                                    */
+  /* ---------------------------------------------------------------------- */
+
+  const session =
+    await Party.startSession();
+
+  let result: any;
+
+  try {
+    await session.withTransaction(
+      async () => {
+        /* ---------------------------------------------------------------- */
+        /* USER CRUD                                                         */
+        /* ---------------------------------------------------------------- */
+
+        if (
+          command.action ===
+            'CREATE_USER' ||
+          command.action ===
+            'UPDATE_USER' ||
+          command.action ===
+            'DELETE_USER'
+        ) {
+          await requireAdmin(userId);
+
+          if (
+            command.action ===
+            'CREATE_USER'
+          ) {
+            const email =
+              clean(command.query)
+                ?.toLowerCase();
+
+            if (
+              !command.entityName ||
+              !email ||
+              !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(
+                email,
+              )
+            ) {
+              throw new VoiceV2Error(
+                'INVALID_USER',
+                'Name and valid email are required',
+              );
+            }
+
+            const duplicate =
+              await User.findOne({
+                email,
+              }).session(session);
+
+            if (duplicate) {
+              throw new VoiceV2Error(
+                'DUPLICATE_ENTITY',
+                'A user with this email already exists',
+              );
+            }
+
+            const [user] =
+              await User.create(
+                [
+                  {
+                    name:
+                      command.entityName,
+
+                    email,
+
+                    phone:
+                      command.phone ||
+                      undefined,
+
+                    role: 'USER',
+
+                    status: 'ACTIVE',
+                  },
+                ],
+                {
+                  session,
+                },
+              );
+
+            result = {
+              type: 'CREATE_USER',
+
+              user: {
+                id: String(user._id),
+                name: user.name,
+                email: user.email,
+                phone:
+                  user.phone || null,
+                role: user.role,
+                status: user.status,
+              },
+            };
+          } else {
+            const target =
+              command.query
+                ?.toLowerCase();
+
+            const filter: any =
+              target
+                ? {
+                    email: target,
+                  }
+                : {
+                    _id:
+                      command.targetId &&
+                      Types.ObjectId.isValid(
+                        command.targetId,
+                      )
+                        ? new Types.ObjectId(
+                            command.targetId,
+                          )
+                        : null,
+                  };
+
+            if (
+              !filter._id &&
+              !filter.email
+            ) {
+              throw new VoiceV2Error(
+                'MISSING_ENTITY',
+                'User email or id is required',
+              );
+            }
+
+            const user =
+              await User.findOne(
+                filter,
+              ).session(session);
+
+            if (!user) {
+              throw new VoiceV2Error(
+                'NOT_FOUND',
+                'User was not found',
+              );
+            }
+
+            if (
+              String(user._id) ===
+                userId &&
+              command.action ===
+                'DELETE_USER'
+            ) {
+              throw new VoiceV2Error(
+                'DELETE_BLOCKED',
+                'You cannot delete your own account by voice.',
+              );
+            }
+
+            if (
+              command.action ===
+              'UPDATE_USER'
+            ) {
+              const update: any = {};
+
+              if (command.entityName) {
+                update.name =
+                  command.entityName;
+              }
+
+              if (command.phone) {
+                update.phone =
+                  command.phone;
+              }
+
+              if (
+                command.notes &&
+                [
+                  'ACTIVE',
+                  'SUSPENDED',
+                ].includes(
+                  command.notes,
+                )
+              ) {
+                update.status =
+                  command.notes;
+              }
+
+              if (
+                command.partyType ===
+                'CUSTOMER'
+              ) {
+                update.role = 'USER';
+              }
+
+              if (
+                !Object.keys(update)
+                  .length
+              ) {
+                throw new VoiceV2Error(
+                  'INVALID_UPDATE',
+                  'No user fields to update',
+                );
+              }
+
+              const updated =
+                await User.findOneAndUpdate(
+                  {
+                    _id: user._id,
+                  },
+                  {
+                    $set: update,
+                  },
+                  {
+                    new: true,
+                    session,
+                  },
+                )
+                  .select('-password')
+                  .lean();
+
+              result = {
+                type: 'UPDATE_USER',
+                user: updated,
+              };
+            } else {
+              const hasData =
+                await Promise.all([
+                  Party.exists({
+                    userId: user._id,
+                  }).session(session),
+
+                  Product.exists({
+                    userId: user._id,
+                  }).session(session),
+
+                  Transaction.exists({
+                    userId: user._id,
+                  }).session(session),
+                ]);
+
+              if (hasData.some(Boolean)) {
+                throw new VoiceV2Error(
+                  'DELETE_BLOCKED',
+                  'This user owns ledger data and cannot be deleted safely.',
+                );
+              }
+
+              await User.deleteOne(
+                {
+                  _id: user._id,
+                },
+                {
+                  session,
+                },
+              );
+
+              result = {
+                type: 'DELETE_USER',
+                id: String(
+                  user._id,
+                ),
+                email: user.email,
+              };
+            }
+          }
+        }
+
+        /* ---------------------------------------------------------------- */
+        /* CREATE PARTY                                                      */
+        /* ---------------------------------------------------------------- */
+
+        else if (
+          command.action ===
+          'CREATE_PARTY'
+        ) {
+          if (!command.entityName) {
+            throw new VoiceV2Error(
+              'MISSING_ENTITY',
+              'Party name is required',
+            );
+          }
+
+          const partyType =
+            command.partyType ||
+            'CUSTOMER';
+
+          const escaped =
+            command.entityName.replace(
+              /[.*+?^\${}()|[\]\\]/g,
+              '\\$&',
+            );
+
+          const duplicate =
+            await Party.findOne({
+              userId: uid,
+              name: new RegExp(
+                `^${escaped}$`,
+                'i',
+              ),
+            }).session(session);
+
+          if (duplicate) {
+            throw new VoiceV2Error(
+              'DUPLICATE_ENTITY',
+              `A party named "${command.entityName}" already exists`,
+              {
+                matches: [
+                  {
+                    id: String(
+                      duplicate._id,
+                    ),
+                    name: duplicate.name,
+                    phone:
+                      duplicate.phone ||
+                      null,
+                    balance:
+                      duplicate.currentBalance,
+                  },
+                ],
+              },
+            );
+          }
+
+          const [party] =
+            await Party.create(
+              [
+                {
+                  userId: uid,
+                  name:
+                    command.entityName,
+                  phone:
+                    command.phone ||
+                    undefined,
+                  partyType,
+                  currentBalance: 0,
+                },
+              ],
+              {
+                session,
+              },
+            );
+
+          result = {
+            type: 'CREATE_PARTY',
+            id: String(party._id),
+            name: party.name,
+            phone:
+              party.phone || null,
+            partyType:
+              party.partyType,
+            balance: 0,
+          };
+        }
+
+        /* ---------------------------------------------------------------- */
+        /* UPDATE PARTY                                                      */
+        /* ---------------------------------------------------------------- */
+
+        else if (
+          command.action ===
+          'UPDATE_PARTY'
+        ) {
+          if (!command.entityName) {
+            throw new VoiceV2Error(
+              'MISSING_ENTITY',
+              'Party name is required',
+            );
+          }
+
+          const party =
+            await findParty(
+              userId,
+              command.entityName,
+              session,
+              command.partyType ||
+                undefined,
+            );
+
+          const update: any = {};
+
+          if (command.phone) {
+            update.phone =
+              command.phone;
+          }
+
+          if (command.query) {
+            update.name =
+              command.query;
+          }
+
+          if (
+            !Object.keys(update).length
+          ) {
+            throw new VoiceV2Error(
+              'INVALID_UPDATE',
+              'No party fields to update',
+            );
+          }
+
+          result = {
+            type: 'UPDATE_PARTY',
+
+            party:
+              await Party.findOneAndUpdate(
+                {
+                  _id: party._id,
+                  userId: uid,
+                },
+                {
+                  $set: update,
+                },
+                {
+                  new: true,
+                  session,
+                },
+              ).lean(),
+          };
+        }
+
+        /* ---------------------------------------------------------------- */
+        /* DELETE PARTY                                                      */
+        /* ---------------------------------------------------------------- */
+
+        else if (
+          command.action ===
+          'DELETE_PARTY'
+        ) {
+          if (!command.entityName) {
+            throw new VoiceV2Error(
+              'MISSING_ENTITY',
+              'Party name is required',
+            );
+          }
+
+          const party =
+            await findParty(
+              userId,
+              command.entityName,
+              session,
+              command.partyType ||
+                undefined,
+            );
+
+          const hasTransactions =
+            await Transaction.exists({
+              userId: uid,
+              partyId: party._id,
+            }).session(session);
+
+          if (hasTransactions) {
+            throw new VoiceV2Error(
+              'DELETE_BLOCKED',
+              'This party has transaction history and cannot be deleted safely.',
+            );
+          }
+
+          await Party.deleteOne(
+            {
+              _id: party._id,
+              userId: uid,
+            },
+            {
+              session,
+            },
+          );
+
+          result = {
+            type: 'DELETE_PARTY',
+            id: String(party._id),
+            name: party.name,
+          };
+        }
+
+        /* ---------------------------------------------------------------- */
+        /* CREATE PRODUCT                                                    */
+        /* ---------------------------------------------------------------- */
+
+        else if (
+          command.action ===
+          'CREATE_PRODUCT'
+        ) {
+          if (
+            !command.entityName ||
+            !command.unit
+          ) {
+            throw new VoiceV2Error(
+              'INVALID_PRODUCT',
+              'Product name and unit are required',
+            );
+          }
+
+          const escaped =
+            command.entityName.replace(
+              /[.*+?^\${}()|[\]\\]/g,
+              '\\$&',
+            );
+
+          const duplicate =
+            await Product.findOne({
+              userId: uid,
+              name: new RegExp(
+                `^${escaped}$`,
+                'i',
+              ),
+            }).session(session);
+
+          if (duplicate) {
+            throw new VoiceV2Error(
+              'DUPLICATE_ENTITY',
+              `Product "${command.entityName}" already exists`,
+            );
+          }
+
+          const [product] =
+            await Product.create(
+              [
+                {
+                  userId: uid,
+                  name:
+                    command.entityName,
+                  unit:
+                    command.unit,
+                  stockQuantity:
+                    num(command.quantity),
+                  buyPrice:
+                    num(command.unitPrice),
+                  sellPrice: 0,
+                  lowStockThreshold: 5,
+                },
+              ],
+              {
+                session,
+              },
+            );
+
+          result = {
+            type: 'CREATE_PRODUCT',
+            id: String(
+              product._id,
+            ),
+            name: product.name,
+            unit: product.unit,
+            stock:
+              product.stockQuantity,
+            buyPrice:
+              product.buyPrice,
+            sellPrice:
+              product.sellPrice,
+          };
+        }
+
+        /* ---------------------------------------------------------------- */
+        /* UPDATE PRODUCT                                                    */
+        /* ---------------------------------------------------------------- */
+
+        else if (
+          command.action ===
+          'UPDATE_PRODUCT'
+        ) {
+          if (!command.entityName) {
+            throw new VoiceV2Error(
+              'MISSING_ENTITY',
+              'Product name is required',
+            );
+          }
+
+          const product =
+            await findProduct(
+              userId,
+              command.entityName,
+              session,
+            );
+
+          const update: any = {};
+
+          if (command.unit) {
+            update.unit =
+              command.unit;
+          }
+
+          if (
+            command.unitPrice !==
+            null
+          ) {
+            update.buyPrice =
+              num(command.unitPrice);
+          }
+
+          if (command.query) {
+            update.name =
+              command.query;
+          }
+
+          if (
+            !Object.keys(update).length
+          ) {
+            throw new VoiceV2Error(
+              'INVALID_UPDATE',
+              'No product fields to update',
+            );
+          }
+
+          result = {
+            type: 'UPDATE_PRODUCT',
+
+            product:
+              await Product.findOneAndUpdate(
+                {
+                  _id: product._id,
+                  userId: uid,
+                },
+                {
+                  $set: update,
+                },
+                {
+                  new: true,
+                  session,
+                },
+              ).lean(),
+          };
+        }
+
+        /* ---------------------------------------------------------------- */
+        /* DELETE PRODUCT                                                    */
+        /* ---------------------------------------------------------------- */
+
+        else if (
+          command.action ===
+          'DELETE_PRODUCT'
+        ) {
+          if (!command.entityName) {
+            throw new VoiceV2Error(
+              'MISSING_ENTITY',
+              'Product name is required',
+            );
+          }
+
+          const product =
+            await findProduct(
+              userId,
+              command.entityName,
+              session,
+            );
+
+          const hasTransactions =
+            await Transaction.exists({
+              userId: uid,
+              productId: product._id,
+            }).session(session);
+
+          if (hasTransactions) {
+            throw new VoiceV2Error(
+              'DELETE_BLOCKED',
+              'This product has transaction history and cannot be deleted safely.',
+            );
+          }
+
+          await Product.deleteOne(
+            {
+              _id: product._id,
+              userId: uid,
+            },
+            {
+              session,
+            },
+          );
+
+          result = {
+            type: 'DELETE_PRODUCT',
+            id: String(
+              product._id,
+            ),
+            name: product.name,
+          };
+        }
+
+        /* ---------------------------------------------------------------- */
+        /* DUE / PAYMENT                                                     */
+        /* ---------------------------------------------------------------- */
+
+        else if (
+          command.action ===
+            'CREATE_DUE' ||
+          command.action ===
+            'RECEIVE_PAYMENT'
+        ) {
+          if (
+            !command.entityName ||
+            !command.amount ||
+            command.amount <= 0
+          ) {
+            throw new VoiceV2Error(
+              'INVALID_TRANSACTION',
+              'Customer and positive amount are required',
+            );
+          }
+
+          let party;
+          let partyCreated = false;
+
+          if (command.partyType === 'SUPPLIER' || command.entityType === 'SUPPLIER') {
+            const resolved = await findOrCreateParty(
+              userId,
+              command.entityName,
+              session,
+              'SUPPLIER',
+            );
+            party = resolved.party;
+            partyCreated = resolved.created;
+          } else {
+            const existingSupplier = await Party.findOne({
+              userId: new Types.ObjectId(userId),
+              name: command.entityName,
+              partyType: 'SUPPLIER',
+            }).session(session);
+
+            if (existingSupplier) {
+              party = existingSupplier;
+            } else {
+              const resolved = await findOrCreateParty(
+                userId,
+                command.entityName,
+                session,
+                'CUSTOMER',
+              );
+              party = resolved.party;
+              partyCreated = resolved.created;
+            }
+          }
+
+          const isSupplier =
+            party.partyType === 'SUPPLIER' ||
+            command.partyType === 'SUPPLIER' ||
+            command.entityType === 'SUPPLIER';
+
+          // Balance convention:
+          // CUSTOMER: DUE_GIVEN +, DUE_RECEIVED -
+          // SUPPLIER: DUE_RECEIVED -, DUE_GIVEN +
+          // Therefore a supplier payable increases with CREATE_DUE,
+          // while a supplier payment uses DUE_GIVEN to reduce the payable.
+          const transactionType =
+            isSupplier
+              ? command.action === 'CREATE_DUE'
+                ? 'DUE_RECEIVED'
+                : 'DUE_GIVEN'
+              : command.action === 'CREATE_DUE'
+                ? 'DUE_GIVEN'
+                : 'DUE_RECEIVED';
+
+          const transaction =
+            await createTransaction(
+              {
+                type: transactionType,
+
+                partyId: String(party._id),
+
+                amount: command.amount,
+
+                quantity: 0,
+
+                notes: command.notes || undefined,
+                commandId,
+                source: 'VOICE',
+              },
+              userId,
+              session,
+            );
+
+          result = {
+            type: command.action,
+            ledgerType: transactionType,
+            partyType: party.partyType,
+            amount:
+              command.amount,
+
+            party: {
+              id: String(party._id),
+              name: party.name,
+              created: partyCreated,
+            },
+
+            transaction,
+          };
+        }
+
+        /* ---------------------------------------------------------------- */
+        /* STOCK                                                              */
+        /* ---------------------------------------------------------------- */
+
+        else if (
+          command.action ===
+            'STOCK_IN' ||
+          command.action ===
+            'STOCK_OUT'
+        ) {
+          if (
+            !command.entityName ||
+            !command.quantity ||
+            command.quantity <= 0
+          ) {
+            throw new VoiceV2Error(
+              'INVALID_STOCK',
+              'Product and positive quantity are required',
+            );
+          }
+
+          const resolvedProduct =
+            command.action === 'STOCK_IN'
+              ? await findOrCreateProduct(
+                  userId,
+                  command.entityName,
+                  session,
+                  {
+                    unit: command.unit,
+                    quantity: command.quantity,
+                    unitPrice: command.unitPrice,
+                  },
+                )
+              : { product: await findProduct(userId, command.entityName, session), created: false };
+
+          const product = resolvedProduct.product;
+
+          if (!product) {
+            throw new VoiceV2Error(
+              'PRODUCT_NOT_FOUND',
+              `Product "${command.entityName}" পাওয়া যায়নি।`,
+            );
+          }
+
+          const transaction =
+            await createTransaction(
+              {
+                type:
+                  command.action ===
+                  'STOCK_IN'
+                    ? 'STOCK_IN'
+                    : 'STOCK_OUT',
+
+                productId: String(
+                  product._id,
+                ),
+
+                amount: money(
+                  num(
+                    command.quantity,
+                  ) *
+                    num(
+                      command.unitPrice,
+                    ),
+                ),
+
+                quantity:
+                  command.quantity,
+
+                unitPrice:
+                  command.unitPrice ??
+                  undefined,
+
+                notes:
+                  command.notes ||
+                  undefined,
+                commandId,
+                source: 'VOICE',
+              },
+              userId,
+              session,
+            );
+
+          const fresh =
+            await Product.findById(
+              product._id,
+            )
+              .session(session)
+              .lean();
+
+          result = {
+            type: command.action,
+
+            product: {
+              id: String(product._id),
+              name: product.name,
+              unit: product.unit,
+              created: resolvedProduct.created,
+            },
+
+            quantity:
+              command.quantity,
+
+            stock: num(
+              fresh?.stockQuantity,
+            ),
+
+            transaction,
+          };
+        }
+
+        /* ---------------------------------------------------------------- */
+        /* SALE / PURCHASE                                                   */
+        /* ---------------------------------------------------------------- */
+
+        else if (
+          command.action ===
+            'CREATE_SALE' ||
+          command.action ===
+            'CREATE_PURCHASE'
+        ) {
+          const isAmountOnlySale =
+            command.action === 'CREATE_SALE' &&
+            !command.entityName &&
+            !command.quantity &&
+            !command.unitPrice &&
+            !!command.amount &&
+            command.amount > 0;
+
+          if (
+            !isAmountOnlySale &&
+            (!command.entityName ||
+              !command.quantity ||
+              command.quantity <= 0 ||
+              ((!command.unitPrice || command.unitPrice <= 0) &&
+                command.action !== 'CREATE_SALE'))
+          ) {
+            throw new VoiceV2Error(
+              'INVALID_TRADE',
+              'Product, quantity and unit price are required for an inventory sale or purchase',
+            );
+          }
+
+          const resolvedProduct =
+            isAmountOnlySale
+              ? { product: null, created: false }
+              : command.action === 'CREATE_PURCHASE'
+                ? await findOrCreateProduct(
+                    userId,
+                    command.entityName!,
+                    session,
+                    {
+                      unit: command.unit,
+                      // Inventory quantity is applied exactly once by the
+                      // STOCK_IN transaction below. Do not seed the new
+                      // product with the purchase quantity here.
+                      quantity: 0,
+                      unitPrice: command.unitPrice!,
+                    },
+                  )
+                : { product: await findProduct(userId, command.entityName!, session), created: false };
+
+          const product = resolvedProduct.product;
+
+          // A named credit sale may omit the price:
+          // "রহিমকে ২ কেজি চাল বাকিতে বিক্রি করলাম".
+          // In that case use the product's current selling price. We do this
+          // after product resolution so the database value is authoritative.
+          const resolvedUnitPrice =
+            !isAmountOnlySale &&
+            command.action === 'CREATE_SALE' &&
+            (!command.unitPrice || command.unitPrice <= 0)
+              ? money((product as any)?.sellPrice)
+              : money(command.unitPrice);
+
+          const resolvedAmount =
+            !isAmountOnlySale &&
+            command.action === 'CREATE_SALE' &&
+            (!command.amount || command.amount <= 0) &&
+            command.quantity &&
+            resolvedUnitPrice > 0
+              ? money(command.quantity * resolvedUnitPrice)
+              : money(command.amount);
+
+          if (!isAmountOnlySale && !product) {
+            throw new VoiceV2Error(
+              'PRODUCT_NOT_FOUND',
+              `Product "${command.entityName}" পাওয়া যায়নি। আগে product হিসেবে যোগ করুন।`,
+            );
+          }
+
+          const transactionProduct = product;
+          if (!isAmountOnlySale && !transactionProduct) {
+            throw new VoiceV2Error(
+              'PRODUCT_NOT_FOUND',
+              `Product "${command.entityName}" পাওয়া যায়নি। আগে product হিসেবে যোগ করুন।`,
+            );
+          }
+
+          const total = isAmountOnlySale
+            ? money(command.amount)
+            : resolvedAmount;
+
+          const paid = num(
+            command.paidAmount,
+          );
+
+          if (paid > total) {
+            throw new VoiceV2Error(
+              'INVALID_PAYMENT',
+              'Paid amount cannot exceed total amount',
+            );
+          }
+
+          if (
+            command.action ===
+            'CREATE_SALE'
+          ) {
+            let partyId:
+              | string
+              | undefined;
+
+            let customerCreated = false;
+
+            if (command.query) {
+              const resolved = await findOrCreateParty(userId, command.query, session, 'CUSTOMER');
+              partyId = String(resolved.party._id);
+              customerCreated = resolved.created;
+            } else if (paid < total) {
+              throw new VoiceV2Error(
+                'PARTY_REQUIRED',
+                'A customer is required for an unpaid or credit sale. For a walk-in sale, say "নগদে" or provide the customer name.',
+              );
+            }
+
+            const transaction =
+              await createTransaction(
+                {
+                  type: 'SALE',
+
+                  partyId,
+
+                  productId: product ? String(product._id) : undefined,
+
+                  amount: total,
+
+                  quantity: command.quantity ?? 0,
+
+                  unitPrice: resolvedUnitPrice > 0 ? resolvedUnitPrice : undefined,
+
+                  paidAmount: paid,
+
+                  notes:
+                    command.notes ||
+                    undefined,
+                },
+                userId,
+                session,
+              );
+
+            result = {
+              type: 'CREATE_SALE',
+
+              product:
+                product?.name ?? null,
+
+              total,
+
+              paidAmount: paid,
+
+              due: money(total - paid),
+              customerCreated,
+              transaction,
+            };
+          } else {
+            if (!command.query) {
+              throw new VoiceV2Error(
+                'PARTY_REQUIRED',
+                'Supplier name is required for a purchase',
+              );
+            }
+
+            const supplierResolved = await findOrCreateParty(userId, command.query, session, 'SUPPLIER');
+            if (supplierResolved.created) {
+              throw new VoiceV2Error('SUPPLIER_NOT_FOUND', `Supplier "${command.query}" পাওয়া যায়নি। আগে supplier হিসেবে যোগ করুন।`);
+            }
+            const supplier = supplierResolved.party;
+
+            const transaction =
+              await createTransaction(
+                {
+                  type: 'STOCK_IN',
+
+                  partyId: String(
+                    supplier._id,
+                  ),
+
+                  productId: String(
+                    transactionProduct!._id,
+                  ),
+
+                  amount: total,
+
+                  quantity:
+                    command.quantity!,
+
+                  unitPrice:
+                    command.unitPrice!,
+
+                  paidAmount: paid,
+
+                  notes:
+                    command.notes ||
+                    undefined,
+                },
+                userId,
+                session,
+              );
+
+            const due = money(
+              total - paid,
+            );
+
+            if (due > 0) {
+              await Party.updateOne(
+                {
+                  _id:
+                    supplier._id,
+                  userId: uid,
+                },
+                {
+                  $inc: {
+                    currentBalance:
+                      -due,
+                  },
+                },
+                {
+                  session,
+                },
+              );
+            }
+
+            result = {
+              type: 'CREATE_PURCHASE',
+
+              product:
+                transactionProduct!.name,
+
+              supplier: supplier.name,
+              supplierCreated: supplierResolved.created,
+              total,
+
+              paidAmount: paid,
+
+              due,
+
+              transaction,
+            };
+          }
+        }
+
+        /* ---------------------------------------------------------------- */
+        /* EXPENSE                                                            */
+        /* ---------------------------------------------------------------- */
+
+        else if (
+          command.action ===
+          'CREATE_EXPENSE'
+        ) {
+          if (
+            !command.amount ||
+            command.amount <= 0
+          ) {
+            throw new VoiceV2Error(
+              'INVALID_EXPENSE',
+              'Positive expense amount is required',
+            );
+          }
+
+          const transaction =
+            await createTransaction(
+              {
+                type: 'EXPENSE',
+
+                amount:
+                  command.amount,
+
+                quantity: 0,
+
+                notes:
+                  command.notes ||
+                  transcript,
+                commandId,
+                source: 'VOICE',
+              },
+              userId,
+              session,
+            );
+
+          result = {
+            type: 'CREATE_EXPENSE',
+            amount:
+              command.amount,
+            transaction,
+          };
+        }
+
+        /* ---------------------------------------------------------------- */
+        /* OTHER INCOME                                                     */
+        /* ---------------------------------------------------------------- */
+
+        else if (
+          command.action ===
+          'CREATE_INCOME'
+        ) {
+          if (!command.amount || command.amount <= 0) {
+            throw new VoiceV2Error(
+              'INVALID_INCOME',
+              'Positive income amount is required',
+            );
+          }
+
+          const transaction =
+            await createTransaction(
+              {
+                type: 'OTHER_INCOME',
+                amount: command.amount,
+                quantity: 0,
+                notes: command.notes || transcript,
+                commandId,
+                source: 'VOICE',
+              },
+              userId,
+              session,
+            );
+
+          result = {
+            type: 'CREATE_INCOME',
+            amount: command.amount,
+            transaction,
+          };
+        }
+
+        /* ---------------------------------------------------------------- */
+        /* DELETE TRANSACTION                                                */
+        /* ---------------------------------------------------------------- */
+
+        else if (
+          command.action ===
+          'DELETE_TRANSACTION'
+        ) {
+          if (
+            !command.targetId ||
+            !Types.ObjectId.isValid(
+              command.targetId,
+            )
+          ) {
+            throw new VoiceV2Error(
+              'MISSING_ENTITY',
+              'Valid transaction id is required',
+            );
+          }
+
+          result = {
+            type: 'DELETE_TRANSACTION',
+
+            reversal:
+              await reverseTransaction(
+                command.targetId,
+                userId,
+                session,
+              ),
+          };
+        }
+
+        /* ---------------------------------------------------------------- */
+        /* Unsupported                                                        */
+        /* ---------------------------------------------------------------- */
+
+        else {
+          throw new VoiceV2Error(
+            'UNSUPPORTED_ACTION',
+            `Action ${command.action} is not implemented yet.`,
+          );
+        }
+      },
+      {
+        readConcern: {
+          level: 'local',
+        },
+
+        writeConcern: {
+          w: 'majority',
+        },
+
+        maxCommitTimeMS: 10_000,
+      },
+    );
+  } catch (error) {
+    if (error instanceof VoiceV2Error) {
+      throw error;
+    }
+
+    if (
+      error instanceof
+      TransactionServiceError
+    ) {
+      throw new VoiceV2Error(
+        error.code,
+        error.message,
+        error.details,
+      );
+    }
+
+    throw error;
+  } finally {
+    await session.endSession();
+  }
+
+  /* ---------------------------------------------------------------------- */
+  /* Audit                                                                   */
+  /* ---------------------------------------------------------------------- */
+
+  if (commandId) {
+    await AuditLog.create({
+      userId: uid,
+
+      voiceTranscript:
+        transcript,
+
+      parsedIntent:
+        command,
+
+      status: 'SUCCESS',
+
+      commandId,
+
+      result,
+    }).catch(() => {});
+  }
+
+  return result;
+}
+
+/* -------------------------------------------------------------------------- */
+/* Local parser                                                               */
+/* -------------------------------------------------------------------------- */
+
+,
+      'iu',
+    ));
+  if (match?.[1]) return command('CREATE_DUE', match[1]);
+
+  match = value.match(new RegExp(
+    '^(.+?)\s+(?:বাকি|বাকিতে|ধারে|উধারে|due|baki|bakite|dhare|credit)\s*' +
+    numberPattern + '\s*(?:টাকা|tk|taka)?\s*(?:নিল|নিলো|নিয়েছে|নিয়েছে|নেবে|নিবে|নেবো|নিবো|নিলাম|nil|nilo|niyeche|niyechi|nibe|nebe|nebo|nibo|nilam|took|take|taken)$',
+    'iu',
+  ))
+    || value.match(new RegExp(
+      '^(.+?)\s*' + numberPattern + '\s*(?:টাকা|tk|taka)?\s*(?:বাকি|বাকিতে|ধারে|উধারে|due|baki|bakite|dhare|credit)\s*(?:নিল|নিলো|নিয়েছে|নিয়েছে|নেবে|নিবে|নেবো|নিবো|নিলাম|nil|nilo|niyeche|niyechi|nibe|nebe|nebo|nibo|nilam|took|take|taken)$',
+      'iu',
+    ))
+    || value.match(new RegExp(
+      '^(.+?)\s*(?:নিল|নিলো|নিয়েছে|নিয়েছে|নেবে|নিবে|নেবো|নিবো|নিলাম|nil|nilo|niyeche|niyechi|nibe|nebe|nebo|nibo|nilam|took|take|taken)\s*' +
+      numberPattern + '\s*(?:টাকা|tk|taka)?\s*(?:বাকি|বাকিতে|ধারে|উধারে|due|baki|bakite|dhare|credit)$',
+      'iu',
+    ));
+  if (match?.[1]) return command('CREATE_DUE', match[1]);
+
+  match = value.match(new RegExp(
+    '^(?:আমি|আমরা|i|we)\s+(.+?)\s*(?:এর|ের|র)?\s*(?:কাছ থেকে|কাছথেকে|থেকে)\s*' +
+    numberPattern + '\s*(?:টাকা|tk|taka)?\s*(?:নেবো|নেব|নিবো|নিব|পাবো|পাব|nebo|nibo|pabo)$',
+    'iu',
+  ));
+  if (match?.[1]) return command('RECEIVE_PAYMENT', match[1]);
+
+  return null;
+}
+
+/* -------------------------------------------------------------------------- */
+/* Local parser                                                               */
+/* -------------------------------------------------------------------------- */
+
+export function parseVoiceV2Local(text: string): VoiceV2Command | null {
+  const inventory = parseInventoryPurchaseCommand(text);
+  if (inventory) return inventory;
+
+  const createProduct = parseCreateProductCommand(text);
+  if (createProduct) return createProduct;
+
+  const sale = parseSaleCommand(text);
+  if (sale) return sale;
+
+  const shopFinance = parseShopFinanceCommand(text);
+  if (shopFinance) return shopFinance;
+
+  // Resolve high-confidence party-money direction before generic heuristics or AI.
+  const ledgerDirection = parseLedgerDirectionCommand(text);
+  if (ledgerDirection) return ledgerDirection;
+
+  const value = norm(text);
+  const amount = extractNumber(text);
+  const name = partyName(text);
+
+  const createParty = extractCreatePartyName(text);
+  if (createParty) {
+    const command = blank('CREATE_PARTY');
+    command.entityType = createParty.partyType;
+    command.entityName = createParty.name;
+    command.partyType = createParty.partyType;
+    return command;
+  }
+
+  // Defensive local fallback: create-party commands must never reach a paid AI
+  // provider just because a speech transcript used a slightly different ending.
+  const createPartyFallback = value.match(
+    /^(.*?)\s+(?:name|নামে)\s+নতুন\s+(customer|কাস্টমার|গ্রাহক|supplier|সাপ্লায়ার|সরবরাহকারী)\s+(?:যোগ|add|create)(?:\s+(?:কর|করো|করুন|করতে|দাও|দাওনা))?$/iu,
+  );
+  if (createPartyFallback?.[1]?.trim()) {
+    const partyType =
+      /^(supplier|সাপ্লায়ার|সরবরাহকারী)$/iu.test(createPartyFallback[2] || '')
+        ? 'SUPPLIER'
+        : 'CUSTOMER';
+    const command = blank('CREATE_PARTY');
+    command.entityType = partyType;
+    command.entityName = createPartyFallback[1].trim();
+    command.partyType = partyType;
+    return command;
+  }
+  const deletePartyMatch = value.match(
+    /^(.*?)\s+(?:customer|কাস্টমার|গ্রাহক|supplier|সাপ্লায়ার|সরবরাহকারী|party|পার্টি)?\s*(?:delete|remove|ডিলিট|মুছে দাও|মুছে ফেলো|মুছে ফেলুন|সরিয়ে দাও|সরিয়ে দাও|বাদ দাও|ডিলেট|delete koro|delete kor|remove koro|remove kor|মুছে দাও|মুছে ফেলো)\s*$/iu,
+  );
+  if (deletePartyMatch?.[1]?.trim()) {
+    const raw = deletePartyMatch[1].trim();
+    const partyType =
+      /(?:supplier|সাপ্লায়ার|সরবরাহকারী)/iu.test(raw)
+        ? 'SUPPLIER'
+        : /(?:customer|কাস্টমার|গ্রাহক)/iu.test(raw)
+          ? 'CUSTOMER'
+          : null;
+    const entityName = raw
+      .replace(/(?:customer|কাস্টমার|গ্রাহক|supplier|সাপ্লায়ার|সরবরাহকারী|party|পার্টি)\s*$/iu, '')
+      .trim();
+    if (entityName) {
+      const command = blank('DELETE_PARTY');
+      command.entityType = partyType || 'CUSTOMER';
+      command.entityName = entityName;
+      command.partyType = partyType;
+      command.confirmRequired = true;
+      return command;
+    }
+  }
+
+
+  const list = /(?:list|তালিকা|সব|সকল|দেখাও|দেখান|দেখতে চাই|show|dao|দাও|লিস্ট)/i.test(value);
+
+  if (/(?:customer|কাস্টমার|গ্রাহক|party|পার্টি)/i.test(value) && list) {
+    const command = blank('LIST_PARTIES');
+    command.entityType = 'CUSTOMER';
+    command.partyType = 'CUSTOMER';
+    return command;
+  }
+
+  if (/(?:supplier|সরবরাহকারী|সাপ্লায়ার|সাপ্লাইয়ার)/i.test(value) && list) {
+    const command = blank('LIST_PARTIES');
+    command.entityType = 'SUPPLIER';
+    command.partyType = 'SUPPLIER';
+    return command;
+  }
+
+  if (/(?:product|পণ্য|item|আইটেম|মাল)/i.test(value) && list) {
+    return blank('LIST_PRODUCTS');
+  }
+
+  if (/(?:transaction|লেনদেন|হিসাব|খাতা|ট্রানজেকশন)/i.test(value) && list) {
+    return blank('LIST_TRANSACTIONS');
+  }
+
+  const customerOwes =
+    /(?:বাকি|পাওনা|দেনা|due|baki|credit|খাতায়|খাতায়|হিসাবে|বাড়াও|বাড়াও|যোগ করো|যোগ করুন|রাখলাম|রাখো)/iu.test(value);
+
+  const customerPaid =
+    /(?:কাছ থেকে|কাছথেকে|থেকে).*?(?:পেলাম|পেয়েছি|পেয়েছি|নিলাম|নিয়েছি|নিয়েছি|আদায়|আদায়|পরিশোধ|জমা)|(?:পেলাম|পেয়েছি|পেয়েছি|দিল|দিয়েছে|দিয়েছে|পরিশোধ করেছে|জমা দিল|জমা দিয়েছে|জমা দিয়েছে|paid|received|payment|pelam|peyechi|nilam|diyeche)/iu.test(value);
+
+  const moneyGivenToParty =
+    /(?:কে|ke)\s*\d[\d,]*(?:\.\d+)?\s*(?:টাকা|tk|taka)?\s*(?:দিলাম|দিল|দিয়েছি|দিয়েছি|দেব|দিব|রাখলাম|রাখো|dilam|dil|dilo|diyechi|dibo)/iu.test(value);
+
+  const balanceQuery =
+    /(?:কত|কতো|বাকি কত|পাওনা কত|দেনা কত|হিসাব|খাতার হিসাব|balance|due|pabo|pabe|koto|hisab|how much|kototuku)/i.test(value);
+
+  if (name && balanceQuery && !amount) {
+    const command = blank('READ_BALANCE');
+    command.entityType = 'CUSTOMER';
+    command.entityName = name;
+    command.partyType = 'CUSTOMER';
+    return command;
+  }
+
+  if (name && amount && customerPaid && !moneyGivenToParty) {
+    const command = blank('RECEIVE_PAYMENT');
+    command.entityType = 'CUSTOMER';
+    command.entityName = name;
+    command.partyType = 'CUSTOMER';
+    command.amount = amount;
+    return command;
+  }
+
+  if (name && amount && (moneyGivenToParty || customerOwes)) {
+    const command = blank('CREATE_DUE');
+    command.entityType = 'CUSTOMER';
+    command.entityName = name;
+    command.partyType = 'CUSTOMER';
+    command.amount = amount;
+    return command;
+  }
+
+  if (name && amount && /(?:দিলাম|দিল|দিয়েছি|দিয়েছি|dilam|dil|dilo|diyechi)/iu.test(value)) {
+    const command = blank('CREATE_DUE');
+    command.entityType = 'CUSTOMER';
+    command.entityName = name;
+    command.partyType = 'CUSTOMER';
+    command.amount = amount;
+    return command;
+  }
+
+  return null;
+}
+
+/* -------------------------------------------------------------------------- */
+/* Semantic post-normalization                                                */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * Correct only high-confidence party-payment direction after the LLM.
+ * This prevents a provider from confusing "Rahim gave me 500" with
+ * "I gave Rahim 500", which is the most expensive class of voice error.
+ */
+function normalizeLedgerSemantics(
+  command: VoiceV2Command,
+  text: string,
+): VoiceV2Command {
+  const value = norm(text);
+  const name = partyName(text);
+  const amount = extractNumber(text);
+  if (!name || amount === null) return command;
+
+  if (command.partyType === 'SUPPLIER' || command.entityType === 'SUPPLIER') {
+    return { ...command, entityType: 'SUPPLIER', partyType: 'SUPPLIER', entityName: command.entityName || name, amount };
+  }
+
+  const outgoingToParty =
+    /(?:কে|ke)\s*\d[\d,]*(?:\.\d+)?\s*(?:টাকা|tk|taka)?\s*(?:দিলাম|দিল|দিয়েছি|দিয়েছি|দেব|দিব|রাখলাম|dilam|dil|dilo|diyechi|dibo)/iu.test(value);
+  const incomingFromParty =
+    /(?:কাছ থেকে|কাছথেকে|থেকে)\s*\d[\d,]*(?:\.\d+)?\s*(?:টাকা|tk|taka)?\s*(?:পেলাম|পেয়েছি|পেয়েছি|নিলাম|নিয়েছি|নিয়েছি|আদায়|আদায়|পরিশোধ|জমা)/iu.test(value) ||
+    /^(?:.+?)\s+\d[\d,]*(?:\.\d+)?\s*(?:টাকা|tk|taka)?\s*(?:দিল|দিলো|দিয়েছে|দিয়েছে|পরিশোধ করেছে|paid|received)$/iu.test(value);
+
+  if (outgoingToParty && ['RECEIVE_PAYMENT', 'CREATE_DUE'].includes(command.action)) {
+    return { ...command, action: 'CREATE_DUE', entityType: 'CUSTOMER', partyType: 'CUSTOMER', entityName: command.entityName || name, amount };
+  }
+  if (incomingFromParty && ['CREATE_DUE', 'RECEIVE_PAYMENT'].includes(command.action)) {
+    return { ...command, action: 'RECEIVE_PAYMENT', entityType: 'CUSTOMER', partyType: 'CUSTOMER', entityName: command.entityName || name, amount };
+  }
+  return validateVoiceCommandSafety(command);
+}
+
+/* -------------------------------------------------------------------------- */
+/* AI system prompt                                                           */
+/* -------------------------------------------------------------------------- */
+
+const SYSTEM = [
+  'TaliKhata AI command understanding layer.',
+  'Understand Bangla, Banglish, English, Bengali/Arabic digits, colloquial speech and natural phrasing.',
+  'Return exactly one emit_voice_command call. Its command argument must be a JSON string matching the TaliKhata command fields.',
+  'Never invent IDs, database facts, prices, stock, balances or names. Preserve spoken names exactly; normalize number words and units into numeric/standard values.',
+  'Choose intent only from the allowed action values. CREATE_SALE means selling stock; CREATE_PURCHASE means buying stock; CREATE_PARTY means creating a customer/supplier; CREATE_DUE means money the customer owes; RECEIVE_PAYMENT means money received from a customer; supplier payments must remain supplier-side.',
+  'If required information is genuinely missing, use null. Do not turn missing data into guesses.'
+].join('\\n');
+
+/* -------------------------------------------------------------------------- */
+/* OpenAI tool                                                                */
+/* -------------------------------------------------------------------------- */
+
+const VOICE_V2_TOOL = {
+  type: 'function' as const,
+
+  function: {
+    name: 'emit_voice_command',
+
+    description:
+      'Return the single validated TaliKhata command requested by the user.',
+
+    parameters: VoiceV2JsonSchema,
+  },
+};
+
+/* -------------------------------------------------------------------------- */
+/* Provider types                                                             */
+/* -------------------------------------------------------------------------- */
+
+type VoiceProvider = {
+  name: 'openai' | 'openrouter';
+  apiKey: string;
+  model: string;
+  baseURL?: string;
+};
+
+/* -------------------------------------------------------------------------- */
+/* Provider configuration                                                      */
+/* -------------------------------------------------------------------------- */
+
+function getProviders(): VoiceProvider[] {
+  const providers: VoiceProvider[] = [];
+
+  const openAIKey = process.env.OPENAI_API_KEY?.trim();
+
+  if (openAIKey) {
+    providers.push({
+      name: 'openai',
+      apiKey: openAIKey,
+      model:
+        process.env.OPENAI_VOICE_MODEL?.trim() ||
+        'gpt-4.1-mini',
+    });
+  }
+
+  const openRouterKey =
+    process.env.OPENROUTER_API_KEY?.trim();
+
+  if (openRouterKey) {
+    providers.push({
+      name: 'openrouter',
+      apiKey: openRouterKey,
+      model:
+        process.env.OPENROUTER_VOICE_MODEL?.trim() ||
+        'openai/gpt-4.1-mini',
+      baseURL: 'https://openrouter.ai/api/v1',
+    });
+  }
+
+  return providers;
+}
+
+/* -------------------------------------------------------------------------- */
+/* Tool-call extraction                                                       */
+/* -------------------------------------------------------------------------- */
+
+function getToolArguments(response: OpenAI.Chat.Completions.ChatCompletion): string {
+  const toolCalls = response.choices[0]?.message?.tool_calls;
+
+  if (!toolCalls?.length) {
+    throw new Error(
+      'Provider returned no tool calls.',
+    );
+  }
+
+  const functionCall = toolCalls.find(
+    (
+      call,
+    ): call is Extract<
+      OpenAI.Chat.Completions.ChatCompletionMessageToolCall,
+      { type: 'function' }
+    > => call.type === 'function',
+  );
+
+  if (!functionCall?.function?.arguments) {
+    throw new Error(
+      'Provider returned no function arguments.',
+    );
+  }
+
+  return functionCall.function.arguments;
+}
+
+/* -------------------------------------------------------------------------- */
+/* AI parser                                                                  */
+/* -------------------------------------------------------------------------- */
+
+async function aiParse(
+  text: string,
+): Promise<VoiceV2Command> {
+  const providers = getProviders();
+  if (!providers.length) throw new VoiceV2Error('AI_NOT_CONFIGURED','No voice AI provider is configured. Add OPENAI_API_KEY or OPENROUTER_API_KEY to .env.local.',{providers:[]});
+  const errors: Array<{ provider: string; model: string; message: string }> = [];
+  for (const provider of providers) {
+    try {
+      console.info('[VoiceV2] Trying ' + provider.name + ' with ' + provider.model);
+      const client = new OpenAI({
+        apiKey: provider.apiKey,
+        baseURL: provider.baseURL,
+        timeout: 10_000,
+        maxRetries: 0,
+        defaultHeaders: provider.name === 'openrouter' ? {
+          'HTTP-Referer': process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000',
+          'X-Title': 'TaliKhata Voice V2',
+        } : undefined,
+      });
+      const response = await client.chat.completions.create({
+        model: provider.model,
+        messages: [{ role: 'system', content: SYSTEM }, { role: 'user', content: text }],
+        temperature: 0,
+        max_completion_tokens: 128,
+        tools: [VOICE_V2_TOOL],
+        tool_choice: { type: 'function', function: { name: 'emit_voice_command' } },
+      });
+      const argumentsJSON = getToolArguments(response);
+      let envelope: unknown;
+      try { envelope = JSON.parse(argumentsJSON); } catch { throw new Error('Provider returned invalid tool-call JSON.'); }
+      const commandPayload = envelope && typeof envelope === 'object' && 'command' in envelope && typeof (envelope as { command?: unknown }).command === 'string'
+        ? (envelope as { command: string }).command
+        : argumentsJSON;
+      let parsed: unknown;
+      try { parsed = JSON.parse(commandPayload); } catch { throw new Error('Provider returned invalid command JSON.'); }
+      const validated = VoiceV2Schema.safeParse(parsed);
+      if (!validated.success) {
+        const issues = validated.error.issues.map((issue) => ({ path: issue.path.join('.'), code: issue.code, message: issue.message }));
+        console.error('[VoiceV2] Invalid AI command:', issues);
+        throw new Error('Provider returned a command that failed TaliKhata validation: ' + issues.map((issue) => (issue.path || 'command') + ': ' + issue.message).join('; '));
+      }
+      console.info('[VoiceV2] ' + provider.name + ' succeeded');
+      return normalizeLedgerSemantics(validated.data, text);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      errors.push({ provider: provider.name, model: provider.model, message });
+      console.error('[VoiceV2] ' + provider.name + ' failed', { model: provider.model, message, error });
+    }
+  }
+  throw new VoiceV2Error('AI_UNAVAILABLE','Voice AI providers are temporarily unavailable. Please try again.',{providers:errors});
+}
+
+/* -------------------------------------------------------------------------- */
+/* Public parser                                                              */
+/* -------------------------------------------------------------------------- */
+
+export async function parseVoiceV2(
+  text: string,
+): Promise<VoiceV2Command> {
+  const normalized = text.trim();
+  if (!normalized) throw new VoiceV2Error('EMPTY_COMMAND', 'Voice command is empty.');
+  // AI is the primary understanding layer. Local regex parsers are emergency fallback only.
+  try {
+    return validateVoiceCommandSafety(await aiParse(normalized));
+  } catch (error) {
+    if (!(error instanceof VoiceV2Error) || !['AI_UNAVAILABLE', 'AI_NOT_CONFIGURED'].includes(error.code)) throw error;
+    const local = parseVoiceV2Local(normalized);
+    if (local) return normalizeLedgerSemantics(local, normalized);
+    throw error;
+  }
+}
+
+/* -------------------------------------------------------------------------- */
+/* Party resolver                                                             */
+/* -------------------------------------------------------------------------- */
+
+async function findParty(
+  userId: string,
+  name: string,
+  session: any,
+  type?: 'CUSTOMER' | 'SUPPLIER',
+) {
+  const all = await resolveParty(
+    userId,
+    name,
+    session,
+  );
+
+  const rows = type
+    ? all.filter(
+        (party: any) =>
+          party.partyType === type,
+      )
+    : all;
+
+  if (!rows.length) {
+    throw new VoiceV2Error(
+      'NOT_FOUND',
+      `${
+        type === 'SUPPLIER'
+          ? 'Supplier'
+          : 'Customer'
+      } "${name}" was not found`,
+      {
+        name,
+      },
+    );
+  }
+
+  if (rows.length > 1) {
+    throw new VoiceV2Error(
+      'AMBIGUOUS_ENTITY',
+      `Multiple parties matched "${name}"`,
+      {
+        matches: rows
+          .slice(0, 10)
+          .map((party: any) => ({
+            id: String(party._id),
+            name: party.name,
+            phone: party.phone || null,
+            balance: party.currentBalance,
+          })),
+      },
+    );
+  }
+
+  return rows[0];
+}
+
+/* -------------------------------------------------------------------------- */
+/* Admin                                                                      */
+/* -------------------------------------------------------------------------- */
+
+async function requireAdmin(
+  userId: string,
+) {
+  const user = await User.findById(userId)
+    .select('role status')
+    .lean();
+
+  if (
+    !user ||
+    user.status !== 'ACTIVE' ||
+    user.role !== 'ADMIN'
+  ) {
+    throw new VoiceV2Error(
+      'FORBIDDEN',
+      'Admin permission is required for user management.',
+    );
+  }
+
+  return user;
+}
+
+/* -------------------------------------------------------------------------- */
+/* Product resolver                                                           */
+/* -------------------------------------------------------------------------- */
+
+async function findProduct(
+  userId: string,
+  name: string,
+  session: any,
+) {
+  const rows = await resolveProduct(
+    userId,
+    name,
+    session,
+  );
+
+  if (!rows.length) {
+    throw new VoiceV2Error(
+      'NOT_FOUND',
+      `Product "${name}" was not found`,
+      {
+        name,
+      },
+    );
+  }
+
+  if (rows.length > 1) {
+    throw new VoiceV2Error(
+      'AMBIGUOUS_ENTITY',
+      `Multiple products matched "${name}"`,
+      {
+        matches: rows
+          .slice(0, 10)
+          .map((product: any) => ({
+            id: String(product._id),
+            name: product.name,
+            stock: product.stockQuantity,
+            unit: product.unit,
+          })),
+      },
+    );
+  }
+
+  return rows[0];
+}
+
+async function findOrCreateProduct(
+  userId: string,
+  name: string,
+  session: any,
+  input: { unit?: string | null; quantity?: number | null; unitPrice?: number | null },
+) {
+  const normalizedName = name.trim();
+  if (!normalizedName) {
+    throw new VoiceV2Error('MISSING_ENTITY', 'Product name is required');
+  }
+
+  const candidates = await resolveProduct(userId, normalizedName, session);
+
+  if (candidates.length === 1) {
+    return { product: candidates[0], created: false };
+  }
+
+  if (candidates.length > 1) {
+    throw new VoiceV2Error(
+      'AMBIGUOUS_ENTITY',
+      `Multiple products matched "${normalizedName}"`,
+      {
+        matches: candidates.slice(0, 10).map((product: any) => ({
+          id: String(product._id),
+          name: product.name,
+          stock: product.stockQuantity,
+          unit: product.unit,
+        })),
+      },
+    );
+  }
+
+  const [created] = await Product.create(
+    [{
+      userId: new Types.ObjectId(userId),
+      name: normalizedName,
+      unit: input.unit?.trim() || 'unit',
+      stockQuantity: 0,
+      buyPrice: money(input.unitPrice),
+      sellPrice: 0,
+      lowStockThreshold: 5,
+    }],
+    { session },
+  );
+
+  return { product: created, created: true };
+}
+
+/* -------------------------------------------------------------------------- */
+/* Party creation / resolution                                                 */
+/* -------------------------------------------------------------------------- */
+
+async function findOrCreateParty(
+  userId: string,
+  name: string,
+  session: any,
+  type: 'CUSTOMER' | 'SUPPLIER',
+) {
+  const normalizedName = name.trim();
+
+  if (!normalizedName) {
+    throw new VoiceV2Error(
+      'MISSING_ENTITY',
+      type === 'SUPPLIER'
+        ? 'Supplier name is required'
+        : 'Customer name is required',
+    );
+  }
+
+  const candidates = await resolveParty(
+    userId,
+    normalizedName,
+    session,
+  );
+
+  const sameType = candidates.filter(
+    (party: any) => party.partyType === type,
+  );
+
+  if (sameType.length === 1) {
+    return { party: sameType[0], created: false };
+  }
+
+  if (sameType.length > 1) {
+    throw new VoiceV2Error(
+      'AMBIGUOUS_ENTITY',
+      'Multiple ' +
+        (type === 'SUPPLIER' ? 'suppliers' : 'customers') +
+        ' matched "' +
+        normalizedName +
+        '".',
+      {
+        matches: sameType.slice(0, 10).map((party: any) => ({
+          id: String(party._id),
+          name: party.name,
+          phone: party.phone || null,
+          balance: party.currentBalance,
+        })),
+      },
+    );
+  }
+
+  try {
+    const [created] = await Party.create(
+      [
+        {
+          userId: new Types.ObjectId(userId),
+          name: normalizedName,
+          partyType: type,
+          currentBalance: 0,
+        },
+      ],
+      { session },
+    );
+
+    return { party: created, created: true };
+  } catch (error) {
+    if (
+      error instanceof Error &&
+      /E11000|duplicate/i.test(error.message)
+    ) {
+      const retry = await resolveParty(
+        userId,
+        normalizedName,
+        session,
+      );
+
+      const retrySameType = retry.filter(
+        (party: any) => party.partyType === type,
+      );
+
+      if (retrySameType.length === 1) {
+        return {
+          party: retrySameType[0],
+          created: false,
+        };
+      }
+    }
+
+    throw error;
+  }
+}
+
+/* -------------------------------------------------------------------------- */
+/* Confirmation                                                               */
+/* -------------------------------------------------------------------------- */
+
+function confirm(
+  command: VoiceV2Command,
+  confirmed: boolean,
+) {
+  const destructiveActions = new Set([
+    'DELETE_PARTY',
+    'DELETE_PRODUCT',
+    'DELETE_TRANSACTION',
+    'DELETE_USER',
+  ]);
+
+  const amount = money(command.amount);
+
+  const highValueWrite =
+    amount >= 10000 &&
+    [
+      'CREATE_DUE',
+      'RECEIVE_PAYMENT',
+      'CREATE_SALE',
+      'CREATE_PURCHASE',
+      'CREATE_EXPENSE',
+      'CREATE_INCOME',
+    ].includes(command.action);
+
+  const needsConfirmation =
+    command.confirmRequired ||
+    destructiveActions.has(command.action) ||
+    highValueWrite;
+
+  if (needsConfirmation && !confirmed) {
+    throw new VoiceV2Error(
+      'CONFIRMATION_REQUIRED',
+      highValueWrite
+        ? '৳১০,০০০ বা তার বেশি আর্থিক লেনদেন করার আগে confirmation প্রয়োজন।'
+        : 'এই কাজটি করার আগে confirmation প্রয়োজন।',
+      {
+        action: command.action,
+        amount: amount || null,
+        reason: highValueWrite
+          ? 'HIGH_VALUE_FINANCIAL_WRITE'
+          : 'DESTRUCTIVE_ACTION',
+      },
+    );
+  }
+}
+
+/* -------------------------------------------------------------------------- */
+/* Execute Voice V2                                                           */
+/* -------------------------------------------------------------------------- */
+
+export async function executeVoiceV2(
+  commandInput: VoiceV2Command,
+  userId: string,
+  transcript = '',
+  confirmed = false,
+  commandId?: string,
+) {
+  /* ---------------------------------------------------------------------- */
+  /* Authentication                                                         */
+  /* ---------------------------------------------------------------------- */
+
+  const sessionUser = await auth();
+
+  if (
+    !sessionUser?.user?.id ||
+    sessionUser.user.id !== userId
+  ) {
+    throw new VoiceV2Error(
+      'UNAUTHORIZED',
+      'Unauthorized',
+    );
+  }
+
+  if (!Types.ObjectId.isValid(userId)) {
+    throw new VoiceV2Error(
+      'UNAUTHORIZED',
+      'Invalid user',
+    );
+  }
+
+  /* ---------------------------------------------------------------------- */
+  /* Validate command                                                       */
+  /* ---------------------------------------------------------------------- */
+
+  const parsedCommand =
+    VoiceV2Schema.parse(commandInput);
+
+  // Product creation is intentionally tolerant of omitted units in natural voice.
+  // Mongo still receives a valid unit so commands such as "চাল ৭০ টাকা দরে পণ্য হিসেবে যোগ করো"
+  // can create the catalog item instead of failing only because the spoken unit was omitted.
+  const command: VoiceV2Command =
+    parsedCommand.action === 'CREATE_PRODUCT'
+      ? { ...parsedCommand, unit: parsedCommand.unit || 'unit' }
+      : parsedCommand;
+
+  confirm(command, confirmed);
+
+  /* ---------------------------------------------------------------------- */
+  /* Database                                                               */
+  /* ---------------------------------------------------------------------- */
+
+  await connectDB();
+
+  const uid = new Types.ObjectId(userId);
+
+  /* ---------------------------------------------------------------------- */
+  /* Idempotency                                                             */
+  /* ---------------------------------------------------------------------- */
+
+  if (commandId) {
+    const old = await AuditLog.findOne({
+      userId: uid,
+      commandId,
+      status: 'SUCCESS',
+    }).lean();
+
+    if (old?.result) {
+      return old.result;
+    }
+
+    // Transaction-level idempotency protects against duplicate execution
+    // even when the audit write has not completed yet.
+    const existingTransaction = await Transaction.findOne({
+      userId: uid,
+      commandId,
+    }).lean();
+
+    if (existingTransaction) {
+      return {
+        type: command.action,
+        amount: existingTransaction.amount,
+        quantity: existingTransaction.quantity,
+        transaction: {
+          id: String(existingTransaction._id),
+          type: existingTransaction.type,
+          amount: existingTransaction.amount,
+          quantity: existingTransaction.quantity,
+        },
+      };
+    }
+  }
+
+  /* ---------------------------------------------------------------------- */
+  /* Balance                                                                */
+  /* ---------------------------------------------------------------------- */
+
+  if (command.action === 'READ_BALANCE') {
+    if (!command.entityName) {
+      throw new VoiceV2Error(
+        'MISSING_ENTITY',
+        'Customer name is required',
+      );
+    }
+
+    const party = await findParty(
+      userId,
+      command.entityName,
+      null,
+      'CUSTOMER',
+    );
+
+    const balance = money(
+      party.currentBalance,
+    );
+
+    return {
+      type: 'READ_BALANCE',
+
+      party: {
+        id: String(party._id),
+        name: party.name,
+        phone: party.phone || null,
+      },
+
+      balance,
+
+      receivable: Math.max(
+        0,
+        balance,
+      ),
+
+      payable: Math.max(
+        0,
+        -balance,
+      ),
+    };
+  }
+
+  /* ---------------------------------------------------------------------- */
+  /* Read / List                                                             */
+  /* ---------------------------------------------------------------------- */
+
+  if (
+    [
+      'READ_PARTY',
+      'READ_PRODUCT',
+      'LIST_PARTIES',
+      'LIST_PRODUCTS',
+      'LIST_TRANSACTIONS',
+      'READ_USER',
+      'LIST_USERS',
+    ].includes(command.action)
+  ) {
+    if (command.action === 'READ_PARTY') {
+      if (!command.entityName) {
+        throw new VoiceV2Error(
+          'MISSING_ENTITY',
+          'Party name is required',
+        );
+      }
+
+      return {
+        type: 'READ_PARTY',
+        party: await findParty(
+          userId,
+          command.entityName,
+          null,
+          command.partyType || undefined,
+        ),
+      };
+    }
+
+    if (command.action === 'READ_PRODUCT') {
+      if (!command.entityName) {
+        throw new VoiceV2Error(
+          'MISSING_ENTITY',
+          'Product name is required',
+        );
+      }
+
+      return {
+        type: 'READ_PRODUCT',
+        product: await findProduct(
+          userId,
+          command.entityName,
+          null,
+        ),
+      };
+    }
+
+    if (command.action === 'READ_USER') {
+      await requireAdmin(userId);
+
+      const user =
+        await User.findOne(
+          command.query
+            ? {
+                email:
+                  command.query.toLowerCase(),
+                _id: {
+                  $ne: uid,
+                },
+              }
+            : {
+                _id:
+                  command.targetId &&
+                  Types.ObjectId.isValid(
+                    command.targetId,
+                  )
+                    ? new Types.ObjectId(
+                        command.targetId,
+                      )
+                    : uid,
+              },
+        )
+          .select('-password')
+          .lean();
+
+      if (!user) {
+        throw new VoiceV2Error(
+          'NOT_FOUND',
+          'User was not found',
+        );
+      }
+
+      return {
+        type: 'READ_USER',
+        user,
+      };
+    }
+
+    if (command.action === 'LIST_USERS') {
+      await requireAdmin(userId);
+
+      const rows = await User.find({})
+        .select('-password')
+        .sort({
+          createdAt: -1,
+        })
+        .limit(200)
+        .lean();
+
+      return {
+        type: 'LIST_USERS',
+        items: rows,
+      };
+    }
+
+    if (
+      command.action === 'LIST_PARTIES'
+    ) {
+      const query: any = {
+        userId: uid,
+      };
+
+      if (command.partyType) {
+        query.partyType =
+          command.partyType;
+      }
+
+      const rows = await Party.find(query)
+        .sort({
+          name: 1,
+        })
+        .limit(200)
+        .lean();
+
+      return {
+        type: 'LIST_PARTIES',
+        items: rows.map(
+          (party: any) => ({
+            id: String(party._id),
+            name: party.name,
+            phone: party.phone || null,
+            partyType: party.partyType,
+            balance:
+              party.currentBalance,
+          }),
+        ),
+      };
+    }
+
+    if (
+      command.action === 'LIST_PRODUCTS'
+    ) {
+      const rows = await Product.find({
+        userId: uid,
+      })
+        .sort({
+          name: 1,
+        })
+        .limit(200)
+        .lean();
+
+      return {
+        type: 'LIST_PRODUCTS',
+        items: rows,
+      };
+    }
+
+    const rows =
+      await Transaction.find({
+        userId: uid,
+        isDeleted: {
+          $ne: true,
+        },
+      })
+        .sort({
+          timestamp: -1,
+        })
+        .limit(100)
+        .lean();
+
+    return {
+      type: 'LIST_TRANSACTIONS',
+      items: rows,
+    };
+  }
+
+  /* ---------------------------------------------------------------------- */
+  /* Transaction session                                                    */
+  /* ---------------------------------------------------------------------- */
+
+  const session =
+    await Party.startSession();
+
+  let result: any;
+
+  try {
+    await session.withTransaction(
+      async () => {
+        /* ---------------------------------------------------------------- */
+        /* USER CRUD                                                         */
+        /* ---------------------------------------------------------------- */
+
+        if (
+          command.action ===
+            'CREATE_USER' ||
+          command.action ===
+            'UPDATE_USER' ||
+          command.action ===
+            'DELETE_USER'
+        ) {
+          await requireAdmin(userId);
+
+          if (
+            command.action ===
+            'CREATE_USER'
+          ) {
+            const email =
+              clean(command.query)
+                ?.toLowerCase();
+
+            if (
+              !command.entityName ||
+              !email ||
+              !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(
+                email,
+              )
+            ) {
+              throw new VoiceV2Error(
+                'INVALID_USER',
+                'Name and valid email are required',
+              );
+            }
+
+            const duplicate =
+              await User.findOne({
+                email,
+              }).session(session);
+
+            if (duplicate) {
+              throw new VoiceV2Error(
+                'DUPLICATE_ENTITY',
+                'A user with this email already exists',
+              );
+            }
+
+            const [user] =
+              await User.create(
+                [
+                  {
+                    name:
+                      command.entityName,
+
+                    email,
+
+                    phone:
+                      command.phone ||
+                      undefined,
+
+                    role: 'USER',
+
+                    status: 'ACTIVE',
+                  },
+                ],
+                {
+                  session,
+                },
+              );
+
+            result = {
+              type: 'CREATE_USER',
+
+              user: {
+                id: String(user._id),
+                name: user.name,
+                email: user.email,
+                phone:
+                  user.phone || null,
+                role: user.role,
+                status: user.status,
+              },
+            };
+          } else {
+            const target =
+              command.query
+                ?.toLowerCase();
+
+            const filter: any =
+              target
+                ? {
+                    email: target,
+                  }
+                : {
+                    _id:
+                      command.targetId &&
+                      Types.ObjectId.isValid(
+                        command.targetId,
+                      )
+                        ? new Types.ObjectId(
+                            command.targetId,
+                          )
+                        : null,
+                  };
+
+            if (
+              !filter._id &&
+              !filter.email
+            ) {
+              throw new VoiceV2Error(
+                'MISSING_ENTITY',
+                'User email or id is required',
+              );
+            }
+
+            const user =
+              await User.findOne(
+                filter,
+              ).session(session);
+
+            if (!user) {
+              throw new VoiceV2Error(
+                'NOT_FOUND',
+                'User was not found',
+              );
+            }
+
+            if (
+              String(user._id) ===
+                userId &&
+              command.action ===
+                'DELETE_USER'
+            ) {
+              throw new VoiceV2Error(
+                'DELETE_BLOCKED',
+                'You cannot delete your own account by voice.',
+              );
+            }
+
+            if (
+              command.action ===
+              'UPDATE_USER'
+            ) {
+              const update: any = {};
+
+              if (command.entityName) {
+                update.name =
+                  command.entityName;
+              }
+
+              if (command.phone) {
+                update.phone =
+                  command.phone;
+              }
+
+              if (
+                command.notes &&
+                [
+                  'ACTIVE',
+                  'SUSPENDED',
+                ].includes(
+                  command.notes,
+                )
+              ) {
+                update.status =
+                  command.notes;
+              }
+
+              if (
+                command.partyType ===
+                'CUSTOMER'
+              ) {
+                update.role = 'USER';
+              }
+
+              if (
+                !Object.keys(update)
+                  .length
+              ) {
+                throw new VoiceV2Error(
+                  'INVALID_UPDATE',
+                  'No user fields to update',
+                );
+              }
+
+              const updated =
+                await User.findOneAndUpdate(
+                  {
+                    _id: user._id,
+                  },
+                  {
+                    $set: update,
+                  },
+                  {
+                    new: true,
+                    session,
+                  },
+                )
+                  .select('-password')
+                  .lean();
+
+              result = {
+                type: 'UPDATE_USER',
+                user: updated,
+              };
+            } else {
+              const hasData =
+                await Promise.all([
+                  Party.exists({
+                    userId: user._id,
+                  }).session(session),
+
+                  Product.exists({
+                    userId: user._id,
+                  }).session(session),
+
+                  Transaction.exists({
+                    userId: user._id,
+                  }).session(session),
+                ]);
+
+              if (hasData.some(Boolean)) {
+                throw new VoiceV2Error(
+                  'DELETE_BLOCKED',
+                  'This user owns ledger data and cannot be deleted safely.',
+                );
+              }
+
+              await User.deleteOne(
+                {
+                  _id: user._id,
+                },
+                {
+                  session,
+                },
+              );
+
+              result = {
+                type: 'DELETE_USER',
+                id: String(
+                  user._id,
+                ),
+                email: user.email,
+              };
+            }
+          }
+        }
+
+        /* ---------------------------------------------------------------- */
+        /* CREATE PARTY                                                      */
+        /* ---------------------------------------------------------------- */
+
+        else if (
+          command.action ===
+          'CREATE_PARTY'
+        ) {
+          if (!command.entityName) {
+            throw new VoiceV2Error(
+              'MISSING_ENTITY',
+              'Party name is required',
+            );
+          }
+
+          const partyType =
+            command.partyType ||
+            'CUSTOMER';
+
+          const escaped =
+            command.entityName.replace(
+              /[.*+?^\${}()|[\]\\]/g,
+              '\\$&',
+            );
+
+          const duplicate =
+            await Party.findOne({
+              userId: uid,
+              name: new RegExp(
+                `^${escaped}$`,
+                'i',
+              ),
+            }).session(session);
+
+          if (duplicate) {
+            throw new VoiceV2Error(
+              'DUPLICATE_ENTITY',
+              `A party named "${command.entityName}" already exists`,
+              {
+                matches: [
+                  {
+                    id: String(
+                      duplicate._id,
+                    ),
+                    name: duplicate.name,
+                    phone:
+                      duplicate.phone ||
+                      null,
+                    balance:
+                      duplicate.currentBalance,
+                  },
+                ],
+              },
+            );
+          }
+
+          const [party] =
+            await Party.create(
+              [
+                {
+                  userId: uid,
+                  name:
+                    command.entityName,
+                  phone:
+                    command.phone ||
+                    undefined,
+                  partyType,
+                  currentBalance: 0,
+                },
+              ],
+              {
+                session,
+              },
+            );
+
+          result = {
+            type: 'CREATE_PARTY',
+            id: String(party._id),
+            name: party.name,
+            phone:
+              party.phone || null,
+            partyType:
+              party.partyType,
+            balance: 0,
+          };
+        }
+
+        /* ---------------------------------------------------------------- */
+        /* UPDATE PARTY                                                      */
+        /* ---------------------------------------------------------------- */
+
+        else if (
+          command.action ===
+          'UPDATE_PARTY'
+        ) {
+          if (!command.entityName) {
+            throw new VoiceV2Error(
+              'MISSING_ENTITY',
+              'Party name is required',
+            );
+          }
+
+          const party =
+            await findParty(
+              userId,
+              command.entityName,
+              session,
+              command.partyType ||
+                undefined,
+            );
+
+          const update: any = {};
+
+          if (command.phone) {
+            update.phone =
+              command.phone;
+          }
+
+          if (command.query) {
+            update.name =
+              command.query;
+          }
+
+          if (
+            !Object.keys(update).length
+          ) {
+            throw new VoiceV2Error(
+              'INVALID_UPDATE',
+              'No party fields to update',
+            );
+          }
+
+          result = {
+            type: 'UPDATE_PARTY',
+
+            party:
+              await Party.findOneAndUpdate(
+                {
+                  _id: party._id,
+                  userId: uid,
+                },
+                {
+                  $set: update,
+                },
+                {
+                  new: true,
+                  session,
+                },
+              ).lean(),
+          };
+        }
+
+        /* ---------------------------------------------------------------- */
+        /* DELETE PARTY                                                      */
+        /* ---------------------------------------------------------------- */
+
+        else if (
+          command.action ===
+          'DELETE_PARTY'
+        ) {
+          if (!command.entityName) {
+            throw new VoiceV2Error(
+              'MISSING_ENTITY',
+              'Party name is required',
+            );
+          }
+
+          const party =
+            await findParty(
+              userId,
+              command.entityName,
+              session,
+              command.partyType ||
+                undefined,
+            );
+
+          const hasTransactions =
+            await Transaction.exists({
+              userId: uid,
+              partyId: party._id,
+            }).session(session);
+
+          if (hasTransactions) {
+            throw new VoiceV2Error(
+              'DELETE_BLOCKED',
+              'This party has transaction history and cannot be deleted safely.',
+            );
+          }
+
+          await Party.deleteOne(
+            {
+              _id: party._id,
+              userId: uid,
+            },
+            {
+              session,
+            },
+          );
+
+          result = {
+            type: 'DELETE_PARTY',
+            id: String(party._id),
+            name: party.name,
+          };
+        }
+
+        /* ---------------------------------------------------------------- */
+        /* CREATE PRODUCT                                                    */
+        /* ---------------------------------------------------------------- */
+
+        else if (
+          command.action ===
+          'CREATE_PRODUCT'
+        ) {
+          if (
+            !command.entityName ||
+            !command.unit
+          ) {
+            throw new VoiceV2Error(
+              'INVALID_PRODUCT',
+              'Product name and unit are required',
+            );
+          }
+
+          const escaped =
+            command.entityName.replace(
+              /[.*+?^\${}()|[\]\\]/g,
+              '\\$&',
+            );
+
+          const duplicate =
+            await Product.findOne({
+              userId: uid,
+              name: new RegExp(
+                `^${escaped}$`,
+                'i',
+              ),
+            }).session(session);
+
+          if (duplicate) {
+            throw new VoiceV2Error(
+              'DUPLICATE_ENTITY',
+              `Product "${command.entityName}" already exists`,
+            );
+          }
+
+          const [product] =
+            await Product.create(
+              [
+                {
+                  userId: uid,
+                  name:
+                    command.entityName,
+                  unit:
+                    command.unit,
+                  stockQuantity:
+                    num(command.quantity),
+                  buyPrice:
+                    num(command.unitPrice),
+                  sellPrice: 0,
+                  lowStockThreshold: 5,
+                },
+              ],
+              {
+                session,
+              },
+            );
+
+          result = {
+            type: 'CREATE_PRODUCT',
+            id: String(
+              product._id,
+            ),
+            name: product.name,
+            unit: product.unit,
+            stock:
+              product.stockQuantity,
+            buyPrice:
+              product.buyPrice,
+            sellPrice:
+              product.sellPrice,
+          };
+        }
+
+        /* ---------------------------------------------------------------- */
+        /* UPDATE PRODUCT                                                    */
+        /* ---------------------------------------------------------------- */
+
+        else if (
+          command.action ===
+          'UPDATE_PRODUCT'
+        ) {
+          if (!command.entityName) {
+            throw new VoiceV2Error(
+              'MISSING_ENTITY',
+              'Product name is required',
+            );
+          }
+
+          const product =
+            await findProduct(
+              userId,
+              command.entityName,
+              session,
+            );
+
+          const update: any = {};
+
+          if (command.unit) {
+            update.unit =
+              command.unit;
+          }
+
+          if (
+            command.unitPrice !==
+            null
+          ) {
+            update.buyPrice =
+              num(command.unitPrice);
+          }
+
+          if (command.query) {
+            update.name =
+              command.query;
+          }
+
+          if (
+            !Object.keys(update).length
+          ) {
+            throw new VoiceV2Error(
+              'INVALID_UPDATE',
+              'No product fields to update',
+            );
+          }
+
+          result = {
+            type: 'UPDATE_PRODUCT',
+
+            product:
+              await Product.findOneAndUpdate(
+                {
+                  _id: product._id,
+                  userId: uid,
+                },
+                {
+                  $set: update,
+                },
+                {
+                  new: true,
+                  session,
+                },
+              ).lean(),
+          };
+        }
+
+        /* ---------------------------------------------------------------- */
+        /* DELETE PRODUCT                                                    */
+        /* ---------------------------------------------------------------- */
+
+        else if (
+          command.action ===
+          'DELETE_PRODUCT'
+        ) {
+          if (!command.entityName) {
+            throw new VoiceV2Error(
+              'MISSING_ENTITY',
+              'Product name is required',
+            );
+          }
+
+          const product =
+            await findProduct(
+              userId,
+              command.entityName,
+              session,
+            );
+
+          const hasTransactions =
+            await Transaction.exists({
+              userId: uid,
+              productId: product._id,
+            }).session(session);
+
+          if (hasTransactions) {
+            throw new VoiceV2Error(
+              'DELETE_BLOCKED',
+              'This product has transaction history and cannot be deleted safely.',
+            );
+          }
+
+          await Product.deleteOne(
+            {
+              _id: product._id,
+              userId: uid,
+            },
+            {
+              session,
+            },
+          );
+
+          result = {
+            type: 'DELETE_PRODUCT',
+            id: String(
+              product._id,
+            ),
+            name: product.name,
+          };
+        }
+
+        /* ---------------------------------------------------------------- */
+        /* DUE / PAYMENT                                                     */
+        /* ---------------------------------------------------------------- */
+
+        else if (
+          command.action ===
+            'CREATE_DUE' ||
+          command.action ===
+            'RECEIVE_PAYMENT'
+        ) {
+          if (
+            !command.entityName ||
+            !command.amount ||
+            command.amount <= 0
+          ) {
+            throw new VoiceV2Error(
+              'INVALID_TRANSACTION',
+              'Customer and positive amount are required',
+            );
+          }
+
+          let party;
+          let partyCreated = false;
+
+          if (command.partyType === 'SUPPLIER' || command.entityType === 'SUPPLIER') {
+            const resolved = await findOrCreateParty(
+              userId,
+              command.entityName,
+              session,
+              'SUPPLIER',
+            );
+            party = resolved.party;
+            partyCreated = resolved.created;
+          } else {
+            const existingSupplier = await Party.findOne({
+              userId: new Types.ObjectId(userId),
+              name: command.entityName,
+              partyType: 'SUPPLIER',
+            }).session(session);
+
+            if (existingSupplier) {
+              party = existingSupplier;
+            } else {
+              const resolved = await findOrCreateParty(
+                userId,
+                command.entityName,
+                session,
+                'CUSTOMER',
+              );
+              party = resolved.party;
+              partyCreated = resolved.created;
+            }
+          }
+
+          const isSupplier =
+            party.partyType === 'SUPPLIER' ||
+            command.partyType === 'SUPPLIER' ||
+            command.entityType === 'SUPPLIER';
+
+          // Balance convention:
+          // CUSTOMER: DUE_GIVEN +, DUE_RECEIVED -
+          // SUPPLIER: DUE_RECEIVED -, DUE_GIVEN +
+          // Therefore a supplier payable increases with CREATE_DUE,
+          // while a supplier payment uses DUE_GIVEN to reduce the payable.
+          const transactionType =
+            isSupplier
+              ? command.action === 'CREATE_DUE'
+                ? 'DUE_RECEIVED'
+                : 'DUE_GIVEN'
+              : command.action === 'CREATE_DUE'
+                ? 'DUE_GIVEN'
+                : 'DUE_RECEIVED';
+
+          const transaction =
+            await createTransaction(
+              {
+                type: transactionType,
+
+                partyId: String(party._id),
+
+                amount: command.amount,
+
+                quantity: 0,
+
+                notes: command.notes || undefined,
+                commandId,
+                source: 'VOICE',
+              },
+              userId,
+              session,
+            );
+
+          result = {
+            type: command.action,
+            ledgerType: transactionType,
+            partyType: party.partyType,
+            amount:
+              command.amount,
+
+            party: {
+              id: String(party._id),
+              name: party.name,
+              created: partyCreated,
+            },
+
+            transaction,
+          };
+        }
+
+        /* ---------------------------------------------------------------- */
+        /* STOCK                                                              */
+        /* ---------------------------------------------------------------- */
+
+        else if (
+          command.action ===
+            'STOCK_IN' ||
+          command.action ===
+            'STOCK_OUT'
+        ) {
+          if (
+            !command.entityName ||
+            !command.quantity ||
+            command.quantity <= 0
+          ) {
+            throw new VoiceV2Error(
+              'INVALID_STOCK',
+              'Product and positive quantity are required',
+            );
+          }
+
+          const resolvedProduct =
+            command.action === 'STOCK_IN'
+              ? await findOrCreateProduct(
+                  userId,
+                  command.entityName,
+                  session,
+                  {
+                    unit: command.unit,
+                    quantity: command.quantity,
+                    unitPrice: command.unitPrice,
+                  },
+                )
+              : { product: await findProduct(userId, command.entityName, session), created: false };
+
+          const product = resolvedProduct.product;
+
+          if (!product) {
+            throw new VoiceV2Error(
+              'PRODUCT_NOT_FOUND',
+              `Product "${command.entityName}" পাওয়া যায়নি।`,
+            );
+          }
+
+          const transaction =
+            await createTransaction(
+              {
+                type:
+                  command.action ===
+                  'STOCK_IN'
+                    ? 'STOCK_IN'
+                    : 'STOCK_OUT',
+
+                productId: String(
+                  product._id,
+                ),
+
+                amount: money(
+                  num(
+                    command.quantity,
+                  ) *
+                    num(
+                      command.unitPrice,
+                    ),
+                ),
+
+                quantity:
+                  command.quantity,
+
+                unitPrice:
+                  command.unitPrice ??
+                  undefined,
+
+                notes:
+                  command.notes ||
+                  undefined,
+                commandId,
+                source: 'VOICE',
+              },
+              userId,
+              session,
+            );
+
+          const fresh =
+            await Product.findById(
+              product._id,
+            )
+              .session(session)
+              .lean();
+
+          result = {
+            type: command.action,
+
+            product: {
+              id: String(product._id),
+              name: product.name,
+              unit: product.unit,
+              created: resolvedProduct.created,
+            },
+
+            quantity:
+              command.quantity,
+
+            stock: num(
+              fresh?.stockQuantity,
+            ),
+
+            transaction,
+          };
+        }
+
+        /* ---------------------------------------------------------------- */
+        /* SALE / PURCHASE                                                   */
+        /* ---------------------------------------------------------------- */
+
+        else if (
+          command.action ===
+            'CREATE_SALE' ||
+          command.action ===
+            'CREATE_PURCHASE'
+        ) {
+          const isAmountOnlySale =
+            command.action === 'CREATE_SALE' &&
+            !command.entityName &&
+            !command.quantity &&
+            !command.unitPrice &&
+            !!command.amount &&
+            command.amount > 0;
+
+          if (
+            !isAmountOnlySale &&
+            (!command.entityName ||
+              !command.quantity ||
+              command.quantity <= 0 ||
+              ((!command.unitPrice || command.unitPrice <= 0) &&
+                command.action !== 'CREATE_SALE'))
+          ) {
+            throw new VoiceV2Error(
+              'INVALID_TRADE',
+              'Product, quantity and unit price are required for an inventory sale or purchase',
+            );
+          }
+
+          const resolvedProduct =
+            isAmountOnlySale
+              ? { product: null, created: false }
+              : command.action === 'CREATE_PURCHASE'
+                ? await findOrCreateProduct(
+                    userId,
+                    command.entityName!,
+                    session,
+                    {
+                      unit: command.unit,
+                      // Inventory quantity is applied exactly once by the
+                      // STOCK_IN transaction below. Do not seed the new
+                      // product with the purchase quantity here.
+                      quantity: 0,
+                      unitPrice: command.unitPrice!,
+                    },
+                  )
+                : { product: await findProduct(userId, command.entityName!, session), created: false };
+
+          const product = resolvedProduct.product;
+
+          // A named credit sale may omit the price:
+          // "রহিমকে ২ কেজি চাল বাকিতে বিক্রি করলাম".
+          // In that case use the product's current selling price. We do this
+          // after product resolution so the database value is authoritative.
+          const resolvedUnitPrice =
+            !isAmountOnlySale &&
+            command.action === 'CREATE_SALE' &&
+            (!command.unitPrice || command.unitPrice <= 0)
+              ? money((product as any)?.sellPrice)
+              : money(command.unitPrice);
+
+          const resolvedAmount =
+            !isAmountOnlySale &&
+            command.action === 'CREATE_SALE' &&
+            (!command.amount || command.amount <= 0) &&
+            command.quantity &&
+            resolvedUnitPrice > 0
+              ? money(command.quantity * resolvedUnitPrice)
+              : money(command.amount);
+
+          if (!isAmountOnlySale && !product) {
+            throw new VoiceV2Error(
+              'PRODUCT_NOT_FOUND',
+              `Product "${command.entityName}" পাওয়া যায়নি। আগে product হিসেবে যোগ করুন।`,
+            );
+          }
+
+          const transactionProduct = product;
+          if (!isAmountOnlySale && !transactionProduct) {
+            throw new VoiceV2Error(
+              'PRODUCT_NOT_FOUND',
+              `Product "${command.entityName}" পাওয়া যায়নি। আগে product হিসেবে যোগ করুন।`,
+            );
+          }
+
+          const total = isAmountOnlySale
+            ? money(command.amount)
+            : resolvedAmount;
+
+          const paid = num(
+            command.paidAmount,
+          );
+
+          if (paid > total) {
+            throw new VoiceV2Error(
+              'INVALID_PAYMENT',
+              'Paid amount cannot exceed total amount',
+            );
+          }
+
+          if (
+            command.action ===
+            'CREATE_SALE'
+          ) {
+            let partyId:
+              | string
+              | undefined;
+
+            let customerCreated = false;
+
+            if (command.query) {
+              const resolved = await findOrCreateParty(userId, command.query, session, 'CUSTOMER');
+              partyId = String(resolved.party._id);
+              customerCreated = resolved.created;
+            } else if (paid < total) {
+              throw new VoiceV2Error(
+                'PARTY_REQUIRED',
+                'A customer is required for an unpaid or credit sale. For a walk-in sale, say "নগদে" or provide the customer name.',
+              );
+            }
+
+            const transaction =
+              await createTransaction(
+                {
+                  type: 'SALE',
+
+                  partyId,
+
+                  productId: product ? String(product._id) : undefined,
+
+                  amount: total,
+
+                  quantity: command.quantity ?? 0,
+
+                  unitPrice: resolvedUnitPrice > 0 ? resolvedUnitPrice : undefined,
+
+                  paidAmount: paid,
+
+                  notes:
+                    command.notes ||
+                    undefined,
+                },
+                userId,
+                session,
+              );
+
+            result = {
+              type: 'CREATE_SALE',
+
+              product:
+                product?.name ?? null,
+
+              total,
+
+              paidAmount: paid,
+
+              due: money(total - paid),
+              customerCreated,
+              transaction,
+            };
+          } else {
+            if (!command.query) {
+              throw new VoiceV2Error(
+                'PARTY_REQUIRED',
+                'Supplier name is required for a purchase',
+              );
+            }
+
+            const supplierResolved = await findOrCreateParty(userId, command.query, session, 'SUPPLIER');
+            if (supplierResolved.created) {
+              throw new VoiceV2Error('SUPPLIER_NOT_FOUND', `Supplier "${command.query}" পাওয়া যায়নি। আগে supplier হিসেবে যোগ করুন।`);
+            }
+            const supplier = supplierResolved.party;
+
+            const transaction =
+              await createTransaction(
+                {
+                  type: 'STOCK_IN',
+
+                  partyId: String(
+                    supplier._id,
+                  ),
+
+                  productId: String(
+                    transactionProduct!._id,
+                  ),
+
+                  amount: total,
+
+                  quantity:
+                    command.quantity!,
+
+                  unitPrice:
+                    command.unitPrice!,
+
+                  paidAmount: paid,
+
+                  notes:
+                    command.notes ||
+                    undefined,
+                },
+                userId,
+                session,
+              );
+
+            const due = money(
+              total - paid,
+            );
+
+            if (due > 0) {
+              await Party.updateOne(
+                {
+                  _id:
+                    supplier._id,
+                  userId: uid,
+                },
+                {
+                  $inc: {
+                    currentBalance:
+                      -due,
+                  },
+                },
+                {
+                  session,
+                },
+              );
+            }
+
+            result = {
+              type: 'CREATE_PURCHASE',
+
+              product:
+                transactionProduct!.name,
+
+              supplier: supplier.name,
+              supplierCreated: supplierResolved.created,
+              total,
+
+              paidAmount: paid,
+
+              due,
+
+              transaction,
+            };
+          }
+        }
+
+        /* ---------------------------------------------------------------- */
+        /* EXPENSE                                                            */
+        /* ---------------------------------------------------------------- */
+
+        else if (
+          command.action ===
+          'CREATE_EXPENSE'
+        ) {
+          if (
+            !command.amount ||
+            command.amount <= 0
+          ) {
+            throw new VoiceV2Error(
+              'INVALID_EXPENSE',
+              'Positive expense amount is required',
+            );
+          }
+
+          const transaction =
+            await createTransaction(
+              {
+                type: 'EXPENSE',
+
+                amount:
+                  command.amount,
+
+                quantity: 0,
+
+                notes:
+                  command.notes ||
+                  transcript,
+                commandId,
+                source: 'VOICE',
+              },
+              userId,
+              session,
+            );
+
+          result = {
+            type: 'CREATE_EXPENSE',
+            amount:
+              command.amount,
+            transaction,
+          };
+        }
+
+        /* ---------------------------------------------------------------- */
+        /* OTHER INCOME                                                     */
+        /* ---------------------------------------------------------------- */
+
+        else if (
+          command.action ===
+          'CREATE_INCOME'
+        ) {
+          if (!command.amount || command.amount <= 0) {
+            throw new VoiceV2Error(
+              'INVALID_INCOME',
+              'Positive income amount is required',
+            );
+          }
+
+          const transaction =
+            await createTransaction(
+              {
+                type: 'OTHER_INCOME',
+                amount: command.amount,
+                quantity: 0,
+                notes: command.notes || transcript,
+                commandId,
+                source: 'VOICE',
+              },
+              userId,
+              session,
+            );
+
+          result = {
+            type: 'CREATE_INCOME',
+            amount: command.amount,
+            transaction,
+          };
+        }
+
+        /* ---------------------------------------------------------------- */
+        /* DELETE TRANSACTION                                                */
+        /* ---------------------------------------------------------------- */
+
+        else if (
+          command.action ===
+          'DELETE_TRANSACTION'
+        ) {
+          if (
+            !command.targetId ||
+            !Types.ObjectId.isValid(
+              command.targetId,
+            )
+          ) {
+            throw new VoiceV2Error(
+              'MISSING_ENTITY',
+              'Valid transaction id is required',
+            );
+          }
+
+          result = {
+            type: 'DELETE_TRANSACTION',
+
+            reversal:
+              await reverseTransaction(
+                command.targetId,
+                userId,
+                session,
+              ),
+          };
+        }
+
+        /* ---------------------------------------------------------------- */
+        /* Unsupported                                                        */
+        /* ---------------------------------------------------------------- */
+
+        else {
+          throw new VoiceV2Error(
+            'UNSUPPORTED_ACTION',
+            `Action ${command.action} is not implemented yet.`,
+          );
+        }
+      },
+      {
+        readConcern: {
+          level: 'local',
+        },
+
+        writeConcern: {
+          w: 'majority',
+        },
+
+        maxCommitTimeMS: 10_000,
+      },
+    );
+  } catch (error) {
+    if (error instanceof VoiceV2Error) {
+      throw error;
+    }
+
+    if (
+      error instanceof
+      TransactionServiceError
+    ) {
+      throw new VoiceV2Error(
+        error.code,
+        error.message,
+        error.details,
+      );
+    }
+
+    throw error;
+  } finally {
+    await session.endSession();
+  }
+
+  /* ---------------------------------------------------------------------- */
+  /* Audit                                                                   */
+  /* ---------------------------------------------------------------------- */
+
+  if (commandId) {
+    await AuditLog.create({
+      userId: uid,
+
+      voiceTranscript:
+        transcript,
+
+      parsedIntent:
+        command,
+
+      status: 'SUCCESS',
+
+      commandId,
+
+      result,
+    }).catch(() => {});
+  }
+
+  return result;
+}
+
+/* -------------------------------------------------------------------------- */
+/* Local parser                                                               */
+/* -------------------------------------------------------------------------- */
+
+,
+      'iu',
+    ));
   if (match?.[1]) return command('CREATE_DUE', match[1]);
 
   match = value.match(new RegExp(
