@@ -811,8 +811,6 @@ function normalizeLedgerSemantics(
   }
 
   const outgoingToParty =
-    /(?:কে|ke)\s*\d[\d,]*(?:\.\d+)?\s*(?:টাকা|tk|taka)?\s*(?:দিলাম|দিল|দিয়েছি|দিয়েছি|দেব|দিব|রাখলাম|dilam|dil|dilo|diyechi|dibo)/iu.test(value);
-  const outgoingToParty =
     /(?:কে|ke)\s*\d[\d,]*(?:\.\d+)?\s*(?:টাকা|tk|taka)?\s*(?:দিলাম|দিল|দিয়েছি|দিয়েছি|দিয়ে দিলাম|দিয়ে দিলাম|দিয়ে দিল|দিয়ে দিল|দেব|দিব|dilam|dil|diyechi|diye dilam|diye dilo|dibo)/iu.test(value);
   const incomingFromParty =
     /(?:কাছ থেকে|কাছথেকে|থেকে)\s*\d[\d,]*(?:\.\d+)?\s*(?:টাকা|tk|taka)?\s*(?:পেলাম|পেয়েছি|পেয়েছি|নিলাম|নিয়েছি|নিয়েছি|আদায়|আদায়|পরিশোধ|জমা)/iu.test(value) ||
