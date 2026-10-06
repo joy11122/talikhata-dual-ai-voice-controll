@@ -8,7 +8,8 @@ export const runtime='nodejs';
 const Body=z.object({
   transcript:z.string().trim().min(1).max(5000),
   confirmed:z.boolean().optional(),
-  command:VoiceV2Schema.optional()
+  command:VoiceV2Schema.optional(),
+  commandId:z.string().uuid().optional()
 });
 
 export async function POST(req:Request){
@@ -18,7 +19,8 @@ export async function POST(req:Request){
   if(!body.success)return NextResponse.json({ok:false,error:'Invalid voice request',issues:body.error.issues},{status:400});
   try{
     const command:VoiceV2Command=body.data.command??await parseVoiceV2(body.data.transcript);
-    const result=await executeVoiceV2(command,session.user.id,body.data.transcript,body.data.confirmed===true,crypto.randomUUID());
+    const commandId=body.data.commandId || crypto.randomUUID();
+    const result=await executeVoiceV2(command,session.user.id,body.data.transcript,body.data.confirmed===true,commandId);
     return NextResponse.json({ok:true,command,result});
   }catch(error){
     if(error instanceof VoiceV2Error){
