@@ -96,4 +96,4 @@ export async function resolveProduct(userId:string,name:string,session?:ClientSe
   const canonicalName = canonical(raw);
   const canonicalMatches = candidates.filter(x => canonical(x.name) === canonicalName);
   if (canonicalMatches.length) return canonicalMatches.slice(0, 20);
-  return candidates.filter(x=>Array.from(identityKeys(x.name)).some(k=>keys.has(k))).slice(0,20);}\n
+  return candidates.filter(x=>Array.from(identityKeys(x.name)).some(k=>keys.has(k))).slice(0,20);}
