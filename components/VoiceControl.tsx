@@ -163,10 +163,6 @@ export default function VoiceControl() {
       if (currentRequestId !== requestId.current) return;
 
       if (!response.ok || !data.ok) {
-        if (data.confirmationRequired) {
-          throw new Error(data.error || 'Voice command could not be completed.');
-        }
-
         if (data.code === 'AMBIGUOUS_ENTITY') {
           setPending({
           command: data.command || command,
