@@ -362,7 +362,7 @@ function parseInventoryPurchaseCommand(text: string): VoiceV2Command | null {
   // Keep this deterministic so ordinary Bangla stock commands never depend on a paid AI fallback.
   const directAdd = value.match(
     new RegExp(
-      String.raw`^${number}\\s*(?:টাকা|taka|tk)?\\s*${rateWords}\\s+${number}\\s*${units}\\s+(.+?)\\s+${addWords}
+      String.raw`^${number}\s*(?:টাকা|taka|tk)?\s*${rateWords}\s+${number}\s*${units}\s+(.+?)\s+${addWords}
 import 'server-only';
 
 import OpenAI from 'openai';
