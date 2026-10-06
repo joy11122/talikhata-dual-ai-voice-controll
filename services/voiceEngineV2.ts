@@ -3050,10 +3050,6 @@ export async function executeVoiceV2(
 /* Local parser                                                               */
 /* -------------------------------------------------------------------------- */
 
-    || value.match(new RegExp(
-      '^(.+?)\s*(?:কে|ke)\s*' + numberPattern +
-      '\s*(?:টাকা|tk|taka)?\s*(?:বাকি\s*)?(?:দিলাম|দিল|দিয়েছি|দিয়েছি|দিয়ে দিলাম|দিয়ে দিলাম|দিয়ে দিল|দিয়ে দিল|দেবো|দেব|দিবো|দিব|dilam|dil|diyechi|diye dilam|diye dilo|debo|deb|dibo)(?:\s+.*)?
-  if (match?.[1]) return command('CREATE_DUE', match[1]);
 
   match = value.match(new RegExp(
     '^(.+?)\s+(?:বাকি|বাকিতে|ধারে|উধারে|due|baki|bakite|dhare|credit)\s*' +
