@@ -1352,55 +1352,52 @@ async function findOrCreateParty(
 }
 
 /* -------------------------------------------------------------------------- */
-/* Confirmation                                                               */
+/* Confirmation / review gate                                                */
 /* -------------------------------------------------------------------------- */
 
-function confirm(
-  command: VoiceV2Command,
-  confirmed: boolean,
-) {
-  const destructiveActions = new Set([
-    'DELETE_PARTY',
-    'DELETE_PRODUCT',
-    'DELETE_TRANSACTION',
-    'DELETE_USER',
-  ]);
+const READ_ONLY_ACTIONS = new Set([
+  'READ_PARTY',
+  'LIST_PARTIES',
+  'READ_PRODUCT',
+  'LIST_PRODUCTS',
+  'LIST_TRANSACTIONS',
+  'READ_USER',
+  'LIST_USERS',
+  'READ_BALANCE',
+]);
 
-  const amount = money(command.amount);
-
-  const highValueWrite =
-    amount >= 10000 &&
-    [
-      'CREATE_DUE',
-      'RECEIVE_PAYMENT',
-      'CREATE_SALE',
-      'CREATE_PURCHASE',
-      'CREATE_EXPENSE',
-      'CREATE_INCOME',
-    ].includes(command.action);
-
-  const needsConfirmation =
-    command.confirmRequired ||
-    destructiveActions.has(command.action) ||
-    highValueWrite;
-
-  if (needsConfirmation && !confirmed) {
-    throw new VoiceV2Error(
-      'CONFIRMATION_REQUIRED',
-      highValueWrite
-        ? '৳১০,০০০ বা তার বেশি আর্থিক লেনদেন করার আগে confirmation প্রয়োজন।'
-        : 'এই কাজটি করার আগে confirmation প্রয়োজন।',
-      {
-        action: command.action,
-        amount: amount || null,
-        reason: highValueWrite
-          ? 'HIGH_VALUE_FINANCIAL_WRITE'
-          : 'DESTRUCTIVE_ACTION',
-      },
-    );
-  }
+function isMutatingAction(action: VoiceV2Command['action']) {
+  return !READ_ONLY_ACTIONS.has(action);
 }
 
+function confirmationMessage(command: VoiceV2Command) {
+  const labels: Record<string, string> = {
+    CREATE_PARTY: 'কাস্টমার/সাপ্লায়ার তৈরি',
+    CREATE_PRODUCT: 'পণ্য তৈরি',
+    UPDATE_PARTY: 'কাস্টমার/সাপ্লায়ার আপডেট',
+    UPDATE_PRODUCT: 'পণ্য আপডেট',
+    DELETE_PARTY: 'কাস্টমার/সাপ্লায়ার মুছে ফেলা',
+    DELETE_PRODUCT: 'পণ্য মুছে ফেলা',
+    DELETE_TRANSACTION: 'লেনদেন মুছে ফেলা',
+    CREATE_DUE: 'বাকি যোগ',
+    RECEIVE_PAYMENT: 'পেমেন্ট গ্রহণ',
+    CREATE_SALE: 'বিক্রি',
+    CREATE_PURCHASE: 'ক্রয়',
+    CREATE_EXPENSE: 'খরচ',
+    CREATE_INCOME: 'আয়',
+    STOCK_IN: 'স্টক যোগ',
+    STOCK_OUT: 'স্টক কমানো',
+    CREATE_USER: 'ইউজার তৈরি',
+    UPDATE_USER: 'ইউজার আপডেট',
+    DELETE_USER: 'ইউজার মুছে ফেলা',
+  };
+
+  return `Review required before saving as ${labels[command.action] || command.action}.`;
+}
+
+/* -------------------------------------------------------------------------- */
+/* Execute Voice V2                                                           */
+/* -------------------------------------------------------------------------- */
 /* -------------------------------------------------------------------------- */
 /* Execute Voice V2                                                           */
 /* -------------------------------------------------------------------------- */
@@ -1450,15 +1447,72 @@ export async function executeVoiceV2(
       ? { ...parsedCommand, unit: parsedCommand.unit || 'unit' }
       : parsedCommand;
 
-  confirm(command, confirmed);
-
   /* ---------------------------------------------------------------------- */
-  /* Database                                                               */
+  /* Database / review gate                                                 */
   /* ---------------------------------------------------------------------- */
 
   await connectDB();
 
   const uid = new Types.ObjectId(userId);
+  const mutating = isMutatingAction(command.action);
+
+  if (mutating && !confirmed) {
+    if (!commandId) {
+      throw new VoiceV2Error(
+        'CONFIRMATION_REQUIRED',
+        confirmationMessage(command),
+        { action: command.action, command },
+      );
+    }
+
+    await AuditLog.findOneAndUpdate(
+      { userId: uid, commandId },
+      {
+        $set: {
+          voiceTranscript: transcript,
+          parsedIntent: command,
+          status: 'PENDING',
+          errorMessage: undefined,
+          result: undefined,
+        },
+        $setOnInsert: { userId: uid, commandId },
+      },
+      { upsert: true, new: true, setDefaultsOnInsert: true },
+    );
+
+    throw new VoiceV2Error(
+      'CONFIRMATION_REQUIRED',
+      confirmationMessage(command),
+      {
+        action: command.action,
+        command,
+        commandId,
+      },
+    );
+  }
+
+  if (mutating && confirmed) {
+    if (!commandId) {
+      throw new VoiceV2Error(
+        'CONFIRMATION_REQUIRED',
+        'এই পরিবর্তনটি সংরক্ষণ করার জন্য review confirmation পাওয়া যায়নি।',
+      );
+    }
+
+    const pending = await AuditLog.findOne({
+      userId: uid,
+      commandId,
+      status: 'PENDING',
+    }).lean();
+
+    if (!pending) {
+      throw new VoiceV2Error(
+        'CONFIRMATION_REQUIRED',
+        'এই review session পাওয়া যায়নি বা ইতিমধ্যে ব্যবহার করা হয়েছে। আবার command দিন।',
+        { commandId },
+      );
+    }
+  }
 
   /* ---------------------------------------------------------------------- */
   /* Idempotency                                                             */
@@ -3025,22 +3079,20 @@ export async function executeVoiceV2(
   /* Audit                                                                   */
   /* ---------------------------------------------------------------------- */
 
-  if (commandId) {
-    await AuditLog.create({
-      userId: uid,
-
-      voiceTranscript:
-        transcript,
-
-      parsedIntent:
-        command,
-
-      status: 'SUCCESS',
-
-      commandId,
-
-      result,
-    }).catch(() => {});
+  if (commandId && mutating) {
+    await AuditLog.findOneAndUpdate(
+      { userId: uid, commandId, status: 'PENDING' },
+      {
+        $set: {
+          voiceTranscript: transcript,
+          parsedIntent: command,
+          status: 'SUCCESS',
+          result,
+          errorMessage: undefined,
+        },
+      },
+      { new: true },
+    ).catch(() => {});
   }
 
   return result;
