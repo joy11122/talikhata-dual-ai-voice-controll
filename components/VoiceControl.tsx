@@ -114,7 +114,6 @@ export default function VoiceControl() {
   const [error, setError] = useState('');
   const [result, setResult] = useState<any>(null);
   const [pending, setPending] = useState<Pending | null>(null);
-  const [editingPending, setEditingPending] = useState(false);
   const [voiceModalOpen, setVoiceModalOpen] = useState(false);
   const { toast } = useToast();
 
@@ -124,77 +123,6 @@ export default function VoiceControl() {
   const requestId = useRef(0);
   const activeSessionId = useRef(0);
   const inputRef = useRef<HTMLInputElement>(null);
-
-  const withPreviewDefaults = (value: Pending): Pending => {
-    const command = value.command || {};
-    const action = command.action || '';
-    const isPartyAction = ['CREATE_PARTY', 'UPDATE_PARTY', 'CREATE_DUE', 'RECEIVE_PAYMENT'].includes(action);
-    const isProductAction = ['CREATE_PRODUCT', 'UPDATE_PRODUCT', 'CREATE_SALE', 'CREATE_PURCHASE', 'STOCK_IN', 'STOCK_OUT'].includes(action);
-
-    return {
-      ...value,
-      command: {
-        ...command,
-        entityName: command.entityName ?? command.name ?? '',
-        partyType: command.partyType ?? (isPartyAction ? (command.entityType === 'SUPPLIER' ? 'SUPPLIER' : 'CUSTOMER') : ''),
-        amount: command.amount ?? command.totalAmount ?? command.paidAmount ?? null,
-        quantity: command.quantity ?? command.qty ?? null,
-        unit: command.unit ?? (isProductAction ? 'কেজি' : ''),
-        unitPrice: command.unitPrice ?? command.price ?? null,
-        paidAmount: command.paidAmount ?? null,
-      },
-    };
-  };
-  const normalizeSpeechCommand = (value: string) =>
-    value
-      .replace(/(^|\s)জব(?=\s|$|[,.!?।])/gu, '$1যোগ')
-      .replace(/(^|\s)জোগ(?=\s|$|[,.!?।])/gu, '$1যোগ')
-      .replace(/(^|\s)জুগ(?=\s|$|[,.!?।])/gu, '$1যোগ')
-      .replace(/(^|\s)জগ(?=\s|$|[,.!?।])/gu, '$1যোগ')
-      .replace(/\bযোগ কর\b/gu, 'যোগ কর')
-      .replace(/\s+/g, ' ')
-      .trim();
-
-  /*
-   * Preserve the existing TaliKhata command event integration.
-   * Other components can dispatch:
-   *
-   * window.dispatchEvent(
-   *   new CustomEvent('talikhata:command', {
-   *     detail: 'করিমের কাছে কত টাকা পাব?'
-   *   })
-   * );
-   */
-  useEffect(() => {
-    const onCommand = (event: Event) => {
-      const value = (event as CustomEvent<string>).detail;
-
-      if (typeof value === 'string' && value.trim()) {
-        setText(value);
-      }
-    };
-
-    window.addEventListener('talikhata:command', onCommand);
-
-    return () => {
-      window.removeEventListener('talikhata:command', onCommand);
-    };
-  }, []);
-
-  const speak = (s: string) => {
-    if (
-      typeof window !== 'undefined' &&
-      'speechSynthesis' in window
-    ) {
-      const utterance = new SpeechSynthesisUtterance(s);
-
-      utterance.lang = 'bn-BD';
-      utterance.rate = 0.95;
-
-      window.speechSynthesis.cancel();
-      window.speechSynthesis.speak(utterance);
-    }
-  };
 
   const process = async (
     transcript: string,
@@ -236,26 +164,16 @@ export default function VoiceControl() {
 
       if (!response.ok || !data.ok) {
         if (data.confirmationRequired) {
-          setPending(withPreviewDefaults({
-            command: data.command || command,
-            message:
-              data.error ||
-              'এই কাজটি করার আগে confirmation প্রয়োজন।',
-            commandId: data.commandId || data.details?.commandId,
-            matches: data.details?.matches || [],
-          }));
-
-          return;
+          throw new Error(data.error || 'Voice command could not be completed.');
         }
 
         if (data.code === 'AMBIGUOUS_ENTITY') {
           setPending({
-            command: data.command || command,
-            message: data.error,
-            matches: data.details?.matches || [],
-          });
-
-          return;
+          command: data.command || command,
+          message: data.error,
+          matches: data.details?.matches || [],
+        });
+        return;
         }
 
         const providerErrors = Array.isArray(data.details?.providers)
@@ -279,8 +197,7 @@ export default function VoiceControl() {
       }
 
       setPending(null);
-      setEditingPending(false);
-      setResult(data);
+        setResult(data);
       setState('Success');
       setVoiceModalOpen(true);
 
@@ -443,14 +360,6 @@ export default function VoiceControl() {
     return () => window.removeEventListener('talikhata:voice-open', onVoiceOpen);
   }, [state]);
 
-  const confirm = () => {
-    if (!pending) {
-      return;
-    }
-
-    process(text, pending.command, true, pending.commandId);
-  };
-
   const choose = (match: any) => {
     if (!pending) {
       return;
@@ -464,10 +373,6 @@ export default function VoiceControl() {
     setPending({ ...pending, command });
     setEditingPending(false);
     process('', command, false, pending.commandId);
-  };
-
-  const updatePending = (key: string, value: any) => {
-    setPending((current) => current ? { ...current, command: { ...current.command, [key]: value } } : current);
   };
 
   const actionLabel = (action: string) => ({
@@ -560,77 +465,32 @@ export default function VoiceControl() {
       </AnimatePresence>
 
       <AnimatePresence>
-        {pending && (
+        {pending?.matches?.length ? (
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             className="fixed inset-0 z-[80] grid place-items-center bg-slate-950/55 p-4 backdrop-blur-[16px]"
           >
-            <motion.div className="max-h-[88vh] w-full max-w-lg overflow-y-auto rounded-[20px] border border-white/10 bg-[#111722]/90 p-6 text-white shadow-[0_24px_80px_rgba(0,0,0,.45)] backdrop-blur-[24px]">
-              <div className="flex justify-between">
-                <h2 className="text-xl font-bold">নিশ্চিত করুন</h2>
-                <button type="button" onClick={() => { setPending(null); setEditingPending(false); }} aria-label="Close confirmation">
+            <motion.div className="w-full max-w-lg rounded-[20px] border border-white/10 bg-[#111722]/90 p-6 text-white shadow-[0_24px_80px_rgba(0,0,0,.45)] backdrop-blur-[24px]">
+              <div className="flex items-center justify-between">
+                <h2 className="text-xl font-bold">কোনটি নির্বাচন করবেন?</h2>
+                <button type="button" onClick={() => setPending(null)} aria-label="Close selection">
                   <X />
                 </button>
               </div>
-              <p className="mt-2 text-sm text-slate-500">{pending.message}</p>
-              <div className="mt-4 rounded-[16px] border border-white/10 bg-white/[0.035] p-4">
-                <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-white/40">Review before saving</p>
-                <p className="mt-1 text-lg font-semibold text-white">{actionLabel(pending.command?.action || '')}</p>
-                <p className="mt-1 text-xs leading-5 text-white/50">{pending.message}</p>
+              <p className="mt-2 text-sm text-white/50">{pending.message}</p>
+              <div className="mt-4 space-y-2">
+                {pending.matches.map((match: any) => (
+                  <button type="button" key={match.id} onClick={() => choose(match)} className="flex w-full items-center justify-between rounded-xl border border-white/10 bg-white/[0.035] p-4 text-left text-white hover:bg-white/[0.07]">
+                    <span><b>{match.name}</b><small className="block text-white/45">{match.phone || ''}</small></span>
+                    <ChevronRight size={18} />
+                  </button>
+                ))}
               </div>
-              {pending.matches?.length ? (
-                <div className="mt-4 space-y-2">
-                  {pending.matches.map((match: any) => (
-                    <button type="button" key={match.id} onClick={() => choose(match)} className="flex w-full items-center justify-between rounded-xl border border-white/10 bg-white/[0.035] p-4 text-left text-white hover:bg-white/[0.07]">
-                      <span><b>{match.name}</b><small className="block text-white/45">{match.phone || ''}</small></span><ChevronRight size={18} />
-                    </button>
-                  ))}
-                </div>
-              ) : (
-                <>
-                  {!editingPending ? (
-                    <div className="mt-4 space-y-2 rounded-[16px] border border-white/10 bg-white/[0.025] p-4 text-sm">
-                      {[
-                        ['Intent', actionLabel(pending.command?.action || '')],
-                        ['Name', pending.command?.entityName],
-                        ['Party', pending.command?.partyType || pending.command?.entityType],
-                        ['Amount', pending.command?.amount != null ? '৳' + pending.command.amount : null],
-                        ['Quantity', pending.command?.quantity != null ? pending.command.quantity + ' ' + (pending.command?.unit || '') : null],
-                        ['Unit price', pending.command?.unitPrice != null ? '৳' + pending.command.unitPrice : null],
-                        ['Paid', pending.command?.paidAmount != null ? '৳' + pending.command.paidAmount : null],
-                      ].filter(([, value]) => value !== null && value !== undefined && value !== '').map(([label, value]) => (
-                        <div key={label} className="flex items-start justify-between gap-4 border-b border-white/[0.06] py-2 last:border-0"><span className="text-white/40">{label}</span><span className="text-right font-medium text-white">{String(value)}</span></div>
-                      ))}
-                    </div>
-                  ) : (
-                    <div className="mt-4 space-y-3">
-                      <label className="block text-xs text-white/50">কাজের ধরন
-                        <select value={pending.command?.action || ''} onChange={(e) => updatePending('action', e.target.value)} className="mt-1 w-full rounded-xl border border-white/10 bg-white/[0.06] p-3 text-sm text-white outline-none">
-                          {['CREATE_PARTY','CREATE_PRODUCT','CREATE_SALE','CREATE_PURCHASE','CREATE_DUE','RECEIVE_PAYMENT','CREATE_EXPENSE','CREATE_INCOME','STOCK_IN','STOCK_OUT','UPDATE_PARTY','UPDATE_PRODUCT','DELETE_PARTY','DELETE_PRODUCT','DELETE_TRANSACTION'].map((action) => <option key={action} value={action} className="bg-slate-900">{actionLabel(action)}</option>)}
-                        </select>
-                      </label>
-                      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                        <label className="text-xs text-white/50">নাম / পণ্য / ব্যক্তি<input value={pending.command?.entityName || ''} onChange={(e) => updatePending('entityName', e.target.value || null)} className="mt-1 w-full rounded-xl border border-white/10 bg-white/[0.06] p-3 text-sm text-white outline-none" /></label>
-                        <label className="text-xs text-white/50">Party type<select value={pending.command?.partyType || ''} onChange={(e) => updatePending('partyType', e.target.value || null)} className="mt-1 w-full rounded-xl border border-white/10 bg-white/[0.06] p-3 text-sm text-white outline-none"><option value="">Auto</option><option value="CUSTOMER">Customer</option><option value="SUPPLIER">Supplier</option></select></label>
-                        <label className="text-xs text-white/50">Amount<input type="number" value={pending.command?.amount ?? ''} onChange={(e) => updatePending('amount', e.target.value === '' ? null : Number(e.target.value))} className="mt-1 w-full rounded-xl border border-white/10 bg-white/[0.06] p-3 text-sm text-white outline-none" /></label>
-                        <label className="text-xs text-white/50">Quantity<input type="number" value={pending.command?.quantity ?? ''} onChange={(e) => updatePending('quantity', e.target.value === '' ? null : Number(e.target.value))} className="mt-1 w-full rounded-xl border border-white/10 bg-white/[0.06] p-3 text-sm text-white outline-none" /></label>
-                        <label className="text-xs text-white/50">Unit<input value={pending.command?.unit || ''} onChange={(e) => updatePending('unit', e.target.value || null)} className="mt-1 w-full rounded-xl border border-white/10 bg-white/[0.06] p-3 text-sm text-white outline-none" /></label>
-                        <label className="text-xs text-white/50">Unit price<input type="number" value={pending.command?.unitPrice ?? ''} onChange={(e) => updatePending('unitPrice', e.target.value === '' ? null : Number(e.target.value))} className="mt-1 w-full rounded-xl border border-white/10 bg-white/[0.06] p-3 text-sm text-white outline-none" /></label>
-                      </div>
-                    </div>
-                  )}
-                  <div className="mt-5 flex flex-col-reverse gap-2 sm:flex-row">
-                    <button type="button" onClick={() => { setPending(null); setEditingPending(false); }} className="flex-1 rounded-xl border border-white/10 bg-white/[0.035] p-3 text-sm font-semibold text-white/70 hover:bg-white/[0.07]">Cancel</button>
-                    <button type="button" onClick={() => setEditingPending((value) => !value)} className="flex-1 rounded-xl border border-[#7692ff]/30 bg-[#7692ff]/10 p-3 text-sm font-semibold text-white hover:bg-[#7692ff]/20">{editingPending ? 'Preview' : 'Edit'}</button>
-                    <button type="button" onClick={confirm} disabled={editingPending} className="flex-1 rounded-xl bg-[#1b2cc1] p-3 text-sm font-semibold text-white shadow-lg hover:bg-[#2a3ddd] disabled:cursor-not-allowed disabled:opacity-40">Confirm & Save</button>
-                  </div>
-                </>
-              )}
             </motion.div>
           </motion.div>
-        )}
+        ) : null}
       </AnimatePresence>
     </>
   );
