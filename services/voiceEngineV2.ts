@@ -358,6 +358,388 @@ function parseInventoryPurchaseCommand(text: string): VoiceV2Command | null {
   const addWords = '(?:যোগ করো|যোগ কর|যোগ করুন|যোগ করেন|যোগ|এড করো|এড কর|এড করুন|এড করেন|এড|অ্যাড করো|অ্যাড কর|অ্যাড করুন|অ্যাড করেন|অ্যাড|ঢুকাও|ঢুকাও তো|ঢোকাও|ঢুকিয়ে দাও|ঢুকিয়ে দাও|ঢোকান|ঢুকান|স্টকে রাখো|স্টকে দাও|স্টকে ঢোকাও|স্টকে যোগ করো|স্টক করো|স্টক কর|স্টক করুন|মজুদ করো|মজুদ করুন|মাল হিসেবে রাখো|মাল যোগ করো|মাল ঢোকাও|পণ্য হিসেবে রাখো|পণ্য হিসেবে যোগ করো|পণ্য হিসেবে নাও|পণ্য বানাও|পণ্য তৈরি করো|হিসাবের মধ্যে রাখো|গুদামে রাখো|দাও|দিয়ে রাখো|add করো|add কর|add করুন|add করেন|add|add it|add this|add product|add to stock|add to inventory|create|create product|create an item|put|put in stock|stock in|stock-in|stock it|stock to inventory|record purchase|record as purchase|enter product|enter into stock|jog koro|jog korun|jog kor|jog korun|ed koro|ed kor|ed korun|add koro|add kor|add korun|dhukao|dhukao to|dhokao|dhukiye dao|dhukie dao|stock e dao|stock e rakho|stock e dhukao|stock e jog koro|ponno hisebe rakho|ponno hisebe add koro|mal hisebe rakho|mal jog koro|kine rakho|kine nao|purchase hisebe rakho|mjud koro|mjud korun|dhukiye dao)';
   const rateWords = '(?:দরে|ধরে|দাম(?:এ|তে)?|প্রতি|দর|dore|dhore|dam|dame|proti|per|rate|at)';
 
+  // High-confidence product-add form: "৮০ টাকা দরে ২ কেজি হলুদ যোগ করো".
+  // Keep this deterministic so ordinary Bangla stock commands never depend on a paid AI fallback.
+  const directAdd = value.match(
+    new RegExp(
+      String.raw`^${number}\\s*(?:টাকা|taka|tk)?\\s*${rateWords}\\s+${number}\\s*${units}\\s+(.+?)\\s+${addWords}
+import 'server-only';
+
+import OpenAI from 'openai';
+import { Types } from 'mongoose';
+
+import { auth } from '@/auth';
+import { connectDB } from '@/lib/db';
+
+import Party from '@/models/Party';
+import Product from '@/models/Product';
+import Transaction from '@/models/Transaction';
+import User from '@/models/User';
+import AuditLog from '@/models/AuditLog';
+
+import {
+  createTransaction,
+  reverseTransaction,
+  TransactionServiceError,
+} from './transactionService';
+
+import {
+  resolveParty,
+  resolveProduct,
+} from './entityResolver';
+
+import {
+  VoiceV2Schema,
+  VoiceV2JsonSchema,
+  type VoiceV2Command,
+} from '@/lib/voice-v2/schema';
+
+import {
+  normalizeVoiceText,
+  extractNumber,
+} from '@/lib/voice/normalize';
+import { parseSaleCommand } from '@/lib/voice-v2/saleParser';
+
+/* -------------------------------------------------------------------------- */
+/* Error                                                                      */
+/* -------------------------------------------------------------------------- */
+
+export class VoiceV2Error extends Error {
+  code: string;
+  details?: unknown;
+
+  constructor(
+    code: string,
+    message: string,
+    details?: unknown,
+  ) {
+    super(message);
+    this.name = 'VoiceV2Error';
+    this.code = code;
+    this.details = details;
+  }
+}
+
+/* -------------------------------------------------------------------------- */
+/* Helpers                                                                    */
+/* -------------------------------------------------------------------------- */
+
+const num = (value: unknown): number =>
+  typeof value === 'number' && Number.isFinite(value)
+    ? value
+    : 0;
+
+const money = (value: unknown): number =>
+  Math.round(num(value) * 100) / 100;
+
+const clean = (value: unknown): string | null =>
+  typeof value === 'string' && value.trim()
+    ? value.trim()
+    : null;
+
+const norm = (value: string): string =>
+  normalizeVoiceText(value)
+    .toLowerCase()
+    .replace(/[।,!?;:]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+
+function validateVoiceCommandSafety(command: VoiceV2Command): VoiceV2Command {
+  const amount = command.amount;
+  const paid = command.paidAmount;
+
+  if (amount !== null && amount !== undefined && (!Number.isFinite(amount) || amount < 0)) {
+    throw new VoiceV2Error('INVALID_AMOUNT', 'টাকার পরিমাণ সঠিক নয়।');
+  }
+  if (paid !== null && paid !== undefined && (!Number.isFinite(paid) || paid < 0)) {
+    throw new VoiceV2Error('INVALID_PAID_AMOUNT', 'পরিশোধের পরিমাণ সঠিক নয়।');
+  }
+  if (
+    amount !== null &&
+    amount !== undefined &&
+    paid !== null &&
+    paid !== undefined &&
+    paid > amount
+  ) {
+    throw new VoiceV2Error(
+      'PAID_EXCEEDS_TOTAL',
+      'পরিশোধের টাকা মোট টাকার চেয়ে বেশি হতে পারে না।',
+      { amount, paidAmount: paid },
+    );
+  }
+  if (command.quantity !== null && command.quantity !== undefined && (!Number.isFinite(command.quantity) || command.quantity <= 0)) {
+    throw new VoiceV2Error('INVALID_QUANTITY', 'পরিমাণ সঠিক নয়।');
+  }
+  if (command.unitPrice !== null && command.unitPrice !== undefined && (!Number.isFinite(command.unitPrice) || command.unitPrice < 0)) {
+    throw new VoiceV2Error('INVALID_UNIT_PRICE', 'দর সঠিক নয়।');
+  }
+  return command;
+}
+
+/* -------------------------------------------------------------------------- */
+/* Blank command                                                              */
+/* -------------------------------------------------------------------------- */
+
+const blank = (
+  action: VoiceV2Command['action'],
+): VoiceV2Command => ({
+  action,
+  entityType: 'NONE',
+  entityName: null,
+  targetId: null,
+  amount: null,
+  quantity: null,
+  unit: null,
+  unitPrice: null,
+  paidAmount: null,
+  phone: null,
+  notes: null,
+  partyType: null,
+  query: null,
+  confirmRequired: false,
+});
+
+function extractCreatePartyName(text: string): { name: string; partyType: 'CUSTOMER' | 'SUPPLIER' } | null {
+  const value = normalizeVoiceText(text)
+    .replace(/[।,!?;:]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+
+  const partyCreateVerb = '(?:যোগ করো|যোগ কর|যোগ করুন|যোগ করেন|যোগ|এড করো|এড কর|এড করুন|এড করেন|অ্যাড করো|অ্যাড কর|অ্যাড করুন|অ্যাড করেন|add|add koro|add kor|add korun|add করো|add কর|add করুন|create|create koro|create kor|create korun|ক্রিয়েট কর|ক্রিয়েট করো|ক্রিয়েট করুন|ক্রিয়েট|ক্রিয়েট কর|ক্রিয়েট করো|ক্রিয়েট করুন|ক্রিয়েট|তৈরি করো|তৈরি কর|তৈরি করুন|তৈরি|বানাও|বানিয়ে দাও|বানিয়ে দাও|হিসেবে যোগ করো|হিসেবে যোগ কর|হিসেবে রাখো|লিস্টে রাখো|তালিকায় যোগ করো|তালিকায় যোগ করো|অ্যাকাউন্ট খুলে দাও|অ্যাকাউন্ট খোলো|রেজিস্টার করো|register|register koro|register kor|make customer|open account|jog koro|jog kor|jog korun)';
+  const patterns = [
+    new RegExp('^(.*?)\s+(?:name|নামে)\s+নতুন\s+(customer|কাস্টমার|গ্রাহক|supplier|সাপ্লায়ার|সরবরাহকারী)\s+' + partyCreateVerb + '$', 'iu'),
+    new RegExp('^(.*?)\s+(?:name|নামে)\s+(customer|কাস্টমার|গ্রাহক|supplier|সাপ্লায়ার|সরবরাহকারী)\s+' + partyCreateVerb + '$', 'iu'),
+    new RegExp('^(.*?)\s+নতুন\s+(customer|কাস্টমার|গ্রাহক|supplier|সাপ্লায়ার|সরবরাহকারী)\s+' + partyCreateVerb + '$', 'iu'),
+  ];
+
+  for (const pattern of patterns) {
+    const match = value.match(pattern);
+    if (!match) continue;
+    const name = match[1]?.trim();
+    const type = match[2] || '';
+    if (!name) continue;
+    return {
+      name,
+      partyType: /^(supplier|সাপ্লায়ার|সরবরাহকারী)$/iu.test(type) ? 'SUPPLIER' : 'CUSTOMER',
+    };
+  }
+
+  return null;
+}
+
+/* -------------------------------------------------------------------------- */
+/* Party name extraction                                                      */
+/* -------------------------------------------------------------------------- */
+
+function partyName(text: string): string | null {
+  const value = normalizeVoiceText(text)
+    .replace(/[।,!?;:]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+
+  const cleanName = (raw: string) =>
+    raw
+      .replace(/^(?:ভাই|স্যার|সাহেব|মিস্টার|মিসেস)\s+/iu, '')
+      .replace(/\s+(?:ভাই|স্যার|সাহেব|sir|vai|bhai)$/iu, '')
+      .replace(/(?:এর|র|কে|দের|ে)$/u, '')
+      .replace(/\s+(?:er|r|ke|der|e)$/i, '')
+      .trim();
+
+  const patterns = [
+    /^(.+?)\s*(?:এর|র)\s*(?:কাছে)?\s*(?:কত|কতো)\s*(?:টাকা)?\s*(?:পাব|পাবে|পাও|বাকি|পাওনা|দেনা)/iu,
+    /^(.+?)\s*(?:এর|র)\s*(?:কাছে)?\s*\d[\d,]*(?:\.\d+)?\s*(?:টাকা|tk|taka)?\s*(?:বাকি|পাওনা|দেনা|due|baki)(?:\s*(?:আছে|রয়েছে|রয়েছে|হয়েছে|হয়েছে))?/iu,
+    /^(.+?)\s*কে\s*\d[\d,]*(?:\.\d+)?\s*(?:টাকা|tk|taka)?\s*(?:বাকি\s*)?(?:দিলাম|দিল|দিয়েছি|দিয়েছি|দেব|দিব|রাখলাম|রাখি|dilam|dilo|dil|diyechi|dibo)/iu,
+    /^(.+?)\s+\d[\d,]*(?:\.\d+)?\s*(?:টাকা|tk|taka)?\s*(?:দিল|দিলো|দিয়েছে|দিয়েছে|পাঠিয়েছে|পরিশোধ করেছে|dilo|dil|diyeche|paid)/iu,
+    /^(.+?)\s*(?:এর|র)\s*(?:কাছ থেকে|কাছথেকে|থেকে)\s*\d[\d,]*(?:\.\d+)?\s*(?:টাকা|tk|taka)?\s*(?:পেলাম|পেয়েছি|পেয়েছি|নিলাম|নিয়েছি|নিয়েছি|আদায় করলাম|আদায় করলাম|received|nilam)/iu,
+    /^(.+?)\s+er\s+kache\s+\d[\d,]*(?:\.\d+)?\s*(?:taka|tk)?\s*(?:baki|due)(?:\s+.*)?$/i,
+    /^(.+?)\s+er\s+baki\s*(?:koto|how much|ache)?$/i,
+    /^(.+?)\s+ke\s+\d[\d,]*(?:\.\d+)?\s*(?:taka|tk)?\s*(?:baki\s*)?(?:dilam|dilo|dil|diyechi|dib|dibo|rakhlam|paid)?$/i,
+    /^(.+?)\s+\d[\d,]*(?:\.\d+)?\s*(?:taka|tk)?\s*(?:dil|dilo|diyeche|paid)$/i,
+    /^(.+?)\s+er\s+kach\s+theke\s+\d[\d,]*(?:\.\d+)?\s*(?:taka|tk)?\s*(?:pelam|peyechi|nilam|received)$/i,
+    /^(.+?)\s*(?:এর|র)\s*(?:খাতায়|খাতায়|অ্যাকাউন্টে|account\s*e)\s*\d[\d,]*(?:\.\d+)?/iu,
+  ];
+
+  for (const pattern of patterns) {
+    const match = value.match(pattern);
+    if (match?.[1]) {
+      const name = cleanName(match[1]);
+      if (name && !/^(?:কত|কতো|টাকা|taka|tk)$/iu.test(name)) {
+        return name;
+      }
+    }
+  }
+
+  return null;
+}
+
+
+
+function parseCreateProductCommand(text: string): VoiceV2Command | null {
+  const value = normalizeVoiceText(text)
+    .replace(/[।,!?;:]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+
+  const createVerb = '(?:যোগ করো|যোগ করুন|যোগ|add|create|বানাও|তৈরি করো|করো|করুন)';
+  const productWord = '(?:পণ্য|product|item|মাল)';
+  const price = '(\\d[\\d,]*(?:\\.\\d+)?)\s*(?:টাকা|tk|taka)?\s*(?:দরে|দাম(?:এ)?|rate|per)?';
+  const unitPattern = '(কেজি|kg|কিলো|কিলোগ্রাম|টা|টি|piece|pieces|pcs|লিটার|liter|litre|মিটার|meter|গ্রাম|gram|g|ml|বোতল|প্যাকেট|packet|box|unit|ইউনিট)';
+
+  const patterns: RegExp[] = [
+    new RegExp('^(?:নতুন\s+)?(.+?)\s+' + price + '\s+' + productWord + '(?:\s+(?:হিসেবে|হিসাবে|as))?\s+' + createVerb + '$', 'iu'),
+    new RegExp('^(?:নতুন\s+)?' + productWord + '\s+(.+?)\s+' + price + '\s*' + createVerb + '$', 'iu'),
+    new RegExp('^(?:নতুন\s+)?(\\d[\\d,]*(?:\\.\\d+)?)\s*' + unitPattern + '\s+(.+?)\s+' + price + '\s+' + productWord + '(?:\s+(?:হিসেবে|হিসাবে|as))?\s+' + createVerb + '$', 'iu'),
+    new RegExp('^(?:নতুন\s+)?(.+?)\s+' + productWord + '(?:\s+(?:হিসেবে|হিসাবে|as))?\s+' + createVerb + '$', 'iu'),
+  ];
+
+  for (const pattern of patterns) {
+    const match = value.match(pattern);
+    if (!match) continue;
+
+    const groups = match.slice(1);
+    const numeric = groups.find((g) => /^\\d[\\d,]*(?:\\.\\d+)?$/.test(g || ''));
+    const unit = groups.find((g) => new RegExp('^' + unitPattern + '$', 'iu').test(g || '')) || null;
+    const candidates = groups.filter((g) => g && g !== numeric && g !== unit);
+    let name = candidates[0]?.trim() || '';
+
+    name = name
+      .replace(/^নতুন\s+/iu, '')
+      .replace(/^\\d[\\d,]*(?:\\.\\d+)?\s*(?:কেজি|kg|কিলো|কিলোগ্রাম|টা|টি|piece|pieces|pcs|লিটার|liter|litre|মিটার|meter|গ্রাম|gram|g|ml|বোতল|প্যাকেট|packet|box|unit|ইউনিট)\s+/iu, '')
+      .replace(/\s+(?:দরে|দাম(?:এ)?|rate|per)\s*$/iu, '')
+      .trim();
+
+    if (!name || /^(?:পণ্য|product|item|মাল)$/iu.test(name)) continue;
+
+    const command = blank('CREATE_PRODUCT');
+    command.entityType = 'PRODUCT';
+    command.entityName = name;
+    command.unit = unit || 'unit';
+    command.unitPrice = numeric ? Number(numeric.replace(/,/g, '')) : null;
+
+    const quantityMatch = value.match(new RegExp('^(?:নতুন\s+)?(\\d[\\d,]*(?:\\.\\d+)?)\s*' + unitPattern + '\s+', 'iu'));
+    if (quantityMatch) {
+      command.quantity = Number(quantityMatch[1].replace(/,/g, ''));
+    }
+
+    return command;
+  }
+
+  return null;
+}
+
+function replaceSpokenNumberWords(text: string): string {
+  const words: Record<string, number> = {
+    'শূন্য': 0, 'এক': 1, 'দুই': 2, 'তিন': 3, 'চার': 4, 'পাঁচ': 5, 'ছয়': 6, 'ছয়': 6,
+    'সাত': 7, 'আট': 8, 'নয়': 9, 'নয়': 9, 'দশ': 10, 'এগারো': 11, 'বারো': 12,
+    'তেরো': 13, 'চৌদ্দ': 14, 'পনেরো': 15, 'ষোল': 16, 'সতেরো': 17, 'আঠারো': 18,
+    'উনিশ': 19, 'বিশ': 20, 'একুশ': 21, 'বাইশ': 22, 'তেইশ': 23, 'চব্বিশ': 24,
+    'পঁচিশ': 25, 'ছাব্বিশ': 26, 'সাতাশ': 27, 'আটাশ': 28, 'উনত্রিশ': 29,
+    'ত্রিশ': 30, 'চল্লিশ': 40, 'পঞ্চাশ': 50, 'ষাট': 60, 'সত্তর': 70, 'আশি': 80,
+    'নব্বই': 90, 'একশ': 100, 'একশো': 100, 'দুইশ': 200, 'দুইশো': 200,
+    'তিনশ': 300, 'তিনশো': 300, 'চারশ': 400, 'চারশো': 400, 'পাঁচশ': 500,
+    'পাঁচশো': 500, 'ছয়শ': 600, 'ছয়শ': 600, 'সাতশ': 700, 'সাতশো': 700,
+    'আটশ': 800, 'আটশো': 800, 'নয়শ': 900, 'নয়শ': 900,
+  };
+
+  return text.split(/(\s+)/).map((token) => {
+    const key = token.trim();
+    return key && Object.prototype.hasOwnProperty.call(words, key)
+      ? String(words[key])
+      : token;
+  }).join('');
+}
+
+function parseNaturalPurchaseCommand(text: string): VoiceV2Command | null {
+  const value = replaceSpokenNumberWords(
+    normalizeVoiceText(text).replace(/[।!?;:]/g, ' ').replace(/\s+/g, ' ').trim(),
+  );
+  const n = '(\\d[\\d,]*(?:\\.\\d+)?)';
+  const units = '(কেজি|kg|কিলো|কিলোগ্রাম|গ্রাম|gram|g|লিটার|liter|litre|l|পিস|পিছ|টা|টি|piece|pieces|pcs|unit|ইউনিট)';
+  const supplierPrefix = '(.+?)\s+(?:এর\s+কাছ\s+থেকে|এর\s+কাছথেকে|এর\s+থেকে|er\s+kach\s+theke|er\s+theke)\s+';
+  const purchaseVerb = '(?:কিনলাম|কিনেছি|কিনেছে|কেনা হলো|ক্রয় করলাম|ক্রয় করেছি|bought|buy|purchased|purchase|kinlam|kinechi)';
+  const rate = '(?:টাকা|taka|tk)?\s*(?:দরে|ধরে|প্রতি|দর|rate|per|dore|dhore|proti)';
+  const paid = '(?:দিলাম|দিল|দিয়েছি|দিয়েছি|দিয়েছে|দিয়েছে|paid|pay|dilam|dil|diyechi|diyeche)';
+  const due = '(?:বাকি|বাকিতে|due|credit)';
+
+  const patterns = [
+    new RegExp(
+      '^' + supplierPrefix + n + '\s*' + units + '\s+(.+?)\s+' + n +
+      '\s*' + rate + '\s*' + purchaseVerb +
+      '(?:\s*[, ]+|\s+)' + n + '\s*(?:টাকা|taka|tk)?\s+' + paid + '$',
+      'iu',
+    ),
+    new RegExp(
+      '^' + supplierPrefix + n + '\s*' + units + '\s+(.+?)\s+' + n +
+      '\s*' + rate + '\s*' + purchaseVerb +
+      '\s+' + due + '$',
+      'iu',
+    ),
+  ];
+
+  for (const pattern of patterns) {
+    const match = value.match(pattern);
+    if (!match) continue;
+
+    const supplierName = match[1]?.trim();
+    const quantity = Number(match[2]?.replace(/,/g, ''));
+    const unit = match[3];
+    const product = match[4]?.trim();
+    const unitPrice = Number(match[5]?.replace(/,/g, ''));
+    const paidAmount = match[6] ? Number(match[6].replace(/,/g, '')) : 0;
+    const total = money(quantity * unitPrice);
+
+    if (!supplierName || !product || !unit || quantity <= 0 || unitPrice <= 0 || total <= 0) continue;
+    if (paidAmount < 0 || paidAmount > total) continue;
+
+    const isExplicitDue = new RegExp('(?:' + due + ')$', 'iu').test(value);
+    const command = blank('CREATE_PURCHASE');
+    command.entityType = 'PRODUCT';
+    command.entityName = product;
+    command.query = supplierName;
+    command.partyType = 'SUPPLIER';
+    command.quantity = quantity;
+    command.unit = unit;
+    command.unitPrice = unitPrice;
+    command.amount = total;
+    command.paidAmount = isExplicitDue ? 0 : money(paidAmount);
+    return command;
+  }
+
+  return null;
+}
+
+function parseInventoryPurchaseCommand(text: string): VoiceV2Command | null {
+  const value = replaceSpokenNumberWords(
+    normalizeVoiceText(text)
+      .replace(/[।,!?;:]/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim(),
+  );
+
+  const units = '(কেজি|kg|কিলো|কিলোগ্রাম|গ্রাম|gram|g|লিটার|liter|litre|l|পিস|পিছ|পিসে|টা|টি|piece|pieces|pcs|unit|ইউনিট|ডজন|dozen)';
+  const number = '(\\d[\\d,]*(?:\\.\\d+)?)';
+  const purchaseWords = '(?:কিনলাম|কিনেছি|কিনেছে|কেনা হলো|কেনা করলাম|ক্রয় করলাম|ক্রয় করেছি|ক্রয়|purchase|purchased|bought|buy|kinlam|kinechi)';
+  const addWords = '(?:যোগ করো|যোগ কর|যোগ করুন|যোগ করেন|যোগ|এড করো|এড কর|এড করুন|এড করেন|এড|অ্যাড করো|অ্যাড কর|অ্যাড করুন|অ্যাড করেন|অ্যাড|ঢুকাও|ঢুকাও তো|ঢোকাও|ঢুকিয়ে দাও|ঢুকিয়ে দাও|ঢোকান|ঢুকান|স্টকে রাখো|স্টকে দাও|স্টকে ঢোকাও|স্টকে যোগ করো|স্টক করো|স্টক কর|স্টক করুন|মজুদ করো|মজুদ করুন|মাল হিসেবে রাখো|মাল যোগ করো|মাল ঢোকাও|পণ্য হিসেবে রাখো|পণ্য হিসেবে যোগ করো|পণ্য হিসেবে নাও|পণ্য বানাও|পণ্য তৈরি করো|হিসাবের মধ্যে রাখো|গুদামে রাখো|দাও|দিয়ে রাখো|add করো|add কর|add করুন|add করেন|add|add it|add this|add product|add to stock|add to inventory|create|create product|create an item|put|put in stock|stock in|stock-in|stock it|stock to inventory|record purchase|record as purchase|enter product|enter into stock|jog koro|jog korun|jog kor|jog korun|ed koro|ed kor|ed korun|add koro|add kor|add korun|dhukao|dhukao to|dhokao|dhukiye dao|dhukie dao|stock e dao|stock e rakho|stock e dhukao|stock e jog koro|ponno hisebe rakho|ponno hisebe add koro|mal hisebe rakho|mal jog koro|kine rakho|kine nao|purchase hisebe rakho|mjud koro|mjud korun|dhukiye dao)';
+,
+      'iu',
+    ),
+  );
+  if (directAdd) {
+    const unitPrice = Number(directAdd[1].replace(/,/g, ''));
+    const quantity = Number(directAdd[2].replace(/,/g, ''));
+    const unit = directAdd[3];
+    const name = directAdd[4]?.trim();
+    if (name && unit && Number.isFinite(unitPrice) && unitPrice > 0 && Number.isFinite(quantity) && quantity > 0) {
+      const command = blank('CREATE_PRODUCT');
+      command.entityType = 'PRODUCT';
+      command.entityName = name;
+      command.quantity = quantity;
+      command.unit = unit;
+      command.unitPrice = unitPrice;
+      return command;
+    }
+  }
+
   const purchasePatterns = [
     {
       pattern: new RegExp('^' + number + '\s*' + units + '\s+(.+?)\s+' + number + '\s*(?:টাকা|taka|tk)?\s*' + rateWords + '\s*' + purchaseWords + '$', 'iu'),
