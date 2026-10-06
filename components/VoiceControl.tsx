@@ -537,6 +537,8 @@ export default function VoiceControl() {
             </motion.div>
           </motion.div>
         )}
+      </AnimatePresence>
+
       <AnimatePresence>
         {pending && (
           <motion.div
