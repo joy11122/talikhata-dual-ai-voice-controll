@@ -125,6 +125,26 @@ export default function VoiceControl() {
   const activeSessionId = useRef(0);
   const inputRef = useRef<HTMLInputElement>(null);
 
+  const withPreviewDefaults = (value: Pending): Pending => {
+    const command = value.command || {};
+    const action = command.action || '';
+    const isPartyAction = ['CREATE_PARTY', 'UPDATE_PARTY', 'CREATE_DUE', 'RECEIVE_PAYMENT'].includes(action);
+    const isProductAction = ['CREATE_PRODUCT', 'UPDATE_PRODUCT', 'CREATE_SALE', 'CREATE_PURCHASE', 'STOCK_IN', 'STOCK_OUT'].includes(action);
+
+    return {
+      ...value,
+      command: {
+        ...command,
+        entityName: command.entityName ?? command.name ?? '',
+        partyType: command.partyType ?? (isPartyAction ? (command.entityType === 'SUPPLIER' ? 'SUPPLIER' : 'CUSTOMER') : ''),
+        amount: command.amount ?? command.totalAmount ?? command.paidAmount ?? null,
+        quantity: command.quantity ?? command.qty ?? null,
+        unit: command.unit ?? (isProductAction ? 'কেজি' : ''),
+        unitPrice: command.unitPrice ?? command.price ?? null,
+        paidAmount: command.paidAmount ?? null,
+      },
+    };
+  };
   const normalizeSpeechCommand = (value: string) =>
     value
       .replace(/(^|\s)জব(?=\s|$|[,.!?।])/gu, '$1যোগ')
@@ -216,35 +236,14 @@ export default function VoiceControl() {
 
       if (!response.ok || !data.ok) {
         if (data.confirmationRequired) {
-  const withPreviewDefaults = (value: Pending): Pending => {
-    const command = value.command || {};
-    const action = command.action || '';
-    const isPartyAction = ['CREATE_PARTY', 'UPDATE_PARTY', 'CREATE_DUE', 'RECEIVE_PAYMENT'].includes(action);
-    const isProductAction = ['CREATE_PRODUCT', 'UPDATE_PRODUCT', 'CREATE_SALE', 'CREATE_PURCHASE', 'STOCK_IN', 'STOCK_OUT'].includes(action);
-
-    return {
-      ...value,
-      command: {
-        ...command,
-        entityName: command.entityName ?? command.name ?? '',
-        partyType: command.partyType ?? (isPartyAction ? (command.entityType === 'SUPPLIER' ? 'SUPPLIER' : 'CUSTOMER') : ''),
-        amount: command.amount ?? command.totalAmount ?? command.paidAmount ?? null,
-        quantity: command.quantity ?? command.qty ?? null,
-        unit: command.unit ?? (isProductAction ? 'কেজি' : ''),
-        unitPrice: command.unitPrice ?? command.price ?? null,
-        paidAmount: command.paidAmount ?? null,
-      },
-    };
-  };
-
-          setPending({
+          setPending(withPreviewDefaults({
             command: data.command || command,
             message:
               data.error ||
               'এই কাজটি করার আগে confirmation প্রয়োজন।',
             commandId: data.commandId || data.details?.commandId,
             matches: data.details?.matches || [],
-          });
+          }));
 
           return;
         }
