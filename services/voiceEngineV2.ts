@@ -1398,9 +1398,6 @@ function confirmationMessage(command: VoiceV2Command) {
 /* -------------------------------------------------------------------------- */
 /* Execute Voice V2                                                           */
 /* -------------------------------------------------------------------------- */
-/* -------------------------------------------------------------------------- */
-/* Execute Voice V2                                                           */
-/* -------------------------------------------------------------------------- */
 
 export async function executeVoiceV2(
   commandInput: VoiceV2Command,
@@ -1506,6 +1503,14 @@ export async function executeVoiceV2(
     }).lean();
 
     if (!pending) {
+      const completed = await AuditLog.findOne({
+        userId: uid,
+        commandId,
+        status: 'SUCCESS',
+      }).lean();
+
+      if (completed?.result) return completed.result;
+
       throw new VoiceV2Error(
         'CONFIRMATION_REQUIRED',
         'এই review session পাওয়া যায়নি বা ইতিমধ্যে ব্যবহার করা হয়েছে। আবার command দিন।',
