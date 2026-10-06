@@ -14,7 +14,7 @@ export async function GET(req:Request){
   await connectDB();
   const url=new URL(req.url);
   const q=url.searchParams.get('q');
-  const filter:any={userId:new Types.ObjectId(s.user.id),isDeleted:false};
+  const filter:any={userId:new Types.ObjectId(s.user.id),isDeleted:{$ne:true}};
   if(q){
     const rx=new RegExp(escapeRegex(q),'i');
     filter.$or=[{name:rx},{category:rx},{brand:rx},{sku:rx},{barcode:rx}];
