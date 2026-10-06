@@ -1417,6 +1417,213 @@ export async function executeVoiceV2(
       : parsedCommand;
 
   /* ---------------------------------------------------------------------- */
+  /* Intent-specific required-field validation                              */
+  /* ---------------------------------------------------------------------- */
+
+  const requireField = (
+    condition: unknown,
+    message: string,
+    code = 'MISSING_FIELD',
+  ) => {
+    if (!condition) {
+      throw new VoiceV2Error(code, message);
+    }
+  };
+
+  const positiveNumber = (value: unknown) =>
+    typeof value === 'number' &&
+    Number.isFinite(value) &&
+    value > 0;
+
+  const nonNegativeNumber = (value: unknown) =>
+    typeof value === 'number' &&
+    Number.isFinite(value) &&
+    value >= 0;
+
+  switch (parsedCommand.action) {
+    case 'CREATE_PARTY':
+      requireField(
+        parsedCommand.entityName?.trim(),
+        parsedCommand.partyType === 'SUPPLIER'
+          ? 'Supplier name is required'
+          : 'Customer name is required',
+      );
+      requireField(
+        parsedCommand.partyType === 'CUSTOMER' ||
+          parsedCommand.partyType === 'SUPPLIER',
+        'Party type must be CUSTOMER or SUPPLIER',
+        'INVALID_PARTY_TYPE',
+      );
+      break;
+
+    case 'CREATE_PRODUCT':
+      requireField(
+        parsedCommand.entityName?.trim(),
+        'Product name is required',
+      );
+      break;
+
+    case 'CREATE_SALE':
+      requireField(
+        parsedCommand.entityName?.trim(),
+        'Product name is required for a sale',
+      );
+      requireField(
+        positiveNumber(parsedCommand.quantity),
+        'Sale quantity must be greater than zero',
+        'INVALID_QUANTITY',
+      );
+      requireField(
+        positiveNumber(parsedCommand.unitPrice),
+        'Sale unit price must be greater than zero',
+        'INVALID_UNIT_PRICE',
+      );
+      requireField(
+        parsedCommand.paidAmount === null ||
+          nonNegativeNumber(parsedCommand.paidAmount),
+        'Paid amount must be zero or greater',
+        'INVALID_PAID_AMOUNT',
+      );
+      break;
+
+    case 'CREATE_PURCHASE':
+      requireField(
+        parsedCommand.entityName?.trim(),
+        'Product name is required for a purchase',
+      );
+      requireField(
+        positiveNumber(parsedCommand.quantity),
+        'Purchase quantity must be greater than zero',
+        'INVALID_QUANTITY',
+      );
+      requireField(
+        positiveNumber(parsedCommand.unitPrice),
+        'Purchase unit price must be greater than zero',
+        'INVALID_UNIT_PRICE',
+      );
+      requireField(
+        parsedCommand.paidAmount === null ||
+          nonNegativeNumber(parsedCommand.paidAmount),
+        'Paid amount must be zero or greater',
+        'INVALID_PAID_AMOUNT',
+      );
+      break;
+
+    case 'CREATE_DUE':
+      requireField(
+        parsedCommand.entityName?.trim(),
+        'Party name is required for a due',
+      );
+      requireField(
+        parsedCommand.partyType === 'CUSTOMER' ||
+          parsedCommand.partyType === 'SUPPLIER',
+        'Party type is required for a due',
+        'INVALID_PARTY_TYPE',
+      );
+      requireField(
+        positiveNumber(parsedCommand.amount),
+        'Due amount must be greater than zero',
+        'INVALID_AMOUNT',
+      );
+      break;
+
+    case 'RECEIVE_PAYMENT':
+      requireField(
+        parsedCommand.entityName?.trim(),
+        'Party name is required for a payment',
+      );
+      requireField(
+        parsedCommand.partyType === 'CUSTOMER' ||
+          parsedCommand.partyType === 'SUPPLIER',
+        'Party type is required for a payment',
+        'INVALID_PARTY_TYPE',
+      );
+      requireField(
+        positiveNumber(parsedCommand.amount),
+        'Payment amount must be greater than zero',
+        'INVALID_AMOUNT',
+      );
+      break;
+
+    case 'STOCK_IN':
+    case 'STOCK_OUT':
+      requireField(
+        parsedCommand.entityName?.trim(),
+        'Product name is required for a stock operation',
+      );
+      requireField(
+        positiveNumber(parsedCommand.quantity),
+        'Stock quantity must be greater than zero',
+        'INVALID_QUANTITY',
+      );
+      break;
+
+    case 'CREATE_EXPENSE':
+    case 'CREATE_INCOME':
+      requireField(
+        positiveNumber(parsedCommand.amount),
+        'Amount must be greater than zero',
+        'INVALID_AMOUNT',
+      );
+      break;
+
+    case 'UPDATE_PARTY':
+      requireField(
+        parsedCommand.entityName?.trim(),
+        'Party name is required for an update',
+      );
+      requireField(
+        Boolean(parsedCommand.phone) ||
+          Boolean(parsedCommand.query),
+        'At least one party field to update is required',
+        'INVALID_UPDATE',
+      );
+      break;
+
+    case 'UPDATE_PRODUCT':
+      requireField(
+        parsedCommand.entityName?.trim(),
+        'Product name is required for an update',
+      );
+      requireField(
+        Boolean(parsedCommand.unit) ||
+          nonNegativeNumber(parsedCommand.unitPrice) ||
+          Boolean(parsedCommand.notes) ||
+          Boolean(parsedCommand.query),
+        'At least one product field to update is required',
+        'INVALID_UPDATE',
+      );
+      break;
+
+    case 'DELETE_PARTY':
+    case 'DELETE_PRODUCT':
+    case 'DELETE_TRANSACTION':
+      requireField(
+        parsedCommand.entityName?.trim() ||
+          parsedCommand.query?.trim() ||
+          (parsedCommand.targetId &&
+            Types.ObjectId.isValid(parsedCommand.targetId)),
+        'Target is required for deletion',
+        'MISSING_ENTITY',
+      );
+      break;
+
+    case 'READ_PARTY':
+    case 'READ_PRODUCT':
+    case 'READ_BALANCE':
+      requireField(
+        parsedCommand.entityName?.trim() ||
+          parsedCommand.query?.trim(),
+        'A name or query is required',
+        'MISSING_ENTITY',
+      );
+      break;
+
+    default:
+      break;
+  }
+
+  /* ---------------------------------------------------------------------- */
   /* Database                                                                  */
   /* ---------------------------------------------------------------------- */
 
