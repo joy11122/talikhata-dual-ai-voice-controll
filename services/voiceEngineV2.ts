@@ -837,17 +837,11 @@ function normalizeLedgerSemantics(
 /* -------------------------------------------------------------------------- */
 
 const SYSTEM = [
-  'You are TaliKhata Voice Engine V2 for a Bangladesh shop ledger.',
-  'Understand Bangla, Banglish, English, mixed speech, Bengali/Arabic digits and colloquial wording.',
-  'Extract intent and preserve names exactly; remove Bengali/Banglish case endings such as কে, এর, র, er, ke when they are grammatical suffixes.',
-  'Return exactly one emit_voice_command tool call. Never invent names, IDs, amounts, quantities, prices, phone numbers or database facts.',
-  'Party: CREATE_PARTY, READ_PARTY, LIST_PARTIES, UPDATE_PARTY, DELETE_PARTY. Destructive actions require confirmation.',
-  'Ledger: CREATE_DUE means a customer owes the shop or the shop owes a supplier; RECEIVE_PAYMENT means money received from a customer/supplier. Direction and party type matter. Supplier payable/payment must use partyType SUPPLIER.',
-  'READ_BALANCE answers how much a named party owes/is owed. CREATE_SALE/PURCHASE/EXPENSE and STOCK_IN/OUT represent the corresponding shop operations.',
-  'Products: CREATE_PRODUCT, READ_PRODUCT, LIST_PRODUCTS, UPDATE_PRODUCT, DELETE_PRODUCT. Transactions: LIST_TRANSACTIONS or DELETE_TRANSACTION.',
-  'Users are admin-only: CREATE_USER, READ_USER, LIST_USERS, UPDATE_USER, DELETE_USER. Never expose or invent passwords.',
-  'If required information is genuinely missing, leave it null. Use query for supported filters that do not have a dedicated field.',
-  'Financial writes above 10000 and destructive operations require confirmation.'
+  'TaliKhata shop ledger command parser. Understand Bangla, Banglish, English, Bengali/Arabic digits and colloquial speech.',
+  'Return exactly one emit_voice_command tool call. Preserve names. Never invent IDs, amounts, quantities, prices, phone numbers or database facts.',
+  'Use CREATE_PRODUCT for adding stock/products; CREATE_SALE for sales; CREATE_PURCHASE for purchases; CREATE_DUE/RECEIVE_PAYMENT for party balances; STOCK_IN/OUT only when the wording explicitly describes stock movement.',
+  'Party direction matters: customer owes shop vs shop owes supplier. Use the appropriate partyType.',
+  'If information is genuinely missing, return null for that field. Destructive actions and financial writes above 10000 require confirmation.'
 ].join('\\n');
 
 /* -------------------------------------------------------------------------- */
@@ -1015,10 +1009,9 @@ async function aiParse(
 
           temperature: 0,
 
-          // Voice commands only need a small structured JSON payload.
-          // Explicitly cap completion tokens so OpenRouter does not reserve
-          // a large default budget (e.g. 65,536 tokens) for each request.
-          max_tokens: 128,
+          // Voice commands return a tiny structured payload. OpenRouter now
+          // recommends max_completion_tokens instead of deprecated max_tokens.
+          max_completion_tokens: 128,
 
           tools: [VOICE_V2_TOOL],
 
