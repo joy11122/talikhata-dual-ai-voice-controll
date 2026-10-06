@@ -479,7 +479,7 @@ export default function VoiceControl() {
             </div>
           </div>
           <form onSubmit={submit} className="flex h-[58px] items-center gap-2 rounded-[30px] border border-white/10 bg-slate-950/75 px-1.5 shadow-[0_12px_40px_rgba(0,0,0,0.28)] backdrop-blur-2xl sm:h-[64px] sm:px-2">
-            <button type="button" aria-label="New voice command" onClick={() => { setText(''); setError(''); setResult(null); setPending(null); setState('Idle'); }} className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-[28px] font-light leading-none text-white transition hover:bg-white/10 active:scale-95">+</button>
+            <button type="button" aria-label="New voice command" onClick={() => { setText(''); setError(''); setResult(null); setPending(null); setEditingPending(false); setState('Idle'); }} className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-[28px] font-light leading-none text-white transition hover:bg-white/10 active:scale-95">+</button>
             <input ref={inputRef} value={text} onChange={(event) => setText(event.target.value)} aria-label="Voice command or text input" placeholder="আপনার হিসাবের কথা লিখুন বা বলুন…" className="min-w-0 flex-1 bg-transparent px-1.5 text-[14px] leading-6 text-white outline-none placeholder:text-white/35 sm:px-2 sm:text-[15px]" />
             <button type="button" onClick={start} disabled={state === 'Listening' || state === 'Processing'} aria-label={state === 'Listening' ? 'Listening' : 'Start voice input'} className={'group relative flex h-10 w-10 shrink-0 items-center justify-center rounded-full transition-all duration-200 ease-out hover:scale-[1.04] active:scale-[0.92] sm:h-11 sm:w-11 ' + (state === 'Listening' ? 'bg-red-500 text-white shadow-[0_5px_18px_rgba(239,68,68,0.30)]' : state === 'Error' ? 'text-red-400 hover:bg-red-500/10' : state === 'Success' ? 'text-emerald-400 hover:bg-emerald-500/10' : 'text-white/75 hover:bg-white/10')}>
               {state === 'Processing' ? <Loader2 size={22} className="animate-spin" /> : state === 'Success' ? <Check size={22} /> : state === 'Error' ? <AlertCircle size={22} /> : <Mic size={22} className="relative z-10 transition-transform duration-200 group-hover:scale-105 group-active:scale-90" />}
@@ -544,12 +544,12 @@ export default function VoiceControl() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[60] grid place-items-center bg-slate-950/50 p-4"
+            className="fixed inset-0 z-[80] grid place-items-center bg-slate-950/55 p-4 backdrop-blur-[16px]"
           >
-            <motion.div className="w-full max-w-lg rounded-xl bg-white p-6 shadow-2xl">
+            <motion.div className="max-h-[88vh] w-full max-w-lg overflow-y-auto rounded-[20px] border border-white/10 bg-[#111722]/90 p-6 text-white shadow-[0_24px_80px_rgba(0,0,0,.45)] backdrop-blur-[24px]">
               <div className="flex justify-between">
                 <h2 className="text-xl font-bold">নিশ্চিত করুন</h2>
-                <button type="button" onClick={() => setPending(null)} aria-label="Close confirmation">
+                <button type="button" onClick={() => { setPending(null); setEditingPending(false); }} aria-label="Close confirmation">
                   <X />
                 </button>
               </div>
