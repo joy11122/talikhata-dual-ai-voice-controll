@@ -25,7 +25,6 @@ export async function POST(req:Request){
     if(error instanceof VoiceV2Error){
       return NextResponse.json({
         ok:false,error:error.message,code:error.code,details:error.details,
-        confirmationRequired:error.code==='CONFIRMATION_REQUIRED'
       },{status:error.code==='UNAUTHORIZED'?401:error.code==='FORBIDDEN'?403:error.code==='NOT_FOUND'||error.code==='AMBIGUOUS_ENTITY'||error.code==='DUPLICATE_ENTITY'?409:422});
     }
     return NextResponse.json({ok:false,error:error instanceof Error?error.message:'Voice Engine V2 failed',code:'VOICE_V2_ERROR'},{status:500});
