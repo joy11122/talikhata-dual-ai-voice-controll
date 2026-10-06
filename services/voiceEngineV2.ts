@@ -943,56 +943,122 @@ function getToolArguments(response: OpenAI.Chat.Completions.ChatCompletion): str
 /* AI parser                                                                  */
 /* -------------------------------------------------------------------------- */
 
-async function aiParse(
-  text: string,
-): Promise<VoiceV2Command> {
+async function aiParse(text: string): Promise<VoiceV2Command> {
   const providers = getProviders();
-  if (!providers.length) throw new VoiceV2Error('AI_NOT_CONFIGURED','No voice AI provider is configured. Add OPENAI_API_KEY or OPENROUTER_API_KEY to .env.local.',{providers:[]});
+  if (!providers.length) {
+    throw new VoiceV2Error(
+      'AI_NOT_CONFIGURED',
+      'No voice AI provider is configured. Add OPENAI_API_KEY or OPENROUTER_API_KEY to .env.local.',
+      { providers: [] },
+    );
+  }
+
   const errors: Array<{ provider: string; model: string; message: string }> = [];
+
   for (const provider of providers) {
     try {
       console.info('[VoiceV2] Trying ' + provider.name + ' with ' + provider.model);
+
       const client = new OpenAI({
         apiKey: provider.apiKey,
         baseURL: provider.baseURL,
         timeout: 10_000,
         maxRetries: 0,
-        defaultHeaders: provider.name === 'openrouter' ? {
-          'HTTP-Referer': process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000',
-          'X-Title': 'TaliKhata Voice V2',
-        } : undefined,
+        defaultHeaders:
+          provider.name === 'openrouter'
+            ? {
+                'HTTP-Referer':
+                  process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000',
+                'X-Title': 'TaliKhata Voice V2',
+              }
+            : undefined,
       });
+
       const response = await client.chat.completions.create({
         model: provider.model,
-        messages: [{ role: 'system', content: SYSTEM }, { role: 'user', content: text }],
+        messages: [
+          { role: 'system', content: SYSTEM },
+          { role: 'user', content: text },
+        ],
         temperature: 0,
         max_completion_tokens: 128,
         tools: [VOICE_V2_TOOL],
-        tool_choice: { type: 'function', function: { name: 'emit_voice_command' } },
+        tool_choice: {
+          type: 'function',
+          function: { name: 'emit_voice_command' },
+        },
       });
+
       const argumentsJSON = getToolArguments(response);
+
       let envelope: unknown;
-      try { envelope = JSON.parse(argumentsJSON); } catch { throw new Error('Provider returned invalid tool-call JSON.'); }
-      const commandPayload = envelope && typeof envelope === 'object' && 'command' in envelope && typeof (envelope as { command?: unknown }).command === 'string'
-        ? (envelope as { command: string }).command
-        : argumentsJSON;
-      let parsed: unknown;
-      try { parsed = JSON.parse(commandPayload); } catch { throw new Error('Provider returned invalid command JSON.'); }
-      const validated = VoiceV2Schema.safeParse(parsed);
-      if (!validated.success) {
-        const issues = validated.error.issues.map((issue) => ({ path: issue.path.join('.'), code: issue.code, message: issue.message }));
-        console.error('[VoiceV2] Invalid AI command:', issues);
-        throw new Error('Provider returned a command that failed TaliKhata validation: ' + issues.map((issue) => (issue.path || 'command') + ': ' + issue.message).join('; '));
+      try {
+        envelope = JSON.parse(argumentsJSON);
+      } catch {
+        throw new Error('Provider returned invalid tool-call JSON.');
       }
+
+      const commandPayload =
+        envelope &&
+        typeof envelope === 'object' &&
+        'command' in envelope &&
+        typeof (envelope as { command?: unknown }).command === 'string'
+          ? (envelope as { command: string }).command
+          : argumentsJSON;
+
+      let parsed: unknown;
+      try {
+        parsed = JSON.parse(commandPayload);
+      } catch {
+        throw new Error('Provider returned invalid command JSON.');
+      }
+
+      const validated = VoiceV2Schema.safeParse(parsed);
+
+      if (!validated.success) {
+        const issues = validated.error.issues.map((issue) => ({
+          path: issue.path.join('.'),
+          code: issue.code,
+          message: issue.message,
+        }));
+
+        console.error('[VoiceV2] Invalid AI command:', issues);
+
+        throw new Error(
+          'Provider returned a command that failed TaliKhata validation: ' +
+            issues
+              .map(
+                (issue) =>
+                  (issue.path || 'command') + ': ' + issue.message,
+              )
+              .join('; '),
+        );
+      }
+
       console.info('[VoiceV2] ' + provider.name + ' succeeded');
       return normalizeLedgerSemantics(validated.data, text);
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
-      errors.push({ provider: provider.name, model: provider.model, message });
-      console.error('[VoiceV2] ' + provider.name + ' failed', { model: provider.model, message, error });
+
+      errors.push({
+        provider: provider.name,
+        model: provider.model,
+        message,
+      });
+
+      console.error('[VoiceV2] ' + provider.name + ' failed', {
+        model: provider.model,
+        message,
+        error,
+      });
     }
   }
-  throw new VoiceV2Error('AI_UNAVAILABLE','Voice AI providers are temporarily unavailable. Please try again.',{providers:errors});
+
+  throw new VoiceV2Error(
+    'AI_UNAVAILABLE',
+    'Voice AI providers are temporarily unavailable. Please try again.',
+    { providers: errors },
+  );
 }
 
 /* -------------------------------------------------------------------------- */
