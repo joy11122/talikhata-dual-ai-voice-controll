@@ -16,6 +16,17 @@ import { useToast } from '@/components/ToastProvider';
 
 type State = 'Idle' | 'Listening' | 'Processing' | 'Success' | 'Error';
 
+
+function normalizeSpeechCommand(value: string): string {
+  return value
+    .normalize('NFKC')
+    .replace(/[\u200B-\u200D\uFEFF]/g, '')
+    .replace(/[।॥]+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+
 type Pending = {
   command: any;
   message: string;
@@ -127,7 +138,6 @@ export default function VoiceControl() {
   const process = async (
     transcript: string,
     command?: any,
-    confirmed = false,
     commandId?: string,
   ) => {
     const cleanTranscript = normalizeSpeechCommand(transcript);
@@ -148,7 +158,6 @@ export default function VoiceControl() {
         },
         body: JSON.stringify({
           transcript: cleanTranscript,
-          confirmed,
           command,
           commandId,
         }),
@@ -368,7 +377,7 @@ export default function VoiceControl() {
 
     setPending({ ...pending, command });
     setEditingPending(false);
-    process('', command, false, pending.commandId);
+    process('', command, pending.commandId);
   };
 
   const actionLabel = (action: string) => ({
