@@ -135,6 +135,19 @@ export default function VoiceControl() {
   const activeSessionId = useRef(0);
   const inputRef = useRef<HTMLInputElement>(null);
 
+  const speak = (spokenText: string) => {
+    if (
+      typeof window !== 'undefined' &&
+      'speechSynthesis' in window
+    ) {
+      const utterance = new SpeechSynthesisUtterance(spokenText);
+      utterance.lang = 'bn-BD';
+      utterance.rate = 0.95;
+      window.speechSynthesis.cancel();
+      window.speechSynthesis.speak(utterance);
+    }
+  };
+
   const process = async (
     transcript: string,
     command?: any,
