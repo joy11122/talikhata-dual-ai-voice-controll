@@ -119,6 +119,16 @@ function message(c: any, result: any) {
   return 'কাজটি সফলভাবে সম্পন্ন হয়েছে।';
 }
 
+function speak(spokenText: string): void {
+  if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
+    const utterance = new SpeechSynthesisUtterance(spokenText);
+    utterance.lang = 'bn-BD';
+    utterance.rate = 0.95;
+    window.speechSynthesis.cancel();
+    window.speechSynthesis.speak(utterance);
+  }
+}
+
 export default function VoiceControl() {
   const [state, setState] = useState<State>('Idle');
   const [text, setText] = useState('');
@@ -134,19 +144,6 @@ export default function VoiceControl() {
   const requestId = useRef(0);
   const activeSessionId = useRef(0);
   const inputRef = useRef<HTMLInputElement>(null);
-
-  const speak = (spokenText: string) => {
-    if (
-      typeof window !== 'undefined' &&
-      'speechSynthesis' in window
-    ) {
-      const utterance = new SpeechSynthesisUtterance(spokenText);
-      utterance.lang = 'bn-BD';
-      utterance.rate = 0.95;
-      window.speechSynthesis.cancel();
-      window.speechSynthesis.speak(utterance);
-    }
-  };
 
   const process = async (
     transcript: string,
