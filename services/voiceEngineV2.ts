@@ -1284,89 +1284,65 @@ async function findOrCreateParty(
   type: 'CUSTOMER' | 'SUPPLIER',
 ) {
   const normalizedName = name.trim();
-
   if (!normalizedName) {
     throw new VoiceV2Error(
       'MISSING_ENTITY',
-      type === 'SUPPLIER'
-        ? 'Supplier name is required'
-        : 'Customer name is required',
+      type === 'SUPPLIER' ? 'Supplier name is required' : 'Customer name is required',
     );
   }
 
-  const candidates = await resolveParty(
-    userId,
-    normalizedName,
-    session,
-  );
-
-  const sameType = candidates.filter(
-    (party: any) => party.partyType === type,
-  );
-
-  if (sameType.length === 1) {
-    return { party: sameType[0], created: false };
-  }
-
+  const candidates = await resolveParty(userId, normalizedName, session);
+  const sameType = candidates.filter((party: any) => party.partyType === type);
+  if (sameType.length === 1) return { party: sameType[0], created: false };
   if (sameType.length > 1) {
     throw new VoiceV2Error(
       'AMBIGUOUS_ENTITY',
-      'Multiple ' +
-        (type === 'SUPPLIER' ? 'suppliers' : 'customers') +
-        ' matched "' +
-        normalizedName +
-        '".',
-      {
-        matches: sameType.slice(0, 10).map((party: any) => ({
-          id: String(party._id),
-          name: party.name,
-          phone: party.phone || null,
-          balance: party.currentBalance,
-        })),
-      },
+      'Multiple ' + (type === 'SUPPLIER' ? 'suppliers' : 'customers') + ' matched "' + normalizedName + '".',
+      { matches: sameType.slice(0, 10).map((party: any) => ({ id: String(party._id), name: party.name, phone: party.phone || null, balance: party.currentBalance })) },
+    );
+  }
+
+  const escaped = normalizedName.replace(/[.*+?^\${}()|[\]\\]/g, '\\$&');
+  const deleted = await Party.find({
+    userId: new Types.ObjectId(userId),
+    isDeleted: true,
+    partyType: type,
+    name: new RegExp('^' + escaped + '$', 'i'),
+  }).session(session).limit(20);
+
+  if (deleted.length === 1) {
+    const restored = await Party.findOneAndUpdate(
+      { _id: deleted[0]._id, userId: new Types.ObjectId(userId), isDeleted: true },
+      { $set: { isDeleted: false }, $unset: { deletedAt: 1, deletedBy: 1 } },
+      { new: true, session },
+    );
+    return { party: restored, created: false, restored: true };
+  }
+
+  if (deleted.length > 1) {
+    throw new VoiceV2Error(
+      'AMBIGUOUS_ENTITY',
+      'Multiple deleted parties matched "' + normalizedName + '".',
+      { matches: deleted.slice(0, 10).map((party: any) => ({ id: String(party._id), name: party.name, phone: party.phone || null, balance: party.currentBalance })) },
     );
   }
 
   try {
     const [created] = await Party.create(
-      [
-        {
-          userId: new Types.ObjectId(userId),
-          name: normalizedName,
-          partyType: type,
-          currentBalance: 0,
-        },
-      ],
+      [{ userId: new Types.ObjectId(userId), name: normalizedName, partyType: type, currentBalance: 0 }],
       { session },
     );
-
-    return { party: created, created: true };
+    return { party: created, created: true, restored: false };
   } catch (error) {
-    if (
-      error instanceof Error &&
-      /E11000|duplicate/i.test(error.message)
-    ) {
-      const retry = await resolveParty(
-        userId,
-        normalizedName,
-        session,
-      );
-
-      const retrySameType = retry.filter(
-        (party: any) => party.partyType === type,
-      );
-
-      if (retrySameType.length === 1) {
-        return {
-          party: retrySameType[0],
-          created: false,
-        };
-      }
+    if (error instanceof Error && /E11000|duplicate/i.test(error.message)) {
+      const retry = await resolveParty(userId, normalizedName, session);
+      const retrySameType = retry.filter((party: any) => party.partyType === type);
+      if (retrySameType.length === 1) return { party: retrySameType[0], created: false };
     }
-
     throw error;
   }
 }
+
 
 /* -------------------------------------------------------------------------- */
 /* Execute Voice V2                                                           */
