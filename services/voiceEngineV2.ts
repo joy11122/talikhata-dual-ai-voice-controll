@@ -1899,6 +1899,19 @@ export async function executeVoiceV2(
   /* Transaction session                                                    */
   /* ---------------------------------------------------------------------- */
 
+  // Only commands that reach the transactional mutation path should update
+  // the pending audit record. Read/list commands return before this point.
+  const mutating = ![
+    'READ_BALANCE',
+    'READ_PARTY',
+    'READ_PRODUCT',
+    'LIST_PARTIES',
+    'LIST_PRODUCTS',
+    'LIST_TRANSACTIONS',
+    'READ_USER',
+    'LIST_USERS',
+  ].includes(command.action);
+
   const session =
     await Party.startSession();
 
