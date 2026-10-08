@@ -2182,77 +2182,61 @@ export async function executeVoiceV2(
               'Party name is required',
             );
           }
-
-          const partyType =
-            command.partyType ||
-            'CUSTOMER';
-
-          const escaped =
-            command.entityName.replace(
-              /[.*+?^\${}()|[\]\\]/g,
-              '\\$&',
-            );
-
-          const duplicate =
-            await Party.findOne({
-              userId: uid,
-              name: new RegExp(
-                `^${escaped}$`,
-                'i',
-              ),
-            }).session(session);
-
+          const partyType = command.partyType || 'CUSTOMER';
+          const escaped = command.entityName.replace(/[.*+?^\${}()|[\]\\]/g, '\\$&');
+          const duplicate = await Party.findOne({
+            userId: uid,
+            isDeleted: { $ne: true },
+            name: new RegExp('^' + escaped + '$', 'i'),
+          }).session(session);
           if (duplicate) {
             throw new VoiceV2Error(
               'DUPLICATE_ENTITY',
-              `A party named "${command.entityName}" already exists`,
-              {
-                matches: [
-                  {
-                    id: String(
-                      duplicate._id,
-                    ),
-                    name: duplicate.name,
-                    phone:
-                      duplicate.phone ||
-                      null,
-                    balance:
-                      duplicate.currentBalance,
-                  },
-                ],
-              },
+              'A party named "' + command.entityName + '" already exists',
+              { matches: [{ id: String(duplicate._id), name: duplicate.name, phone: duplicate.phone || null, partyType: duplicate.partyType, balance: duplicate.currentBalance }] },
             );
           }
-
-          const [party] =
-            await Party.create(
-              [
-                {
-                  userId: uid,
-                  name:
-                    command.entityName,
-                  phone:
-                    command.phone ||
-                    undefined,
-                  partyType,
-                  currentBalance: 0,
-                },
-              ],
+          const deleted = await Party.findOne({
+            userId: uid,
+            isDeleted: true,
+            partyType,
+            name: new RegExp('^' + escaped + '$', 'i'),
+          }).session(session);
+          if (deleted) {
+            const updated = await Party.findOneAndUpdate(
+              { _id: deleted._id, userId: uid, isDeleted: true },
               {
-                session,
+                $set: { isDeleted: false, phone: command.phone || deleted.phone },
+                $unset: { deletedAt: 1, deletedBy: 1 },
               },
+              { new: true, session },
+            ).lean();
+            result = {
+              type: 'CREATE_PARTY',
+              id: String(deleted._id),
+              name: updated?.name || deleted.name,
+              phone: updated?.phone || null,
+              partyType: updated?.partyType || partyType,
+              balance: Number(updated?.currentBalance || 0),
+              restored: true,
+              created: false,
+            };
+          } else {
+            const [party] = await Party.create(
+              [{ userId: uid, name: command.entityName, phone: command.phone || undefined, partyType, currentBalance: 0 }],
+              { session },
             );
-
-          result = {
-            type: 'CREATE_PARTY',
-            id: String(party._id),
-            name: party.name,
-            phone:
-              party.phone || null,
-            partyType:
-              party.partyType,
-            balance: 0,
-          };
+            result = {
+              type: 'CREATE_PARTY',
+              id: String(party._id),
+              name: party.name,
+              phone: party.phone || null,
+              partyType: party.partyType,
+              balance: 0,
+              created: true,
+              restored: false,
+            };
+          }
         }
 
         /* ---------------------------------------------------------------- */
@@ -2382,74 +2366,149 @@ export async function executeVoiceV2(
           command.action ===
           'CREATE_PRODUCT'
         ) {
-          if (
-            !command.entityName ||
-            !command.unit
-          ) {
+          if (!command.entityName || !command.unit) {
             throw new VoiceV2Error(
               'INVALID_PRODUCT',
               'Product name and unit are required',
             );
           }
 
-          const escaped =
-            command.entityName.replace(
-              /[.*+?^\${}()|[\]\\]/g,
-              '\\$&',
-            );
+          const escaped = command.entityName.replace(/[.*+?^\${}()|[\]\\]/g, '\\$&');
+          const active = await Product.findOne({
+            userId: uid,
+            isDeleted: { $ne: true },
+            name: new RegExp('^' + escaped + '$', 'i'),
+          }).session(session);
 
-          const duplicate =
-            await Product.findOne({
+          if (active) {
+            if (command.quantity && command.quantity > 0) {
+              const transaction = await createTransaction(
+                {
+                  type: 'STOCK_IN',
+                  productId: String(active._id),
+                  amount: money(command.quantity * num(command.unitPrice)),
+                  quantity: command.quantity,
+                  unitPrice: command.unitPrice ?? undefined,
+                  notes: command.notes || 'Voice product stock add',
+                  commandId,
+                  source: 'VOICE',
+                },
+                userId,
+                session,
+              );
+              const fresh = await Product.findById(active._id).session(session).lean();
+              result = {
+                type: 'CREATE_PRODUCT',
+                mode: 'STOCK_IN_EXISTING',
+                id: String(active._id),
+                name: active.name,
+                unit: fresh?.unit || active.unit,
+                stock: num(fresh?.stockQuantity),
+                buyPrice: num(fresh?.buyPrice),
+                created: false,
+                transaction,
+              };
+            } else {
+              throw new VoiceV2Error(
+                'DUPLICATE_ENTITY',
+                'Product "' + command.entityName + '" already exists',
+                { id: String(active._id), name: active.name },
+              );
+            }
+          } else {
+            const deleted = await Product.findOne({
               userId: uid,
-              name: new RegExp(
-                `^${escaped}$`,
-                'i',
-              ),
+              isDeleted: true,
+              name: new RegExp('^' + escaped + '$', 'i'),
             }).session(session);
 
-          if (duplicate) {
-            throw new VoiceV2Error(
-              'DUPLICATE_ENTITY',
-              `Product "${command.entityName}" already exists`,
-            );
-          }
-
-          const [product] =
-            await Product.create(
-              [
+            if (deleted) {
+              await Product.updateOne(
+                { _id: deleted._id, userId: uid, isDeleted: true },
                 {
+                  $set: {
+                    isDeleted: false,
+                    unit: command.unit,
+                    buyPrice: command.unitPrice ?? deleted.buyPrice,
+                  },
+                  $unset: { deletedAt: 1, deletedBy: 1 },
+                },
+                { session },
+              );
+              let transaction = null;
+              if (command.quantity && command.quantity > 0) {
+                transaction = await createTransaction(
+                  {
+                    type: 'STOCK_IN',
+                    productId: String(deleted._id),
+                    amount: money(command.quantity * num(command.unitPrice)),
+                    quantity: command.quantity,
+                    unitPrice: command.unitPrice ?? undefined,
+                    notes: command.notes || 'Voice restored product stock add',
+                    commandId,
+                    source: 'VOICE',
+                  },
+                  userId,
+                  session,
+                );
+              }
+              const fresh = await Product.findById(deleted._id).session(session).lean();
+              result = {
+                type: 'CREATE_PRODUCT',
+                mode: 'RESTORED',
+                id: String(deleted._id),
+                name: fresh?.name || deleted.name,
+                unit: fresh?.unit || deleted.unit,
+                stock: num(fresh?.stockQuantity),
+                buyPrice: num(fresh?.buyPrice),
+                created: false,
+                restored: true,
+                transaction,
+              };
+            } else {
+              const [product] = await Product.create(
+                [{
                   userId: uid,
-                  name:
-                    command.entityName,
-                  unit:
-                    command.unit,
-                  stockQuantity:
-                    num(command.quantity),
-                  buyPrice:
-                    num(command.unitPrice),
+                  name: command.entityName,
+                  unit: command.unit,
+                  stockQuantity: 0,
+                  buyPrice: num(command.unitPrice),
                   sellPrice: 0,
                   lowStockThreshold: 5,
-                },
-              ],
-              {
-                session,
-              },
-            );
-
-          result = {
-            type: 'CREATE_PRODUCT',
-            id: String(
-              product._id,
-            ),
-            name: product.name,
-            unit: product.unit,
-            stock:
-              product.stockQuantity,
-            buyPrice:
-              product.buyPrice,
-            sellPrice:
-              product.sellPrice,
-          };
+                }],
+                { session },
+              );
+              let transaction = null;
+              if (command.quantity && command.quantity > 0) {
+                transaction = await createTransaction(
+                  {
+                    type: 'STOCK_IN',
+                    productId: String(product._id),
+                    amount: money(command.quantity * num(command.unitPrice)),
+                    quantity: command.quantity,
+                    unitPrice: command.unitPrice ?? undefined,
+                    notes: command.notes || 'Voice product stock add',
+                    commandId,
+                    source: 'VOICE',
+                  },
+                  userId,
+                  session,
+                );
+              }
+              const fresh = await Product.findById(product._id).session(session).lean();
+              result = {
+                type: 'CREATE_PRODUCT',
+                mode: 'CREATED',
+                id: String(product._id),
+                name: product.name,
+                unit: product.unit,
+                stock: num(fresh?.stockQuantity),
+                buyPrice: num(fresh?.buyPrice),
+                created: true,
+                transaction,
+              };
+            }
+          }
         }
 
         /* ---------------------------------------------------------------- */
